@@ -67,10 +67,13 @@ def evaluate(args):
             agents_mask = batch['agents_history_mask'].to(device)
             gt_traj     = batch['gt_trajectory'].to(device)
             mode_label  = batch['mode_label'].to(device)
+            map_lanes   = batch['map_lanes'].to(device)
+            map_lanes_mask = batch['map_lanes_mask'].to(device)
 
             # Generate all N_MODES trajectories + rule-selected best
             mode_logits, all_trajs, best_traj, best_idx = model.forward_inference(
-                agents_now, agents_mask
+                agents_now, agents_mask,
+                map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
             )
             # all_trajs: (B, N_MODES, T, 3)
 

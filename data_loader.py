@@ -9,6 +9,7 @@ All positions are transformed to ego-centric frame at t=0.
 import os
 import math
 import glob
+import sqlite3
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -24,8 +25,16 @@ from nuplan.database.nuplan_db.nuplan_scenario_queries import (
 )
 from nuplan.database.nuplan_db.nuplan_db_utils import get_lidarpc_sensor_data
 
+# Map API imports
+from nuplan.common.maps.nuplan_map.map_factory import get_maps_api
+from nuplan.common.actor_state.state_representation import Point2D
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer
+
 # Singleton sensor source (lidar_pc / MergedPointCloud)
 _SENSOR_SOURCE = get_lidarpc_sensor_data()
+
+# Map API cache (per map name)
+_MAP_API_CACHE = {}
 
 
 # ── Coordinate helpers ─────────────────────────────────────────────────────────
@@ -42,6 +51,122 @@ def _to_ego_frame(x, y, heading, ref_x, ref_y, ref_heading):
     # normalise heading to [-pi, pi]
     h_e = (h_e + math.pi) % (2 * math.pi) - math.pi
     return x_e, y_e, h_e
+
+
+# ── Map loading helpers ────────────────────────────────────────────────────────
+
+def _get_map_name_from_db(db_path: str) -> str:
+    """Query the DB to get the map version/name."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT map_version FROM log LIMIT 1")
+        row = cursor.fetchone()
+        if row and row[0]:
+            return row[0]
+    finally:
+        conn.close()
+    return "us-nv-las-vegas-strip"  # fallback
+
+
+def _get_map_api(map_name: str):
+    """Get cached map API or create new one."""
+    if map_name not in _MAP_API_CACHE:
+        _MAP_API_CACHE[map_name] = get_maps_api(
+            map_root=cfg.MAPS_DIR,
+            map_version="nuplan-maps-v1.0",
+            map_name=map_name
+        )
+    return _MAP_API_CACHE[map_name]
+
+
+def _resample_polyline(points: list, n_points: int) -> np.ndarray:
+    """Resample a polyline to exactly n_points via uniform spacing."""
+    if len(points) < 2:
+        return np.zeros((n_points, 2), dtype=np.float32)
+
+    pts = np.array([[p.x, p.y] for p in points], dtype=np.float32)
+
+    # Compute cumulative arc length
+    diffs = np.diff(pts, axis=0)
+    seg_lengths = np.linalg.norm(diffs, axis=1)
+    cumlen = np.concatenate([[0], np.cumsum(seg_lengths)])
+    total_len = cumlen[-1]
+
+    if total_len < 1e-6:
+        return np.zeros((n_points, 2), dtype=np.float32)
+
+    # Sample at uniform arc length intervals
+    sample_dists = np.linspace(0, total_len, n_points)
+    resampled = np.zeros((n_points, 2), dtype=np.float32)
+
+    for i, d in enumerate(sample_dists):
+        # Find segment containing this distance
+        seg_idx = np.searchsorted(cumlen, d) - 1
+        seg_idx = max(0, min(seg_idx, len(pts) - 2))
+        seg_start = cumlen[seg_idx]
+        seg_len = seg_lengths[seg_idx]
+        if seg_len > 1e-6:
+            t = (d - seg_start) / seg_len
+        else:
+            t = 0.0
+        resampled[i] = pts[seg_idx] + t * (pts[seg_idx + 1] - pts[seg_idx])
+
+    return resampled
+
+
+def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
+                    ref_x: float, ref_y: float, ref_h: float):
+    """
+    Load nearby lane centerlines and transform to ego-centric frame.
+
+    Returns:
+      lanes:      (N_LANES, N_LANE_POINTS, 3) — (x, y, heading) in ego frame
+      lanes_mask: (N_LANES,) — 1 if valid lane, 0 if padding
+    """
+    # Query in GLOBAL frame (ego_x, ego_y are in global coords)
+    point = Point2D(ref_x, ref_y)
+    try:
+        map_objs = map_api.get_proximal_map_objects(
+            point, cfg.MAP_QUERY_RADIUS, [SemanticMapLayer.LANE]
+        )
+        raw_lanes = map_objs[SemanticMapLayer.LANE]
+    except Exception:
+        raw_lanes = []
+
+    lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, 3), dtype=np.float32)
+    lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
+
+    for i, lane in enumerate(raw_lanes[:cfg.N_LANES]):
+        if lane.baseline_path is None:
+            continue
+        # Get centerline polyline points
+        centerline = lane.baseline_path.discrete_path
+        if len(centerline) < 2:
+            continue
+
+        # Resample to fixed number of points
+        pts_2d = _resample_polyline(centerline, cfg.N_LANE_POINTS)  # (P, 2) global
+
+        # Compute heading at each point (finite diff)
+        headings = np.zeros(cfg.N_LANE_POINTS, dtype=np.float32)
+        for j in range(cfg.N_LANE_POINTS - 1):
+            dx = pts_2d[j+1, 0] - pts_2d[j, 0]
+            dy = pts_2d[j+1, 1] - pts_2d[j, 1]
+            headings[j] = math.atan2(dy, dx)
+        headings[-1] = headings[-2]  # repeat last
+
+        # Transform each point to ego-centric frame
+        for j in range(cfg.N_LANE_POINTS):
+            x_e, y_e, h_e = _to_ego_frame(
+                pts_2d[j, 0], pts_2d[j, 1], headings[j],
+                ref_x, ref_y, ref_h
+            )
+            lanes[i, j] = [x_e, y_e, h_e]
+
+        lanes_mask[i] = 1.0
+
+    return lanes, lanes_mask
 
 
 # ── Mode assignment (winner-takes-all, Algorithm 1) ────────────────────────────
@@ -185,6 +310,18 @@ def _load_sample(db_path: str, token: str):
     # ── BEV raster (zeros; real rasterisation deferred) ───────────────────────
     map_raster = np.zeros((cfg.BEV_C, cfg.BEV_H, cfg.BEV_W), dtype=np.float32)
 
+    # ── Map lane loading ──────────────────────────────────────────────────────
+    try:
+        map_name = _get_map_name_from_db(db_path)
+        map_api = _get_map_api(map_name)
+        map_lanes, map_lanes_mask = _load_map_lanes(
+            map_api, ref_x, ref_y, ref_h, ref_x, ref_y, ref_h
+        )
+    except Exception:
+        # Fallback to zeros if map loading fails
+        map_lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, 3), dtype=np.float32)
+        map_lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
+
     # ── Mode assignment ───────────────────────────────────────────────────────
     mode_label = _assign_mode(gt_trajectory)
 
@@ -197,6 +334,8 @@ def _load_sample(db_path: str, token: str):
         'agents_seq':          agents_seq,        # (T_FUTURE, N, 4) — GT future agents
         'gt_trajectory':       gt_trajectory,
         'mode_label':          np.int64(mode_label),
+        'map_lanes':           map_lanes,         # (N_LANES, N_LANE_POINTS, 3)
+        'map_lanes_mask':      map_lanes_mask,    # (N_LANES,)
     }
 
 
@@ -265,6 +404,8 @@ class NuPlanCarPlannerDataset(Dataset):
                 'agents_seq':          torch.zeros(cfg.T_FUTURE, cfg.N_AGENTS, 4),
                 'gt_trajectory':       torch.zeros(cfg.T_FUTURE, 3),
                 'mode_label':          torch.zeros(1, dtype=torch.long).squeeze(),
+                'map_lanes':           torch.zeros(cfg.N_LANES, cfg.N_LANE_POINTS, 3),
+                'map_lanes_mask':      torch.zeros(cfg.N_LANES),
             }
 
         return {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else torch.tensor(v)
@@ -319,6 +460,8 @@ if __name__ == '__main__':
     assert batch['map_raster'].shape          == (8, cfg.BEV_C, cfg.BEV_H, cfg.BEV_W)
     assert batch['gt_trajectory'].shape       == (8, cfg.T_FUTURE, 3)
     assert batch['mode_label'].shape          == (8,)
+    assert batch['map_lanes'].shape           == (8, cfg.N_LANES, cfg.N_LANE_POINTS, 3)
+    assert batch['map_lanes_mask'].shape      == (8, cfg.N_LANES)
 
     assert not torch.isnan(batch['ego_history']).any(), "NaN in ego_history"
     assert not torch.isnan(batch['gt_trajectory']).any(), "NaN in gt_trajectory"
@@ -330,6 +473,10 @@ if __name__ == '__main__':
 
     mode_labels = batch['mode_label']
     assert ((mode_labels >= 0) & (mode_labels < cfg.N_MODES)).all(), "mode_label out of range"
+
+    # Map lanes: at least some samples should have non-zero mask
+    n_valid_lanes = batch['map_lanes_mask'].sum().item()
+    print(f"  Valid lanes across batch: {n_valid_lanes:.0f}")
 
     print("\n✓ All checks passed.")
     print(f"  GT trajectory range x: [{batch['gt_trajectory'][...,0].min():.2f}, "

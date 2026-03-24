@@ -61,6 +61,12 @@ PPO_CLIP = 0.2
 GAMMA = 0.1
 GAE_LAMBDA = 0.9
 
+# ── Map encoding ──────────────────────────────────────────────────────────────
+MAP_QUERY_RADIUS = 50.0          # meters — radius to query nearby lanes
+N_LANES = 20                     # max lanes to encode (padded/truncated)
+N_LANE_POINTS = 10               # points per lane polyline (resampled)
+D_LANE = 64                      # lane encoder output dim
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 CHECKPOINT_DIR = os.path.join(
     os.path.dirname(__file__), "checkpoints"

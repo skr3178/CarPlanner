@@ -79,6 +79,52 @@ class PointNetEncoder(nn.Module):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Lane encoder  (PointNet over lane polylines)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LaneEncoder(nn.Module):
+    """
+    PointNet-style encoder for lane centerlines.
+    Each lane is a polyline of (x, y, heading) points.
+
+    Input:  lanes (B, N_LANES, N_POINTS, 3) + mask (B, N_LANES)
+    Output: per_lane (B, N_LANES, D_LANE)
+    """
+    def __init__(self, in_dim: int = 3, d_model: int = cfg.D_LANE):
+        super().__init__()
+        # Per-point MLP: (x, y, h) → D_LANE
+        self.point_mlp = nn.Sequential(
+            nn.Linear(in_dim, 32),
+            nn.ReLU(inplace=True),
+            nn.Linear(32, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, d_model),
+        )
+        self.d_model = d_model
+
+    def forward(self, lanes: torch.Tensor, mask: torch.Tensor = None):
+        """
+        lanes: (B, N_LANES, N_POINTS, 3)
+        mask:  (B, N_LANES) — 1=valid, 0=padding
+        Returns: per_lane (B, N_LANES, D_LANE)
+        """
+        B, N_L, N_P, _ = lanes.shape
+        # Flatten batch + lanes for point-wise encoding
+        flat = lanes.view(B * N_L, N_P, 3)               # (B*N_L, N_P, 3)
+        per_point = self.point_mlp(flat)                  # (B*N_L, N_P, D)
+
+        # Max-pool over points within each lane
+        lane_feat = per_point.max(dim=1).values           # (B*N_L, D)
+        lane_feat = lane_feat.view(B, N_L, self.d_model)  # (B, N_LANES, D_LANE)
+
+        # Apply mask (zero out padding lanes)
+        if mask is not None:
+            lane_feat = lane_feat * mask.unsqueeze(-1)
+
+        return lane_feat
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # IVM — Invariant-View Module  (Algorithm 3)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -90,11 +136,12 @@ class IVMBlock(nn.Module):
       1. K-nearest agent selection  (K = N // 2)
       2. Ego-centric coordinate transform already applied upstream
       3. Time normalisation already applied upstream
-      4. Transformer decoder: mode c as query, agent feats as K/V
+      4. Transformer decoder: mode c as query, (agent + map) feats as K/V
       5. Output updated mode query (carries temporal state across steps)
 
     Query: mode_query  (B, 1, D)       — fixed mode index, updated by attention
     K/V:   agent_feats (B, K, D)       — K-NN selected agents at step t
+           map_feats   (B, N_LANES, D)  — encoded lane centerlines (optional)
     Output: updated mode_query (B, 1, D)
     """
     def __init__(self, d_model: int = cfg.D_HIDDEN, n_heads: int = 4,
@@ -111,13 +158,16 @@ class IVMBlock(nn.Module):
             nn.Linear(d_model * 4, d_model),
         )
         self.norm2 = nn.LayerNorm(d_model)
+        # Project lane features from D_LANE to D_HIDDEN for concatenation
+        self.lane_proj = nn.Linear(cfg.D_LANE, d_model)
 
     def forward(self, mode_query: torch.Tensor, agent_feats: torch.Tensor,
-                agent_poses: torch.Tensor) -> torch.Tensor:
+                agent_poses: torch.Tensor, map_feats: torch.Tensor = None) -> torch.Tensor:
         """
         mode_query:  (B, 1, D)   — current mode state (query)
         agent_feats: (B, N, D)   — PointNet-encoded agents in ego frame at t
         agent_poses: (B, N, 2)   — (x, y) positions for K-NN distance
+        map_feats:   (B, N_LANES, D_LANE) — LaneEncoder output (optional)
         Returns:     (B, 1, D)   — updated mode query
         """
         B, N, D = agent_feats.shape
@@ -132,7 +182,12 @@ class IVMBlock(nn.Module):
         else:
             kv = agent_feats                             # (B, N, D)
 
-        # Step 4: Transformer decoder (mode as query, agents as K/V)
+        # Optionally concatenate map features to K/V
+        if map_feats is not None:
+            map_proj = self.lane_proj(map_feats)         # (B, N_LANES, D)
+            kv = torch.cat([kv, map_proj], dim=1)        # (B, K + N_LANES, D)
+
+        # Step 4: Transformer decoder (mode as query, agents+map as K/V)
         attn_out, _ = self.cross_attn(mode_query, kv, kv)
         mode_query = self.norm1(mode_query + attn_out)
         mode_query = self.norm2(mode_query + self.ffn(mode_query))
@@ -185,7 +240,7 @@ class AutoregressivePolicy(nn.Module):
          (IVM step: Algorithm 3, lines 3–4)
       2. Time history normalised to [-H:0]  (Algorithm 3, line 4)
       3. PointNet encodes agents → per-agent feats
-      4. IVM: mode_query (updated from prev step) attends to agents
+      4. IVM: mode_query (updated from prev step) attends to agents + map
       5. Action head: updated query → waypoint a_t  (in initial ego frame)
 
     Mode c is fixed across all T steps (consistent AR, Figure 1c, Section III-B).
@@ -199,6 +254,8 @@ class AutoregressivePolicy(nn.Module):
       mode_c:      (B,)  int64          — selected mode index in [0, N_MODES)
       gt_ego:      (B, T_FUTURE, 3)     — GT ego positions for teacher-forcing
                    the IVM coordinate transform (IL training only)
+      map_lanes:   (B, N_LANES, N_PTS, 3) — lane centerlines in ego frame
+      map_lanes_mask: (B, N_LANES)      — validity mask for lanes
     Output:
       trajectory:  (B, T_FUTURE, 3)    — predicted (x, y, yaw) in initial ego frame
     """
@@ -206,6 +263,7 @@ class AutoregressivePolicy(nn.Module):
         super().__init__()
         D = cfg.D_HIDDEN
         self.agent_encoder = PointNetEncoder(in_dim=4, d_model=D)
+        self.lane_encoder  = LaneEncoder(in_dim=3, d_model=cfg.D_LANE)
         self.mode_embed    = nn.Embedding(cfg.N_MODES, D)
         self.ivm           = IVMBlock(d_model=D, n_heads=4,
                                       k_nn=cfg.N_AGENTS // 2)
@@ -244,12 +302,19 @@ class AutoregressivePolicy(nn.Module):
         return x_e, y_e, h_e                             # (B, N) each
 
     def forward(self, agents_seq: torch.Tensor, agents_mask: torch.Tensor,
-                mode_c: torch.Tensor, gt_ego: torch.Tensor = None) -> torch.Tensor:
+                mode_c: torch.Tensor, gt_ego: torch.Tensor = None,
+                map_lanes: torch.Tensor = None,
+                map_lanes_mask: torch.Tensor = None) -> torch.Tensor:
         B = agents_seq.size(0)
         device = agents_seq.device
 
         # Initialise mode query from embedding (B, 1, D)
         mode_query = self.mode_embed(mode_c).unsqueeze(1)
+
+        # Encode map lanes once (static across time steps)
+        map_feats = None
+        if map_lanes is not None:
+            map_feats = self.lane_encoder(map_lanes, map_lanes_mask)  # (B, N_LANES, D_LANE)
 
         # Ego pose accumulator for coordinate transforms
         # At t=0 ego is at origin; updated via GT (teacher-forcing) or predictions
@@ -281,7 +346,7 @@ class AutoregressivePolicy(nn.Module):
             # ── IVM Transformer decoder: update mode query ────────────────
             # (Algorithm 3, Transformer decoder; mode c as query)
             mode_query = self.ivm(mode_query, per_agent,
-                                  agents_ego[..., :2])  # (B, 1, D) updated
+                                  agents_ego[..., :2], map_feats)  # (B, 1, D) updated
 
             # ── Action head → waypoint in CURRENT ego frame ───────────────
             a_local = self.action_head(
@@ -455,7 +520,9 @@ class CarPlanner(nn.Module):
 
     def forward_train(self, agents_now: torch.Tensor, agents_mask: torch.Tensor,
                       agents_seq: torch.Tensor, gt_traj: torch.Tensor,
-                      mode_label: torch.Tensor):
+                      mode_label: torch.Tensor,
+                      map_lanes: torch.Tensor = None,
+                      map_lanes_mask: torch.Tensor = None):
         """
         IL training pass (Algorithm 1, Stage 2 IL branch).
 
@@ -465,6 +532,8 @@ class CarPlanner(nn.Module):
           agents_seq:  (B, T_FUTURE, N, 4)   — GT agent states at t=1..T in ego frame
           gt_traj:     (B, T_FUTURE, 3)      — GT ego trajectory in ego frame
           mode_label:  (B,)  int64           — positive mode c* (pre-assigned)
+          map_lanes:   (B, N_LANES, N_PTS, 3) — lane centerlines in ego frame
+          map_lanes_mask: (B, N_LANES)       — validity mask for lanes
 
         Returns:
           mode_logits: (B, N_MODES)
@@ -500,6 +569,8 @@ class CarPlanner(nn.Module):
             agents_mask=agents_mask,
             mode_c=c,
             gt_ego=gt_traj,          # teacher-forcing for IVM frame transforms
+            map_lanes=map_lanes,
+            map_lanes_mask=map_lanes_mask,
         )                            # (B, T_FUTURE, 3)
 
         return mode_logits, side_traj, pred_traj
@@ -507,7 +578,9 @@ class CarPlanner(nn.Module):
     # ── Inference forward ─────────────────────────────────────────────────────
 
     @torch.no_grad()
-    def forward_inference(self, agents_now: torch.Tensor, agents_mask: torch.Tensor):
+    def forward_inference(self, agents_now: torch.Tensor, agents_mask: torch.Tensor,
+                          map_lanes: torch.Tensor = None,
+                          map_lanes_mask: torch.Tensor = None):
         """
         Full inference pass (Algorithm 2):
           1. Encode s_0
@@ -515,6 +588,12 @@ class CarPlanner(nn.Module):
           3. Transition model → agent futures
           4. For each of N_MODES modes: run autoregressive policy with IVM
           5. Rule selector → best trajectory
+
+        Inputs:
+          agents_now:  (B, N, 4)             — agents at t=0 in ego frame
+          agents_mask: (B, N)
+          map_lanes:   (B, N_LANES, N_PTS, 3) — lane centerlines in ego frame
+          map_lanes_mask: (B, N_LANES)       — validity mask for lanes
 
         Returns:
           mode_logits:   (B, N_MODES)
@@ -545,6 +624,8 @@ class CarPlanner(nn.Module):
                 agents_mask=agents_mask,
                 mode_c=c,
                 gt_ego=None,         # no teacher-forcing at inference
+                map_lanes=map_lanes,
+                map_lanes_mask=map_lanes_mask,
             )                        # (B, T, 3)
             all_trajs.append(traj.unsqueeze(1))
 
@@ -588,11 +669,14 @@ if __name__ == '__main__':
     agents_seq  = torch.randn(B, T, N, 4, device=device)   # GT agent futures
     gt_traj     = torch.randn(B, T, 3, device=device)
     mode_label  = torch.randint(0, cfg.N_MODES, (B,), device=device)
+    map_lanes   = torch.randn(B, cfg.N_LANES, cfg.N_LANE_POINTS, 3, device=device)
+    map_lanes_mask = torch.ones(B, cfg.N_LANES, device=device)
 
     # ── Training forward ───────────────────────────────────────────────────
     model.train()
     logits, side, pred = model.forward_train(
-        agents_now, agents_mask, agents_seq, gt_traj, mode_label
+        agents_now, agents_mask, agents_seq, gt_traj, mode_label,
+        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
     )
     assert logits.shape == (B, cfg.N_MODES),     f"logits {logits.shape}"
     assert side.shape   == (B, T, 3),            f"side {side.shape}"
@@ -609,7 +693,8 @@ if __name__ == '__main__':
 
     # ── Inference forward ──────────────────────────────────────────────────
     inf_logits, all_trajs, best_traj, best_idx = model.forward_inference(
-        agents_now, agents_mask
+        agents_now, agents_mask,
+        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
     )
     assert inf_logits.shape == (B, cfg.N_MODES),             f"inf_logits"
     assert all_trajs.shape  == (B, cfg.N_MODES, T, 3),       f"all_trajs"

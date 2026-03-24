@@ -110,10 +110,13 @@ def train(args):
             agents_seq   = batch['agents_seq'].to(device)           # (B, T, N, 4)
             gt_traj      = batch['gt_trajectory'].to(device)        # (B, T, 3)
             mode_label   = batch['mode_label'].to(device)           # (B,)
+            map_lanes    = batch['map_lanes'].to(device)            # (B, N_LANES, N_PTS, 3)
+            map_lanes_mask = batch['map_lanes_mask'].to(device)     # (B, N_LANES)
 
             # Forward (Algorithm 1, Stage 2 IL branch)
             mode_logits, side_traj, pred_traj = model.forward_train(
-                agents_now, agents_mask, agents_seq, gt_traj, mode_label
+                agents_now, agents_mask, agents_seq, gt_traj, mode_label,
+                map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
             )
 
             # Loss (L_IL = L_CE + L_SideTask + L_generator)
