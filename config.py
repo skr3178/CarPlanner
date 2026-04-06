@@ -6,7 +6,7 @@ All hyperparameters from paper (carplanner_equations.md, hyperparameters.md).
 import os
 
 # ── Dataset paths ─────────────────────────────────────────────────────────────
-BASE_DIR = "/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-extracted"
+BASE_DIR = "/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-extracted"
 MINI_DIR = os.path.join(BASE_DIR, "data/cache/mini")
 TRAIN_DIR = os.path.join(BASE_DIR, "data/cache/train_boston")
 MAPS_DIR = os.path.join(BASE_DIR, "nuplan-maps-v1.0")
@@ -31,6 +31,10 @@ LON_BIN_EDGES = [i * MAX_SPEED / N_LON for i in range(N_LON + 1)]
 # Lat bins: lateral offset at T steps in ego frame (y-axis)
 LAT_BIN_EDGES = [-float('inf'), -3.0, -1.0, 1.0, 3.0, float('inf')]  # 5 bins
 
+# ── Feature dimensions (paper: Da=10, Dm=9) ──────────────────────────────────
+D_AGENT = 10          # per-agent pose: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
+D_MAP_POINT = 9       # per-map-point: x, y, sin_h, cos_h, speed_limit, 4×category_onehot
+
 # ── Architecture ──────────────────────────────────────────────────────────────
 D_ACTION = 3          # (x, y, yaw) per step
 D_HIDDEN = 256
@@ -39,12 +43,12 @@ D_BEV = 128           # BEV encoder output dim
 D_STATE = 128         # state encoder output dim
 
 # ── Training (Section 4.1, IL Stage B) ───────────────────────────────────────
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 LR = 1e-4
 WEIGHT_DECAY = 1e-4
 EPOCHS = 50
-LR_PATIENCE = 3       # ReduceLROnPlateau (paper uses 0, we use 3 for stability)
-LR_FACTOR = 0.5
+LR_PATIENCE = 0       # ReduceLROnPlateau — paper Section 4.1
+LR_FACTOR = 0.3
 
 # ablation flags (IL best config: all True; RL best: dropout=True, side_task=True, rest=False)
 MODE_DROPOUT = True

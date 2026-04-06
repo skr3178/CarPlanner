@@ -34,14 +34,14 @@ def compute_il_loss(mode_logits, side_traj, pred_traj, gt_traj, mode_label):
     # Eq (6): mode selector CE loss
     L_CE = F.cross_entropy(mode_logits, mode_label)
 
-    # Eq (7): side task L1 loss (selector trajectory head)
+    # Eq (7): side task L1 — (1/T) Σ_t ||s_t - s_t^gt||_1  (sum over spatial, mean over T)
     if cfg.SELECTOR_SIDE_TASK:
-        L_side = F.l1_loss(side_traj, gt_traj)
+        L_side = (side_traj - gt_traj).abs().sum(dim=-1).mean()
     else:
         L_side = torch.tensor(0.0, device=mode_logits.device)
 
-    # Eq (11): generator L1 loss
-    L_gen = F.l1_loss(pred_traj, gt_traj)
+    # Eq (11): generator L1 — (1/T) Σ_t ||s_t - s_t^gt||_1
+    L_gen = (pred_traj - gt_traj).abs().sum(dim=-1).mean()
 
     L_total = L_CE + L_side + L_gen
 

@@ -119,12 +119,15 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
                     ref_x: float, ref_y: float, ref_h: float):
     """
     Load nearby lane centerlines and transform to ego-centric frame.
+    Dm=9 per point: x, y, sin(heading), cos(heading), speed_limit, 4×category_onehot
 
     Returns:
-      lanes:      (N_LANES, N_LANE_POINTS, 3) — (x, y, heading) in ego frame
+      lanes:      (N_LANES, N_LANE_POINTS, Dm=9) — per-point features in ego frame
       lanes_mask: (N_LANES,) — 1 if valid lane, 0 if padding
     """
-    # Query in GLOBAL frame (ego_x, ego_y are in global coords)
+    # Map element categories (one-hot, 4 dims)
+    _MAP_CATEGORIES = ['LANE', 'LANE_CONNECTOR', 'INTERSECTION', 'OTHER']
+
     point = Point2D(ref_x, ref_y)
     try:
         map_objs = map_api.get_proximal_map_objects(
@@ -134,35 +137,47 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
     except Exception:
         raw_lanes = []
 
-    lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, 3), dtype=np.float32)
+    lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT), dtype=np.float32)
     lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
 
     for i, lane in enumerate(raw_lanes[:cfg.N_LANES]):
         if lane.baseline_path is None:
             continue
-        # Get centerline polyline points
         centerline = lane.baseline_path.discrete_path
         if len(centerline) < 2:
             continue
 
-        # Resample to fixed number of points
-        pts_2d = _resample_polyline(centerline, cfg.N_LANE_POINTS)  # (P, 2) global
+        pts_2d = _resample_polyline(centerline, cfg.N_LANE_POINTS)
 
-        # Compute heading at each point (finite diff)
         headings = np.zeros(cfg.N_LANE_POINTS, dtype=np.float32)
         for j in range(cfg.N_LANE_POINTS - 1):
             dx = pts_2d[j+1, 0] - pts_2d[j, 0]
             dy = pts_2d[j+1, 1] - pts_2d[j, 1]
             headings[j] = math.atan2(dy, dx)
-        headings[-1] = headings[-2]  # repeat last
+        headings[-1] = headings[-2]
 
-        # Transform each point to ego-centric frame
+        # Lane-level features
+        speed_limit = lane.speed_limit_mps if hasattr(lane, 'speed_limit_mps') else 0.0
+        lane_type = type(lane).__name__
+        cat_onehot = np.zeros(len(_MAP_CATEGORIES), dtype=np.float32)
+        if 'LaneConnector' in lane_type:
+            cat_onehot[1] = 1.0
+        elif 'Intersection' in lane_type:
+            cat_onehot[2] = 1.0
+        elif 'Lane' in lane_type:
+            cat_onehot[0] = 1.0
+        else:
+            cat_onehot[3] = 1.0
+
         for j in range(cfg.N_LANE_POINTS):
             x_e, y_e, h_e = _to_ego_frame(
                 pts_2d[j, 0], pts_2d[j, 1], headings[j],
                 ref_x, ref_y, ref_h
             )
-            lanes[i, j] = [x_e, y_e, h_e]
+            lanes[i, j] = np.concatenate([
+                [x_e, y_e, math.sin(h_e), math.cos(h_e), speed_limit],
+                cat_onehot,
+            ])
 
         lanes_mask[i] = 1.0
 
@@ -267,34 +282,41 @@ def _load_sample(db_path: str, token: str):
         gt_trajectory[i] = [xe, ye, he]
 
     # ── Agents at current frame (t=0) ─────────────────────────────────────────
-    def _load_agents_at_token(tok: str) -> tuple:
-        """Returns (agents array (N,4), mask (N,)) in initial ego frame."""
+    # Paper Da=10: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
+    _AGENT_CATEGORIES = ['VEHICLE', 'PEDESTRIAN', 'BICYCLE', 'MOTORCYCLE']
+
+    def _load_agents_at_token(tok: str, time_step: float = 0.0) -> tuple:
+        """Returns (agents array (N, Da=10), mask (N,)) in initial ego frame."""
         try:
             raw = list(get_tracked_objects_for_lidarpc_token_from_db(db_path, tok))
         except Exception:
             raw = []
-        arr  = np.zeros((cfg.N_AGENTS, 4), dtype=np.float32)
-        mask = np.zeros(cfg.N_AGENTS,      dtype=np.float32)
+        arr  = np.zeros((cfg.N_AGENTS, cfg.D_AGENT), dtype=np.float32)
+        mask = np.zeros(cfg.N_AGENTS, dtype=np.float32)
         for j, ag in enumerate(raw[:cfg.N_AGENTS]):
             xe, ye, he = _to_ego_frame(
                 ag.center.x, ag.center.y, ag.center.heading,
                 ref_x, ref_y, ref_h
             )
-            spd = 0.0
-            if hasattr(ag, 'velocity') and ag.velocity is not None:
-                spd = math.sqrt(ag.velocity.x ** 2 + ag.velocity.y ** 2)
-            arr[j]  = [xe, ye, he, spd]
+            vx = ag.velocity.x if hasattr(ag, 'velocity') and ag.velocity else 0.0
+            vy = ag.velocity.y if hasattr(ag, 'velocity') and ag.velocity else 0.0
+            bw = ag.box.width  if hasattr(ag, 'box') else 0.0
+            bl = ag.box.length if hasattr(ag, 'box') else 0.0
+            bh = ag.box.height if hasattr(ag, 'box') else 0.0
+            cat_name = ag.tracked_object_type.name if hasattr(ag, 'tracked_object_type') else 'UNKNOWN'
+            cat_idx = _AGENT_CATEGORIES.index(cat_name) if cat_name in _AGENT_CATEGORIES else len(_AGENT_CATEGORIES)
+            arr[j]  = [xe, ye, he, vx, vy, bw, bl, bh, time_step, cat_idx]
             mask[j] = 1.0
         return arr, mask
 
     agents_now, agents_mask = _load_agents_at_token(token)
 
     # Keep history tensor for backward-compat (fill all steps with t=0 state)
-    agents_history = np.stack([agents_now] * cfg.T_HIST, axis=0)   # (T_HIST, N, 4)
+    agents_history = np.stack([agents_now] * cfg.T_HIST, axis=0)   # (T_HIST, N, Da)
 
     # ── GT agent futures (t=1..T) — used by AutoregressivePolicy IVM ──────────
     # Get future lidar_pc tokens, then load agents at each step
-    agents_seq = np.zeros((cfg.T_FUTURE, cfg.N_AGENTS, 4), dtype=np.float32)
+    agents_seq = np.zeros((cfg.T_FUTURE, cfg.N_AGENTS, cfg.D_AGENT), dtype=np.float32)
     try:
         future_pcs = list(get_sampled_lidarpcs_from_db(
             db_path, token, sensor_source,
@@ -319,7 +341,7 @@ def _load_sample(db_path: str, token: str):
         )
     except Exception:
         # Fallback to zeros if map loading fails
-        map_lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, 3), dtype=np.float32)
+        map_lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT), dtype=np.float32)
         map_lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
 
     # ── Mode assignment ───────────────────────────────────────────────────────
@@ -398,13 +420,13 @@ class NuPlanCarPlannerDataset(Dataset):
             return {
                 'map_raster':          torch.zeros(cfg.BEV_C, cfg.BEV_H, cfg.BEV_W),
                 'ego_history':         torch.zeros(cfg.T_HIST, 4),
-                'agents_history':      torch.zeros(cfg.T_HIST, cfg.N_AGENTS, 4),
+                'agents_history':      torch.zeros(cfg.T_HIST, cfg.N_AGENTS, cfg.D_AGENT),
                 'agents_history_mask': torch.zeros(cfg.N_AGENTS),
-                'agents_now':          torch.zeros(cfg.N_AGENTS, 4),
-                'agents_seq':          torch.zeros(cfg.T_FUTURE, cfg.N_AGENTS, 4),
+                'agents_now':          torch.zeros(cfg.N_AGENTS, cfg.D_AGENT),
+                'agents_seq':          torch.zeros(cfg.T_FUTURE, cfg.N_AGENTS, cfg.D_AGENT),
                 'gt_trajectory':       torch.zeros(cfg.T_FUTURE, 3),
                 'mode_label':          torch.zeros(1, dtype=torch.long).squeeze(),
-                'map_lanes':           torch.zeros(cfg.N_LANES, cfg.N_LANE_POINTS, 3),
+                'map_lanes':           torch.zeros(cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT),
                 'map_lanes_mask':      torch.zeros(cfg.N_LANES),
             }
 
@@ -453,14 +475,14 @@ if __name__ == '__main__':
                                       num_workers=0, max_per_file=20)))
 
     assert batch['ego_history'].shape         == (8, cfg.T_HIST, 4)
-    assert batch['agents_history'].shape      == (8, cfg.T_HIST, cfg.N_AGENTS, 4)
+    assert batch['agents_history'].shape      == (8, cfg.T_HIST, cfg.N_AGENTS, cfg.D_AGENT)
     assert batch['agents_history_mask'].shape == (8, cfg.N_AGENTS)
-    assert batch['agents_now'].shape          == (8, cfg.N_AGENTS, 4)
-    assert batch['agents_seq'].shape          == (8, cfg.T_FUTURE, cfg.N_AGENTS, 4)
+    assert batch['agents_now'].shape          == (8, cfg.N_AGENTS, cfg.D_AGENT)
+    assert batch['agents_seq'].shape          == (8, cfg.T_FUTURE, cfg.N_AGENTS, cfg.D_AGENT)
     assert batch['map_raster'].shape          == (8, cfg.BEV_C, cfg.BEV_H, cfg.BEV_W)
     assert batch['gt_trajectory'].shape       == (8, cfg.T_FUTURE, 3)
     assert batch['mode_label'].shape          == (8,)
-    assert batch['map_lanes'].shape           == (8, cfg.N_LANES, cfg.N_LANE_POINTS, 3)
+    assert batch['map_lanes'].shape           == (8, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT)
     assert batch['map_lanes_mask'].shape      == (8, cfg.N_LANES)
 
     assert not torch.isnan(batch['ego_history']).any(), "NaN in ego_history"
