@@ -157,7 +157,8 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
         headings[-1] = headings[-2]
 
         # Lane-level features
-        speed_limit = lane.speed_limit_mps if hasattr(lane, 'speed_limit_mps') else 0.0
+        _sl = getattr(lane, 'speed_limit_mps', None)
+        speed_limit = float(_sl) if _sl is not None else 0.0
         lane_type = type(lane).__name__
         cat_onehot = np.zeros(len(_MAP_CATEGORIES), dtype=np.float32)
         if 'LaneConnector' in lane_type:
