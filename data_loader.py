@@ -191,76 +191,130 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
 
 # ── Mode assignment (winner-takes-all, Algorithm 1) ────────────────────────────
 
-def _route_lateral_offset(map_lanes: np.ndarray,
-                          map_lanes_mask: np.ndarray,
-                          forward_dist: float) -> float:
+def _collect_candidate_lanes(map_lanes: np.ndarray,
+                             map_lanes_mask: np.ndarray):
     """
-    Determine lateral offset from the route (nearest forward-heading lane).
+    Step 1 of route-proximity matching (paper Section 3.3.2).
 
-    Finds the lane closest to ego heading forward, then returns the y-offset
-    of the furthest-forward point on that lane — i.e. where the road is
-    taking the ego laterally.
+    Collect candidate lanes whose heading roughly matches ego's current heading.
+    Filters out oncoming lanes and cross traffic.
 
     Args:
         map_lanes:      (N_LANES, N_PTS, 9) in ego frame
         map_lanes_mask: (N_LANES,)
-        forward_dist:   distance ahead to project (used for tie-breaking)
     Returns:
-        lat_y: lateral y-offset (scalar). Falls back to 0.0 if no lane found.
+        candidates: list of dicts with keys:
+            'valid_pts': (M, 9) — non-padded lane points
+            'closest_y': float  — y-offset of the lane point nearest to ego
+            'closest_dist': float — distance from ego to nearest lane point
     """
-    best_y = 0.0
-    best_score = float('inf')
-
+    candidates = []
     for i in range(len(map_lanes_mask)):
         if map_lanes_mask[i] < 0.5:
             continue
         lane = map_lanes[i]                                       # (N_PTS, 9)
-        # Filter out zero-padded points
         valid = lane[np.abs(lane[:, 0]) + np.abs(lane[:, 1]) > 1e-6]
         if len(valid) < 2:
             continue
 
         # Find closest point to ego (origin)
         dists = np.sqrt(valid[:, 0] ** 2 + valid[:, 1] ** 2)
-        closest_idx = np.argmin(dists)
-        closest_dist = dists[closest_idx]
+        closest_idx = int(np.argmin(dists))
 
         # Check heading alignment — ego faces +x (heading ≈ 0 in ego frame)
         heading = math.atan2(valid[closest_idx, 2], valid[closest_idx, 3])
-        heading_misalign = abs(heading)
+        if abs(heading) > math.pi / 3:                           # >60° = not a candidate
+            continue
 
-        # Prefer lanes that are close AND heading forward
-        score = closest_dist + heading_misalign * 10.0
-        if score < best_score:
-            best_score = score
-            # Project forward: find the furthest-forward point on this lane
-            fwd_pts = valid[valid[:, 0] > 0]
-            if len(fwd_pts) > 0:
-                best_y = fwd_pts[np.argmax(fwd_pts[:, 0]), 1]
-            else:
-                best_y = 0.0
+        candidates.append({
+            'valid_pts':    valid,
+            'closest_y':    float(valid[closest_idx, 1]),
+            'closest_dist': float(dists[closest_idx]),
+        })
+    return candidates
 
-    return best_y
+
+def _match_endpoint_to_route(candidates: list,
+                             gt_endpoint: np.ndarray) -> int:
+    """
+    Steps 2-3 of route-proximity matching (paper Section 3.4).
+
+    Step 2: For each candidate lane, compute min distance from GT endpoint
+            to any point on that lane's polyline. Pick the closest = matched lane.
+    Step 3: Compute the lateral offset between the matched lane and ego's
+            current lane (the candidate closest to ego). Bin that offset
+            into LAT_BIN_EDGES to get c_lat*.
+
+    This is robust on curved roads because we never measure raw y-offset —
+    we ask "which polyline did the human end up on?" A left turn on a curved
+    road correctly gets labelled "lane keep" if the human stayed in their lane.
+
+    Args:
+        candidates: output of _collect_candidate_lanes
+        gt_endpoint: (3,) — GT endpoint (x, y, yaw) in ego frame
+    Returns:
+        lat_idx in [0, N_LAT), or -1 if no candidates found
+    """
+    if len(candidates) == 0:
+        return -1
+
+    gt_xy = gt_endpoint[:2]
+
+    # Step 2: find which candidate lane the GT endpoint is closest to
+    best_cand_idx = -1
+    best_dist = float('inf')
+    for i, cand in enumerate(candidates):
+        lane_xy = cand['valid_pts'][:, :2]
+        dist = float(np.min(np.sqrt(
+            (lane_xy[:, 0] - gt_xy[0]) ** 2 + (lane_xy[:, 1] - gt_xy[1]) ** 2
+        )))
+        if dist < best_dist:
+            best_dist = dist
+            best_cand_idx = i
+
+    # Step 3: label relative to ego's current lane
+    # Ego's current lane = the candidate closest to the origin
+    ego_lane_y = min(candidates, key=lambda c: c['closest_dist'])['closest_y']
+    matched_lane_y = candidates[best_cand_idx]['closest_y']
+
+    # Lateral offset = matched lane y − ego lane y (positive = right)
+    lat_offset = matched_lane_y - ego_lane_y
+
+    # Bin into LAT_BIN_EDGES
+    lat_idx = 0
+    for i, edge in enumerate(cfg.LAT_BIN_EDGES[1:]):
+        if lat_offset < edge:
+            lat_idx = i
+            break
+    else:
+        lat_idx = cfg.N_LAT - 1
+
+    return lat_idx
 
 
 def _assign_mode(gt_traj: np.ndarray,
                  map_lanes: np.ndarray = None,
                  map_lanes_mask: np.ndarray = None) -> int:
     """
-    Assign positive mode c* from GT trajectory and route (Algorithm 1, lines 15-18).
+    Assign positive mode c* (Algorithm 1, lines 15-18).
 
     c_lon: from GT endpoint displacement (longitudinal speed bin).
-    c_lat: from nearest forward-heading lane (route from s_0), not GT endpoint.
+    c_lat: by route-proximity matching (paper Section 3.3.2 + 3.4):
+           - Collect candidate lanes heading-aligned with ego
+           - Match GT endpoint to nearest candidate lane polyline
+           - Label relative to ego's current lane
     c*:    = c_lon * N_LAT + c_lat.
 
+    Falls back to raw GT endpoint y-offset when map data unavailable.
+
     Args:
-        gt_traj:        (T, 3) in ego frame — (x, y, yaw)
-        map_lanes:      (N_LANES, N_PTS, 9) in ego frame (optional, for route-based c_lat)
+        gt_traj:        (T, 3) in ego frame
+        map_lanes:      (N_LANES, N_PTS, 9) in ego frame (optional)
         map_lanes_mask: (N_LANES,) validity mask (optional)
     Returns:
         c* in [0, N_MODES).
     """
-    endpoint = gt_traj[-1]  # (x, y, yaw) at T steps ahead
+    endpoint = gt_traj[-1]                                        # (x, y, yaw)
 
     # Longitudinal mode: total displacement distance bucketed into N_LON bins
     dist = math.sqrt(endpoint[0] ** 2 + endpoint[1] ** 2)
@@ -269,12 +323,21 @@ def _assign_mode(gt_traj: np.ndarray,
         cfg.N_LON - 1,
     )
 
-    # Lateral mode: from route (nearest lane) if available, else GT endpoint
-    if map_lanes is not None and map_lanes_mask is not None and map_lanes_mask.sum() > 0:
-        lat_y = _route_lateral_offset(map_lanes, map_lanes_mask, dist)
+    # Lateral mode: route-proximity matching if map available
+    if (map_lanes is not None and map_lanes_mask is not None
+            and map_lanes_mask.sum() > 0):
+        candidates = _collect_candidate_lanes(map_lanes, map_lanes_mask)
+        lat_idx = _match_endpoint_to_route(candidates, endpoint)
+        if lat_idx < 0:                                           # no candidates
+            lat_idx = _bin_lateral_offset(endpoint[1])
     else:
-        lat_y = endpoint[1]
+        lat_idx = _bin_lateral_offset(endpoint[1])
 
+    return lon_idx * cfg.N_LAT + lat_idx
+
+
+def _bin_lateral_offset(lat_y: float) -> int:
+    """Bin a raw y-offset into N_LAT lateral bins (fallback)."""
     lat_idx = 0
     for i, edge in enumerate(cfg.LAT_BIN_EDGES[1:]):
         if lat_y < edge:
@@ -282,8 +345,7 @@ def _assign_mode(gt_traj: np.ndarray,
             break
     else:
         lat_idx = cfg.N_LAT - 1
-
-    return lon_idx * cfg.N_LAT + lat_idx
+    return lat_idx
 
 
 # ── Per-sample loading ─────────────────────────────────────────────────────────
