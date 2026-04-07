@@ -77,6 +77,11 @@ def train(args):
     n_params = sum(p.numel() for p in model.parameters())
     print(f"[Train] Parameters: {n_params:,}")
 
+    # Load frozen transition model from Stage A if provided
+    if args.transition_ckpt:
+        model.load_transition_model(args.transition_ckpt, freeze=True)
+        print(f"[Train] Loaded frozen transition model from: {args.transition_ckpt}")
+
     # Optimizer & scheduler (Section 4.1)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY
@@ -186,6 +191,8 @@ def parse_args():
                    help='Cap on samples per DB file (default: from config)')
     p.add_argument('--resume', default=None,
                    help='Path to checkpoint to resume from')
+    p.add_argument('--transition_ckpt', default=None,
+                   help='Path to Stage A checkpoint (loads frozen transition model)')
     return p.parse_args()
 
 

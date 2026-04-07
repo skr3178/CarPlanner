@@ -802,6 +802,22 @@ class CarPlanner(nn.Module):
         """
         return self.transition_model(agents_now, agents_mask)
 
+    def load_transition_model(self, ckpt_path: str, freeze: bool = True):
+        """
+        Load pre-trained transition model from Stage A checkpoint.
+
+        Args:
+            ckpt_path: Path to stage_a_*.pt checkpoint
+            freeze: If True, set requires_grad=False and eval mode
+                    (paper: frozen during stages 2-3)
+        """
+        ckpt = torch.load(ckpt_path, map_location='cpu')
+        self.transition_model.load_state_dict(ckpt['model'])
+        if freeze:
+            for p in self.transition_model.parameters():
+                p.requires_grad = False
+            self.transition_model.eval()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Shape self-test

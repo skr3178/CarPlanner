@@ -8,13 +8,15 @@ dist/
 build/
 
 # Dataset and large files
-paper/
 checkpoints/
 *.db
 *.zip
 *.log
-*.png
 *.pt
+
+# Paper: include docs but exclude large data
+paper/dataset/
+paper/.venv
 
 # Jupyter
 .ipynb_checkpoints/

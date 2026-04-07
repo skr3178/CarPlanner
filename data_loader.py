@@ -10,6 +10,7 @@ import os
 import math
 import glob
 import sqlite3
+import warnings
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -141,9 +142,12 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
     lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
 
     for i, lane in enumerate(raw_lanes[:cfg.N_LANES]):
-        if lane.baseline_path is None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", "invalid value encountered in cast")
+            bp = lane.baseline_path
+        if bp is None:
             continue
-        centerline = lane.baseline_path.discrete_path
+        centerline = bp.discrete_path
         if len(centerline) < 2:
             continue
 
