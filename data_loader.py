@@ -191,11 +191,74 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
 
 # ── Mode assignment (winner-takes-all, Algorithm 1) ────────────────────────────
 
-def _assign_mode(gt_traj: np.ndarray) -> int:
+def _route_lateral_offset(map_lanes: np.ndarray,
+                          map_lanes_mask: np.ndarray,
+                          forward_dist: float) -> float:
     """
-    Assign positive mode c* from GT trajectory.
-    gt_traj: (T, 3) in ego frame — (x, y, yaw)
-    Returns c* in [0, N_MODES).
+    Determine lateral offset from the route (nearest forward-heading lane).
+
+    Finds the lane closest to ego heading forward, then returns the y-offset
+    of the furthest-forward point on that lane — i.e. where the road is
+    taking the ego laterally.
+
+    Args:
+        map_lanes:      (N_LANES, N_PTS, 9) in ego frame
+        map_lanes_mask: (N_LANES,)
+        forward_dist:   distance ahead to project (used for tie-breaking)
+    Returns:
+        lat_y: lateral y-offset (scalar). Falls back to 0.0 if no lane found.
+    """
+    best_y = 0.0
+    best_score = float('inf')
+
+    for i in range(len(map_lanes_mask)):
+        if map_lanes_mask[i] < 0.5:
+            continue
+        lane = map_lanes[i]                                       # (N_PTS, 9)
+        # Filter out zero-padded points
+        valid = lane[np.abs(lane[:, 0]) + np.abs(lane[:, 1]) > 1e-6]
+        if len(valid) < 2:
+            continue
+
+        # Find closest point to ego (origin)
+        dists = np.sqrt(valid[:, 0] ** 2 + valid[:, 1] ** 2)
+        closest_idx = np.argmin(dists)
+        closest_dist = dists[closest_idx]
+
+        # Check heading alignment — ego faces +x (heading ≈ 0 in ego frame)
+        heading = math.atan2(valid[closest_idx, 2], valid[closest_idx, 3])
+        heading_misalign = abs(heading)
+
+        # Prefer lanes that are close AND heading forward
+        score = closest_dist + heading_misalign * 10.0
+        if score < best_score:
+            best_score = score
+            # Project forward: find the furthest-forward point on this lane
+            fwd_pts = valid[valid[:, 0] > 0]
+            if len(fwd_pts) > 0:
+                best_y = fwd_pts[np.argmax(fwd_pts[:, 0]), 1]
+            else:
+                best_y = 0.0
+
+    return best_y
+
+
+def _assign_mode(gt_traj: np.ndarray,
+                 map_lanes: np.ndarray = None,
+                 map_lanes_mask: np.ndarray = None) -> int:
+    """
+    Assign positive mode c* from GT trajectory and route (Algorithm 1, lines 15-18).
+
+    c_lon: from GT endpoint displacement (longitudinal speed bin).
+    c_lat: from nearest forward-heading lane (route from s_0), not GT endpoint.
+    c*:    = c_lon * N_LAT + c_lat.
+
+    Args:
+        gt_traj:        (T, 3) in ego frame — (x, y, yaw)
+        map_lanes:      (N_LANES, N_PTS, 9) in ego frame (optional, for route-based c_lat)
+        map_lanes_mask: (N_LANES,) validity mask (optional)
+    Returns:
+        c* in [0, N_MODES).
     """
     endpoint = gt_traj[-1]  # (x, y, yaw) at T steps ahead
 
@@ -206,8 +269,12 @@ def _assign_mode(gt_traj: np.ndarray) -> int:
         cfg.N_LON - 1,
     )
 
-    # Lateral mode: lateral offset (y) at endpoint bucketed into N_LAT bins
-    lat_y = endpoint[1]
+    # Lateral mode: from route (nearest lane) if available, else GT endpoint
+    if map_lanes is not None and map_lanes_mask is not None and map_lanes_mask.sum() > 0:
+        lat_y = _route_lateral_offset(map_lanes, map_lanes_mask, dist)
+    else:
+        lat_y = endpoint[1]
+
     lat_idx = 0
     for i, edge in enumerate(cfg.LAT_BIN_EDGES[1:]):
         if lat_y < edge:
@@ -350,7 +417,7 @@ def _load_sample(db_path: str, token: str):
         map_lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
 
     # ── Mode assignment ───────────────────────────────────────────────────────
-    mode_label = _assign_mode(gt_trajectory)
+    mode_label = _assign_mode(gt_trajectory, map_lanes, map_lanes_mask)
 
     return {
         'map_raster':          map_raster,
