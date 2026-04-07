@@ -34,7 +34,7 @@ All files go in `/media/skr/storage/autoresearch/CarPlanner_Implementation/`:
 | `config.py` | All hyperparams and absolute dataset paths |
 | `data_loader.py` | Real nuplan data loading — ego history, agent history, GT trajectory |
 | `model.py` | BEV encoder + ModeSelector + TrajectoryGenerator (combined) |
-| `train.py` | IL training loop (Stage B) |
+| `train_stage_b.py` | IL training loop (Stage B) |
 | `evaluate.py` | Open-loop L2/L1 best-of-K evaluation |
 
 ---
@@ -172,13 +172,13 @@ Note: the **root** `.venv` (also named "autoresearch") does NOT have nuplan — 
 1. **`config.py`** — constants, paths, hyperparams
 2. **`data_loader.py`** — real nuplan loading; run standalone smoke test: print shapes, check no NaN, check ego at origin
 3. **`model.py`** — BEVEncoder + StateEncoder + ModeSelector + TrajectoryGenerator; run forward pass shape test on random input
-4. **`train.py`** — IL training loop; first run `--split mini --epochs 5 --batch_size 4` to verify loss decreases
+4. **`train_stage_b.py`** — IL training loop; first run `--split mini --epochs 5 --batch_size 4` to verify loss decreases
 5. **`evaluate.py`** — L2 best-of-K on mini; run after training
 
 ## Verification
 
 1. `python data_loader.py` — smoke test on mini: prints shapes, no NaN, ego near origin
 2. `python model.py` — forward pass shape assertions (runs on dummy data, no nuplan needed)
-3. `python train.py --split mini --epochs 5 --batch_size 4` — loss should drop within 5 epochs on mini
+3. `python train_stage_b.py --split mini --epochs 5 --batch_size 4` — loss should drop within 5 epochs on mini
 4. `python evaluate.py --split mini` — reports best-of-60 L2 on mini split
-5. `python train.py --split train_boston --epochs 50` — full training (only after mini validates)
+5. `python train_stage_b.py --split train_boston --epochs 50` — full training (only after mini validates)

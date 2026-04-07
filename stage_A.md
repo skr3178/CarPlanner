@@ -26,7 +26,7 @@ don't dilute the gradient.
 ### 2. Training script — `train_stage_a.py`
 Separate script (keeps Stage A / Stage B concerns cleanly separated).
 
-Structure mirrors train.py:
+Structure mirrors train_stage_b.py:
 - Load data with `make_dataloader(split)` — same dataloader, no changes needed
 - Instantiate only `TransitionModel` (not full `CarPlanner`)
 - Forward: `agents_pred = model(agents_now, agents_mask)` → `(B, T, N, Da)`
@@ -48,10 +48,10 @@ def load_transition_model(self, ckpt_path: str, freeze: bool = True):
         self.transition_model.eval()
 ```
 
-This is called in `train.py` before Stage B (and will be called in Stage C).
+This is called in `train_stage_b.py` before Stage B (and will be called in Stage C).
 
-### 4. Wire into train.py
-Add `--transition_ckpt` arg to `train.py` so Stage B training can load the frozen
+### 4. Wire into train_stage_b.py
+Add `--transition_ckpt` arg to `train_stage_b.py` so Stage B training can load the frozen
 transition model at startup (currently it's never used — this makes it explicit).
 
 ## Files to modify / create
@@ -60,13 +60,13 @@ transition model at startup (currently it's never used — this makes it explici
 |------|--------|
 | `train_stage_a.py` | CREATE — full Stage A training script |
 | `model.py` | ADD `load_transition_model()` method to `CarPlanner` (~10 lines) |
-| `train.py` | ADD `--transition_ckpt` arg + call `load_transition_model()` if provided |
+| `train_stage_b.py` | ADD `--transition_ckpt` arg + call `load_transition_model()` if provided |
 
 **No changes to:** `config.py`, `data_loader.py`, `evaluate.py`
 
 ## Key design decisions
 
-- **Separate script** (not integrated into train.py): Stage A is conceptually independent and trains on different targets (agent futures, not ego trajectory). Keeps both scripts readable.
+- **Separate script** (not integrated into train_stage_b.py): Stage A is conceptually independent and trains on different targets (agent futures, not ego trajectory). Keeps both scripts readable.
 - **Mask the loss**: Eq 5 sums over N agents; without masking, padding zeros in `agents_seq` would provide false supervision signal.
 - **Only TransitionModel instantiated**: Don't construct full CarPlanner — avoids loading unnecessary submodules and keeps GPU memory low during Stage A.
 - **Freeze on load**: `load_transition_model(freeze=True)` sets `requires_grad=False` and `.eval()` mode — the paper explicitly states it's frozen during stages 2–3.
@@ -76,7 +76,7 @@ transition model at startup (currently it's never used — this makes it explici
    - Expect: L_tm decreasing each epoch, no NaN
 2. Check checkpoint saved at `checkpoints/stage_a_best.pt`
 3. Run Stage B with transition model loaded:
-   `python train.py --split mini --epochs 1 --transition_ckpt checkpoints/stage_a_best.pt`
+   `python train_stage_b.py --split mini --epochs 1 --transition_ckpt checkpoints/stage_a_best.pt`
    - Expect: loads without error, Stage B loss unchanged (transition model frozen, not used in IL forward pass directly)
 
 

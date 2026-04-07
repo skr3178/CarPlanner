@@ -61,10 +61,10 @@ python data_loader.py mini
 python model.py
 
 # Train IL baseline (Stage B) on mini split
-python train.py --split mini --epochs 5 --batch_size 8
+python train_stage_b.py --split mini --epochs 5 --batch_size 8
 
 # Full training
-python train.py --split train_boston --epochs 50 --batch_size 32
+python train_stage_b.py --split train_boston --epochs 50 --batch_size 32
 
 # Evaluate (best-of-60 L2 displacement)
 python evaluate.py --split mini --checkpoint checkpoints/best.pt
@@ -275,7 +275,7 @@ The paper says x, y, heading, speed_limit, category per point, but that's 5 not 
 
 **Paper:** Loop over D, run β(s_0), compute L_tm (Eq 5), backprop, update β, then freeze.
 
-**Implementation:** `TransitionModel` exists (`model.py:385`) but no training loop calls it. `train.py` only implements Stage B. β is permanently random and never frozen because it was never trained.
+**Implementation:** `TransitionModel` exists (`model.py:385`) but no training loop calls it. `train_stage_b.py` only implements Stage B. β is permanently random and never frozen because it was never trained.
 
 **Gap:** Stage A entirely missing (known, in-scope to fix later).
 
@@ -285,7 +285,7 @@ The paper says x, y, heading, speed_limit, category per point, but that's 5 not 
 
 **Paper (line 14):** s^{1:N}_{1:T} ← β(s_0) — even in IL, the transition model β generates the agent futures used by the policy.
 
-**Implementation:** `train.py:108` passes `agents_seq = batch['agents_seq']` — GT future agent states loaded from the DB, not β output. `forward_train` never calls `self.transition_model`.
+**Implementation:** `train_stage_b.py:108` passes `agents_seq = batch['agents_seq']` — GT future agent states loaded from the DB, not β output. `forward_train` never calls `self.transition_model`.
 
 **Gap:** IL training uses GT agent oracle instead of β. Correct for teacher-forcing baseline but diverges from the paper's algorithm.
 
@@ -319,7 +319,7 @@ ModeSelector takes only the s_0 global feature. Mode c is not passed in.
 
 **Paper:** Use π, s_0, c*, s^{1:N}_{1:T} → collect a_{0:T-1} → stack → L1Loss vs GT.
 
-**Implementation (`train.py:117`, `train.py:44`):**
+**Implementation (`train_stage_b.py:117`, `train_stage_b.py:44`):**
 ```python
 pred_traj = model.forward_train(agents_seq, ..., mode_c=c, gt_ego=gt_traj)
 L_gen = (pred_traj - gt_traj).abs().sum(dim=-1).mean()
@@ -332,7 +332,7 @@ Match. ✓
 
 **Paper:** L = L_selector + L_generator, update f_selector and π.
 
-**Implementation (`train.py:46`):** `L_total = L_CE + L_side + L_gen` where `L_selector = L_CE + L_side`. ✓
+**Implementation (`train_stage_b.py:46`):** `L_total = L_CE + L_side + L_gen` where `L_selector = L_CE + L_side`. ✓
 
 ---
 
@@ -749,7 +749,7 @@ python3 train_stage_a.py --split mini --epochs 5 --batch_size 4
 ```
 Then use in Stage B:
 ```
-python3 train.py --split mini --epochs 50 --transition_ckpt checkpoints/stage_a_best.pt
+python3 train_stage_b.py --split mini --epochs 50 --transition_ckpt checkpoints/stage_a_best.pt
 ```
 
 To train Stage A:
@@ -758,7 +758,7 @@ python3 train_stage_a.py --split mini --epochs 5 --batch_size 4
 ```
 Then use in Stage B:
 ```
-python3 train.py --split mini --epochs 50 --transition_ckpt checkpoints/stage_a_best.pt
+python3 train_stage_b.py --split mini --epochs 50 --transition_ckpt checkpoints/stage_a_best.pt
 ```
 
 CrossEntropy  →  trains selector to pick the RIGHT mode
