@@ -293,7 +293,21 @@ class AutoregressivePolicy(nn.Module):
         self.ivm           = IVMBlock(d_model=D, n_heads=4,
                                       k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
         # Action head: updated mode query → (x, y, yaw)
-        self.action_head   = nn.Sequential(
+        # Gaussian policy head (replaces deterministic action_head for RL)
+        self.action_mean_head = nn.Sequential(
+            nn.Linear(D, D), nn.ReLU(inplace=True),
+            nn.Linear(D, 3)
+        )
+        self.action_log_std = nn.Parameter(torch.zeros(3))  # learnable per-dim std
+
+        # Value head (for RL baseline estimation, shares IVM encoder output)
+        self.value_head = nn.Sequential(
+            nn.Linear(D, D // 2), nn.ReLU(inplace=True),
+            nn.Linear(D // 2, 1)
+        )
+
+        # Deterministic head kept for backward compatibility with Stage B IL
+        self.action_head_deterministic = nn.Sequential(
             nn.Linear(D, D), nn.ReLU(inplace=True),
             nn.Linear(D, 3)
         )
@@ -453,7 +467,7 @@ class AutoregressivePolicy(nn.Module):
             )  # (B, 1, D)
 
             # ── Action head → waypoint in CURRENT ego frame ───────────────
-            a_local = self.action_head(mode_query.squeeze(1))  # (B, 3)
+            a_local = self.action_head_deterministic(mode_query.squeeze(1))  # (B, 3)
 
             # ── Convert back to initial ego frame ─────────────────────────
             cos_h_bk = torch.cos(ego_h)
@@ -476,6 +490,178 @@ class AutoregressivePolicy(nn.Module):
                 ego_h = a_t[:, 2].detach()
 
         return torch.cat(actions, dim=1)                 # (B, T_FUTURE, 3)
+
+    def forward_rl(self, agents_now: torch.Tensor, agents_seq: torch.Tensor,
+                   agents_mask: torch.Tensor, mode_c: torch.Tensor,
+                   map_lanes: torch.Tensor = None,
+                   map_lanes_mask: torch.Tensor = None,
+                   stored_actions: torch.Tensor = None) -> tuple:
+        """
+        RL forward pass with Gaussian policy and value estimation.
+
+        Two modes:
+          - stored_actions=None:   Sample from N(mean, std)   [collect mode]
+          - stored_actions given:  Compute log_prob of those actions [eval mode]
+
+        Returns:
+            trajectory: (B, T_FUTURE, 3) — predicted (x, y, yaw) in initial ego frame
+            log_probs:  (B, T_FUTURE)   — log probability of each action
+            values:     (B, T_FUTURE)   — value estimates at each step
+            entropies:  (B, T_FUTURE)   — entropy of policy at each step
+        """
+        B = agents_seq.size(0)
+        device = agents_seq.device
+        H = cfg.T_HIST
+
+        # Initialise mode query from embedding
+        mode_query = self.mode_embed(mode_c).unsqueeze(1)  # (B, 1, D)
+
+        # Ego pose accumulator
+        ego_x = torch.zeros(B, device=device)
+        ego_y = torch.zeros(B, device=device)
+        ego_h = torch.zeros(B, device=device)
+
+        # Agent history buffer (same initialisation as forward())
+        agent_buffer = torch.stack([agents_now] * H, dim=1)  # (B, H, N, 4)
+
+        actions = []
+        log_probs_list = []
+        values_list = []
+        entropies_list = []
+
+        for t in range(cfg.T_FUTURE):
+            # ── Get agent states at step t ────────────────────────────────
+            agents_t = agents_seq[:, t, :, :]            # (B, N, 4)
+
+            # ── Update history buffer ─────────────────────────────────────
+            agent_buffer = torch.cat(
+                [agent_buffer[:, 1:, :, :], agents_t.unsqueeze(1)], dim=1
+            )
+
+            # Time normalisation indices
+            time_indices = torch.linspace(-H, 0, H, device=device)
+
+            # ── IVM coordinate transform (same as forward()) ──────────────
+            Da = cfg.D_AGENT
+            buffer_ego = torch.zeros(B, H, cfg.N_AGENTS, Da, device=device,
+                                     dtype=agent_buffer.dtype)
+            for h_idx in range(H):
+                ag_xy_h  = agent_buffer[:, h_idx, :, :2]
+                ag_h_h   = agent_buffer[:, h_idx, :, 2]
+                ag_vx_h  = agent_buffer[:, h_idx, :, 3]
+                ag_vy_h  = agent_buffer[:, h_idx, :, 4]
+                ag_bw_h  = agent_buffer[:, h_idx, :, 5]
+                ag_bl_h  = agent_buffer[:, h_idx, :, 6]
+                ag_bh_h  = agent_buffer[:, h_idx, :, 7]
+                ag_cat_h = agent_buffer[:, h_idx, :, 9]
+
+                x_e, y_e, h_e = self._transform_to_ego_frame(
+                    ag_xy_h, ag_h_h, ego_x, ego_y, ego_h
+                )
+                cos_h = torch.cos(-ego_h).unsqueeze(1)
+                sin_h = torch.sin(-ego_h).unsqueeze(1)
+                vx_e = cos_h * ag_vx_h - sin_h * ag_vy_h
+                vy_e = sin_h * ag_vx_h + cos_h * ag_vy_h
+                t_norm = time_indices[h_idx].expand(B, cfg.N_AGENTS)
+                buffer_ego[:, h_idx] = torch.stack(
+                    [x_e, y_e, h_e, vx_e, vy_e, ag_bw_h, ag_bl_h, ag_bh_h,
+                     t_norm, ag_cat_h], dim=-1
+                )
+
+            # PointNet encode
+            buffer_flat = buffer_ego.view(B, H * cfg.N_AGENTS, Da)
+            mask_flat = agents_mask.unsqueeze(1).expand(-1, H, -1).reshape(
+                B, H * cfg.N_AGENTS
+            )
+            per_agent, _ = self.agent_encoder_time(buffer_flat, mask_flat)
+
+            # K-NN current step
+            agents_ego_now = buffer_ego[:, -1]
+
+            # Map re-transform per step
+            map_feats = None
+            if map_lanes is not None:
+                lanes_t = map_lanes.clone()
+                lane_xy = lanes_t[..., :2]
+                lane_sin = lanes_t[..., 2]
+                lane_cos = lanes_t[..., 3]
+                lane_h = torch.atan2(lane_sin, lane_cos)
+                dx_l = lane_xy[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
+                dy_l = lane_xy[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
+                cos_hl = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
+                sin_hl = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
+                x_el = cos_hl * dx_l - sin_hl * dy_l
+                y_el = sin_hl * dx_l + cos_hl * dy_l
+                h_el = lane_h - ego_h.unsqueeze(1).unsqueeze(1)
+                h_el = (h_el + math.pi) % (2 * math.pi) - math.pi
+                other_feats = lanes_t[..., 4:]
+                lanes_ego = torch.cat([
+                    x_el.unsqueeze(-1), y_el.unsqueeze(-1),
+                    torch.sin(h_el).unsqueeze(-1), torch.cos(h_el).unsqueeze(-1),
+                    other_feats,
+                ], dim=-1)
+                map_feats = self.lane_encoder(lanes_ego, map_lanes_mask)
+
+            # IVM update
+            mode_query = self.ivm(
+                mode_query, per_agent, agents_ego_now[..., :2], map_feats
+            )
+
+            # ── Gaussian policy head ──────────────────────────────────────
+            action_mean = self.action_mean_head(mode_query.squeeze(1))  # (B, 3)
+            action_std = self.action_log_std.exp().expand_as(action_mean)  # (B, 3)
+
+            # Value estimation
+            value = self.value_head(mode_query.squeeze(1)).squeeze(-1)  # (B,)
+
+            dist = torch.distributions.Normal(action_mean, action_std)
+
+            if stored_actions is None:
+                # Collect mode: sample from Gaussian
+                a_local = dist.sample()                             # (B, 3)
+                log_prob = dist.log_prob(a_local).sum(dim=-1)       # (B,)
+                entropy = dist.entropy().sum(dim=-1)                # (B,)
+            else:
+                # Eval mode: compute log_prob of stored actions
+                a_global = stored_actions[:, t, :]                  # (B, 3)
+                # Transform from initial ego frame to current local frame
+                cos_h_bk = torch.cos(ego_h)
+                sin_h_bk = torch.sin(ego_h)
+                dx = a_global[:, 0] - ego_x
+                dy = a_global[:, 1] - ego_y
+                a_local_x =  cos_h_bk * dx + sin_h_bk * dy
+                a_local_y = -sin_h_bk * dx + cos_h_bk * dy
+                a_local_h = a_global[:, 2] - ego_h
+                a_local = torch.stack([a_local_x, a_local_y, a_local_h], dim=-1)
+
+                log_prob = dist.log_prob(a_local).sum(dim=-1)
+                entropy = dist.entropy().sum(dim=-1)
+
+            # Convert local action back to initial ego frame
+            cos_h_bk = torch.cos(ego_h)
+            sin_h_bk = torch.sin(ego_h)
+            x_g = cos_h_bk * a_local[:, 0] - sin_h_bk * a_local[:, 1] + ego_x
+            y_g = sin_h_bk * a_local[:, 0] + cos_h_bk * a_local[:, 1] + ego_y
+            h_g = a_local[:, 2] + ego_h
+            h_g = (h_g + math.pi) % (2 * math.pi) - math.pi
+            a_t = torch.stack([x_g, y_g, h_g], dim=-1)
+
+            actions.append(a_t.unsqueeze(1))
+            log_probs_list.append(log_prob.unsqueeze(1))
+            values_list.append(value.unsqueeze(1))
+            entropies_list.append(entropy.unsqueeze(1))
+
+            # Update ego pose (always use predicted action, no teacher-forcing)
+            ego_x = a_t[:, 0].detach()
+            ego_y = a_t[:, 1].detach()
+            ego_h = a_t[:, 2].detach()
+
+        trajectory = torch.cat(actions, dim=1)           # (B, T, 3)
+        log_probs  = torch.cat(log_probs_list, dim=1)    # (B, T)
+        values     = torch.cat(values_list, dim=1)       # (B, T)
+        entropies  = torch.cat(entropies_list, dim=1)    # (B, T)
+
+        return trajectory, log_probs, values, entropies
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -726,6 +912,55 @@ class CarPlanner(nn.Module):
         )                            # (B, T_FUTURE, 3)
 
         return mode_logits, side_traj, pred_traj
+
+    # ── RL training forward (Stage C) ──────────────────────────────────────────
+
+    def forward_rl_train(self, agents_now: torch.Tensor, agents_mask: torch.Tensor,
+                         agents_seq: torch.Tensor, gt_traj: torch.Tensor,
+                         mode_label: torch.Tensor,
+                         map_lanes: torch.Tensor = None,
+                         map_lanes_mask: torch.Tensor = None,
+                         stored_actions: torch.Tensor = None) -> tuple:
+        """
+        RL training forward pass (Stage C).
+
+        Combines mode selector (IL) + policy (RL with Gaussian head).
+
+        Returns:
+            mode_logits: (B, N_MODES)
+            side_traj:   (B, T_FUTURE, 3)
+            trajectory:  (B, T_FUTURE, 3)
+            log_probs:   (B, T_FUTURE)
+            values:      (B, T_FUTURE)
+            entropies:   (B, T_FUTURE)
+        """
+        # Encode s_0 agents for mode selector
+        _, s0_global = self.s0_encoder(agents_now, agents_mask)  # (B, D)
+
+        # Mode selector (Eq 6 + Eq 7)
+        mode_logits, side_traj = self.mode_selector(s0_global, mode_c=mode_label)
+
+        # Mode dropout (applied for RL too)
+        c = mode_label.clone()
+        if cfg.MODE_DROPOUT and self.training:
+            drop_mask = torch.rand(c.size(0), device=c.device) < cfg.MODE_DROPOUT_P
+            c[drop_mask] = torch.randint(
+                0, cfg.N_MODES, (int(drop_mask.sum()),), device=c.device
+            )
+
+        # No ego-history dropout for RL (paper Table 4: OFF for RL best)
+        # Policy RL forward
+        trajectory, log_probs, values, entropies = self.policy.forward_rl(
+            agents_now=agents_now,
+            agents_seq=agents_seq,
+            agents_mask=agents_mask,
+            mode_c=c,
+            map_lanes=map_lanes,
+            map_lanes_mask=map_lanes_mask,
+            stored_actions=stored_actions,
+        )
+
+        return mode_logits, side_traj, trajectory, log_probs, values, entropies
 
     # ── Inference forward ─────────────────────────────────────────────────────
 
