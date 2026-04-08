@@ -144,17 +144,17 @@ class IVMBlock(nn.Module):
            map_feats   (B, N_LANES, D)  — encoded lane centerlines (optional)
     Output: updated mode_query (B, 1, D)
     """
-    def __init__(self, d_model: int = cfg.D_HIDDEN, n_heads: int = 4,
+    def __init__(self, d_model: int = cfg.D_HIDDEN, n_heads: int = 8,
                  k_nn: int = cfg.N_AGENTS // 2):
         super().__init__()
         self.k_nn = k_nn
         self.cross_attn = nn.MultiheadAttention(
-            d_model, n_heads, batch_first=True, dropout=0.0
+            d_model, n_heads, batch_first=True, dropout=0.1
         )
         self.norm1 = nn.LayerNorm(d_model)
         self.ffn = nn.Sequential(
             nn.Linear(d_model, d_model * 4),
-            nn.GELU(),
+            nn.ReLU(inplace=True),
             nn.Linear(d_model * 4, d_model),
         )
         self.norm2 = nn.LayerNorm(d_model)
@@ -290,7 +290,7 @@ class AutoregressivePolicy(nn.Module):
         self.agent_encoder_time = PointNetEncoder(in_dim=cfg.D_AGENT, d_model=D)
         self.lane_encoder  = LaneEncoder(in_dim=cfg.D_MAP_POINT, d_model=cfg.D_LANE)
         self.mode_embed    = nn.Embedding(cfg.N_MODES, D)
-        self.ivm           = IVMBlock(d_model=D, n_heads=4,
+        self.ivm           = IVMBlock(d_model=D, n_heads=8,
                                       k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
         # Action head: updated mode query → (x, y, yaw)
         # Gaussian policy head (replaces deterministic action_head for RL)

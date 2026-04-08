@@ -138,7 +138,8 @@ def train(args):
 
     # ── Optimiser & scheduler ───────────────────────────────────────────────
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY
+        [p for p in model.parameters() if p.requires_grad],
+        lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY
     )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', patience=cfg.LR_PATIENCE, factor=cfg.LR_FACTOR,
@@ -157,7 +158,7 @@ def train(args):
     os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
 
     best_loss = float('inf')
-    update_interval = 10
+    update_interval = 8  # Paper Table 5: I=8
     step_counter = 0
 
     # ── Epoch loop ──────────────────────────────────────────────────────────
