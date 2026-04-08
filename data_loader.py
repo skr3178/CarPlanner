@@ -415,7 +415,7 @@ def _load_sample(db_path: str, token: str):
     try:
         hist_states = list(get_sampled_ego_states_from_db(
             db_path, token, sensor_source,
-            list(range(cfg.T_HIST)), future=False
+            list(range(0, cfg.T_HIST * 2, 2)), future=False  # 10Hz: every 2nd frame of 20Hz DB
         ))
     except Exception:
         return None
@@ -443,7 +443,7 @@ def _load_sample(db_path: str, token: str):
     try:
         fut_states = list(get_sampled_ego_states_from_db(
             db_path, token, sensor_source,
-            list(range(1, cfg.T_FUTURE + 1)), future=True
+            list(range(2, cfg.T_FUTURE * 2 + 1, 2)), future=True  # 10Hz: every 2nd frame of 20Hz DB
         ))
     except Exception:
         return None
@@ -496,7 +496,7 @@ def _load_sample(db_path: str, token: str):
     try:
         past_pcs = list(get_sampled_lidarpcs_from_db(
             db_path, token, sensor_source,
-            list(range(1, cfg.T_HIST + 1)), future=False          # H past frames
+            list(range(2, cfg.T_HIST * 2 + 1, 2)), future=False  # 10Hz: every 2nd frame of 20Hz DB
         ))
         # past_pcs is ordered oldest→newest (furthest past first)
         # Pad from the left with t=0 if fewer than H past frames are available
@@ -522,7 +522,7 @@ def _load_sample(db_path: str, token: str):
     try:
         future_pcs = list(get_sampled_lidarpcs_from_db(
             db_path, token, sensor_source,
-            list(range(1, cfg.T_FUTURE + 1)), future=True
+            list(range(2, cfg.T_FUTURE * 2 + 1, 2)), future=True  # 10Hz: every 2nd frame of 20Hz DB
         ))
         for step_i, pc in enumerate(future_pcs[:cfg.T_FUTURE]):
             arr_t, _ = _load_agents_at_token(pc.token)

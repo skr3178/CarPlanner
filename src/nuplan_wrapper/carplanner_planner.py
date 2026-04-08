@@ -51,22 +51,30 @@ def _global_trajectory_to_states(
     Convert a sequence of (x, y, heading) waypoints into EgoState objects
     by copying dynamic properties from the current ego state.
     """
+    from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+
     current_ego = ego_history[-1]
     states = []
 
     for i, wp in enumerate(global_trajectory):
-        # Create a new EgoState with interpolated position/heading
-        # but same velocity/acceleration structure as current
-        time_point = current_ego.time_point + i * step_interval
+        # Bug fix 1: TimePoint uses microseconds (int), not float seconds
+        time_point = TimePoint(
+            current_ego.time_point.time_us + int((i + 1) * step_interval * 1e6)
+        )
 
-        # Build a new rear_axle pose
-        from nuplan.common.actor_state.state_representation import StateSE2
-        rear_axle = StateSE2(wp[0], wp[1], wp[2])
+        rear_axle = StateSE2(float(wp[0]), float(wp[1]), float(wp[2]))
 
-        # Clone the ego state with updated pose
-        new_state = current_ego.clone_and_update_rear_axle(
-            rear_axle=rear_axle,
+        # Bug fix 2: clone_and_update_rear_axle() does not exist — use build_from_rear_axle()
+        new_state = EgoState.build_from_rear_axle(
+            rear_axle_pose=rear_axle,
+            rear_axle_velocity_2d=current_ego.dynamic_car_state.rear_axle_velocity_2d,
+            rear_axle_acceleration_2d=current_ego.dynamic_car_state.rear_axle_acceleration_2d,
+            tire_steering_angle=current_ego.tire_steering_angle,
             time_point=time_point,
+            vehicle_parameters=current_ego.car_footprint.vehicle_parameters,
+            is_in_auto_mode=True,
+            angular_vel=current_ego.dynamic_car_state.angular_velocity,
+            angular_accel=current_ego.dynamic_car_state.angular_acceleration,
         )
         states.append(new_state)
 

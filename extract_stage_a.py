@@ -24,10 +24,19 @@ import time
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 
 import torch
+from torch.utils.data import DataLoader
 import numpy as np
 
 import config as cfg
 from data_loader import NuPlanCarPlannerDataset
+
+
+def _safe_collate(batch):
+    """Drop None samples (failed DB reads) before stacking."""
+    batch = [b for b in batch if b is not None]
+    if not batch:
+        return None
+    return torch.utils.data.dataloader.default_collate(batch)
 
 
 def extract(args):
@@ -35,92 +44,76 @@ def extract(args):
     dataset = NuPlanCarPlannerDataset(args.split, max_per_file=args.max_per_file)
     n_samples = len(dataset)
     print(f"[Extract] {n_samples} samples to extract")
+    print(f"[Extract] Workers: {args.num_workers}  Batch size: {args.batch_size}")
 
     if n_samples == 0:
         print("[Extract] No samples found. Check your DB files and config paths.")
         return
 
-    # Pre-allocate arrays
-    agents_history_buf = np.zeros(
-        (n_samples, cfg.T_HIST, cfg.N_AGENTS, cfg.D_AGENT), dtype=np.float32
+    loader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        collate_fn=_safe_collate,
+        persistent_workers=(args.num_workers > 0),
+        prefetch_factor=4 if args.num_workers > 0 else None,
     )
-    agents_mask_buf = np.zeros((n_samples, cfg.N_AGENTS), dtype=np.float32)
-    agents_seq_buf = np.zeros(
-        (n_samples, cfg.T_FUTURE, cfg.N_AGENTS, cfg.D_AGENT), dtype=np.float32
-    )
-    agents_now_buf = np.zeros(
-        (n_samples, cfg.N_AGENTS, cfg.D_AGENT), dtype=np.float32
-    )
-    gt_trajectory_buf = np.zeros(
-        (n_samples, cfg.T_FUTURE, 3), dtype=np.float32
-    )
-    mode_label_buf = np.zeros(n_samples, dtype=np.int64)
-    map_lanes_buf = np.zeros(
-        (n_samples, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32
-    )
-    map_lanes_mask_buf = np.zeros((n_samples, cfg.N_LANES), dtype=np.float32)
+
+    keys = ['agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
+            'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask']
+    buffers = {k: [] for k in keys}
 
     valid_count = 0
     t0 = time.time()
+    log_interval = max(1, len(loader) // 20)
 
-    for i in range(n_samples):
-        sample = dataset[i]
-
-        # Skip completely empty samples (no valid agents)
-        if sample['agents_history_mask'].sum() < 0.5:
+    nan_dropped = 0
+    for batch_idx, batch in enumerate(loader):
+        if batch is None:
             continue
+        B = batch['agents_history_mask'].shape[0]
+        # Drop samples with no valid agents
+        keep = batch['agents_history_mask'].sum(dim=1) > 0.5
+        # Drop samples containing NaN in any numeric tensor
+        nan_check_keys = ['agents_history', 'agents_seq', 'gt_trajectory', 'map_lanes']
+        for k in nan_check_keys:
+            has_nan = torch.isnan(batch[k]).view(B, -1).any(dim=1)
+            keep = keep & ~has_nan
+        nan_dropped += (B - keep.sum().item())
+        if not keep.any():
+            continue
+        for k in keys:
+            buffers[k].append(batch[k][keep])
+        valid_count += keep.sum().item()
 
-        agents_history_buf[valid_count] = sample['agents_history'].numpy()
-        agents_mask_buf[valid_count] = sample['agents_history_mask'].numpy()
-        agents_seq_buf[valid_count] = sample['agents_seq'].numpy()
-        agents_now_buf[valid_count] = sample['agents_now'].numpy()
-        gt_trajectory_buf[valid_count] = sample['gt_trajectory'].numpy()
-        mode_label_buf[valid_count] = sample['mode_label'].numpy().item() if sample['mode_label'].dim() == 0 else sample['mode_label'].numpy()
-        map_lanes_buf[valid_count] = sample['map_lanes'].numpy()
-        map_lanes_mask_buf[valid_count] = sample['map_lanes_mask'].numpy()
-        valid_count += 1
-
-        if (valid_count) % max(1, n_samples // 10) == 0:
+        if (batch_idx + 1) % log_interval == 0:
             elapsed = time.time() - t0
             rate = valid_count / elapsed
-            eta = (n_samples - i) / rate if rate > 0 else 0
+            eta = (n_samples - valid_count) / rate if rate > 0 else 0
             print(f"  [{valid_count}/{n_samples}]  "
                   f"{rate:.1f} samples/s  "
-                  f"ETA: {eta:.0f}s")
+                  f"ETA: {eta/60:.1f}min")
 
     elapsed = time.time() - t0
-    print(f"[Extract] Extracted {valid_count}/{n_samples} valid samples in {elapsed:.1f}s")
+    print(f"[Extract] Extracted {valid_count}/{n_samples} valid samples in "
+          f"{elapsed/60:.1f}min  ({valid_count/max(elapsed,1):.1f} samples/s)")
+    if nan_dropped > 0:
+        print(f"[Extract] Dropped {nan_dropped} samples containing NaN")
 
     if valid_count == 0:
         print("[Extract] No valid samples. Check your data.")
         return
 
-    # Trim to valid count
-    agents_history_buf = agents_history_buf[:valid_count]
-    agents_mask_buf = agents_mask_buf[:valid_count]
-    agents_seq_buf = agents_seq_buf[:valid_count]
-    agents_now_buf = agents_now_buf[:valid_count]
-    gt_trajectory_buf = gt_trajectory_buf[:valid_count]
-    mode_label_buf = mode_label_buf[:valid_count]
-    map_lanes_buf = map_lanes_buf[:valid_count]
-    map_lanes_mask_buf = map_lanes_mask_buf[:valid_count]
-
-    # Save
+    # Concatenate collected batches
     os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
     cache_path = os.path.join(cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt")
 
-    data = {
-        'agents_history': torch.from_numpy(agents_history_buf),
-        'agents_mask': torch.from_numpy(agents_mask_buf),
-        'agents_seq': torch.from_numpy(agents_seq_buf),
-        'agents_now': torch.from_numpy(agents_now_buf),
-        'gt_trajectory': torch.from_numpy(gt_trajectory_buf),
-        'mode_label': torch.from_numpy(mode_label_buf),
-        'map_lanes': torch.from_numpy(map_lanes_buf),
-        'map_lanes_mask': torch.from_numpy(map_lanes_mask_buf),
-        'n_samples': valid_count,
-        'split': args.split,
-    }
+    data = {k: torch.cat(buffers[k], dim=0) for k in keys}
+    # Rename mask key to match training scripts
+    data['agents_mask'] = data.pop('agents_history_mask')
+    data['n_samples'] = valid_count
+    data['split'] = args.split
 
     print(f"[Extract] Saving to {cache_path}...")
     torch.save(data, cache_path)
@@ -155,6 +148,10 @@ def parse_args():
     p = argparse.ArgumentParser(description="Extract data from SQLite to .pt cache (all stages)")
     p.add_argument('--split', default='mini', choices=['mini', 'train_boston'])
     p.add_argument('--max_per_file', type=int, default=None)
+    p.add_argument('--num_workers', type=int, default=8,
+                   help='Parallel CPU workers for DB reads (default: 8)')
+    p.add_argument('--batch_size', type=int, default=64,
+                   help='Batch size per worker (default: 64)')
     return p.parse_args()
 
 

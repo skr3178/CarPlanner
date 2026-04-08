@@ -105,7 +105,6 @@ _INTERESTED_TYPES = [
     TrackedObjectType.VEHICLE,
     TrackedObjectType.PEDESTRIAN,
     TrackedObjectType.BICYCLE,
-    TrackedObjectType.MOTORCYCLE,
 ]
 
 
