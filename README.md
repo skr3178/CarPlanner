@@ -847,3 +847,83 @@ claude --resume c9c246ec-6d4a-48b2-9aa6-bae8fc225246
 
 claude-glm:
 claude --resume "stage-c-rl-finetuning"
+
+
+## commands: 
+
+Stage A (50 epochs) → eval_stage_a.py → Stage B (50 epochs) → Stage C (50 epochs)                                               
+                                                                                                                                  
+  Stage A — train transition model β on real agent history. Checkpoint: stage_a_best.pt                                           
+                                                                                                                                  
+  Eval Stage A — run eval_stage_a.py to confirm model beats stationary baseline before proceeding. If it fails, retrain with more 
+  epochs.                                                                                                                         
+                                                                                                                                  
+  Stage B — IL training. Loads frozen β, trains mode selector + autoregressive policy on GT ego trajectories. Checkpoint: best.pt 
+                                                                                                                                  
+  Stage C — RL fine-tuning. Loads frozen β + Stage B weights, fine-tunes with PPO using reward signal. Checkpoint: stage_c_best.pt
+                                                                                                                                  
+# Commands in order:                                                                                                              
+                                                                                                                        
+## 1. Stage A                                                                                                                    
+nohup python -u train_stage_a.py --split mini --epochs 50 --batch_size 1024 > checkpoints/stage_a_train.log 2>&1 &              
+                                                                                                                        
+## 2. Eval Stage A (after Stage A finishes)                                                                                      
+python -u eval_stage_a.py --ckpt checkpoints/stage_a_best.pt --split mini --n_batches 50                                        
+                                                                                                                        
+## 3. Stage B (after Stage A passes eval)                                                                                        
+nohup python -u train_stage_b.py --split mini --epochs 50 --batch_size 64 --transition_ckpt checkpoints/stage_a_best.pt >       
+checkpoints/stage_b_train.log 2>&1 &                                                                                            
+                                                                                                                        
+## 4. Stage C (after Stage B finishes)                                                                                           
+nohup python -u train_stage_c.py --split mini --epochs 50 --batch_size 64 --stage_a_ckpt checkpoints/stage_a_best.pt            
+--stage_b_ckpt checkpoints/best.pt > checkpoints/stage_c_train.log 2>&1 &                                                       
+
+
+
+## Wrapper
+
+● All checks pass. The model accepts the exact tensor shapes that the feature builder produces:
+
+- agents_now: (1, 20, 10)
+- agents_mask: (1, 20)
+- map_lanes: (1, 20, 10, 27)
+- agents_history: (1, 10, 20, 10)
+- Output best_traj: (1, 8, 3) — the 8-step trajectory in ego frame
+
+● Here's a summary of everything created:
+
+Files Created (no existing files modified)
+
+src/nuplan_wrapper/
+├── __init__.py                          # Package init
+├── carplanner_feature_builder.py        # nuPlan → CarPlanner tensor conversion
+└── carplanner_planner.py                # AbstractPlanner wrapper
+
+config/nuplan/
+└── carplanner.yaml                      # Planner config
+
+scripts/
+└── eval_nuplan.py                       # Evaluation launcher script
+
+How It Works
+
+1. CarPlannerFeatureBuilder — At each simulation step, takes nuPlan's PlannerInput and converts:
+- history.observations → agents_now (N, 10) + agents_history (H, N, 10)
+- initialization.map_api → map_lanes (20, 10, 27) with center/left/right boundaries
+- All coordinates transformed to ego-centric frame (same as data_loader.py)
+2. CarPlannerPlanner — Wraps the model and handles:
+- Loading checkpoints for stages A/B/C
+- Calling model.forward_inference()
+- Converting output (T, 3) ego-centric trajectory to global coordinates
+- Returning InterpolatedTrajectory for the nuPlan simulator
+3. eval_nuplan.py — Launch script:
+python scripts/eval_nuplan.py \
+     --checkpoint checkpoints/stage_c_best.pt \
+     --stage c --split test14-random
+
+Before Running
+
+You'll need cv2 installed for nuPlan devkit imports:
+pip install opencv-python
+
+And the nuPlan devkit environment must be fully set up (the simulation requires the full devkit stack).

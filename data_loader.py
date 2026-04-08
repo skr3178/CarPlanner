@@ -10,6 +10,7 @@ import os
 import math
 import glob
 import sqlite3
+import time
 import warnings
 import numpy as np
 import torch
@@ -488,8 +489,32 @@ def _load_sample(db_path: str, token: str):
 
     agents_now, agents_mask = _load_agents_at_token(token)
 
-    # Keep history tensor for backward-compat (fill all steps with t=0 state)
-    agents_history = np.stack([agents_now] * cfg.T_HIST, axis=0)   # (T_HIST, N, Da)
+    # ── Agent history (t=-H+1..0): load real past frames from DB ─────────────
+    # Paper Section 3.1: "each agent maintains poses for the past H time steps"
+    # Indices: -H+1, -H+2, ..., -1, 0  (H frames total, last = current t=0)
+    agents_history = np.stack([agents_now] * cfg.T_HIST, axis=0)   # fallback: repeat t=0
+    try:
+        past_pcs = list(get_sampled_lidarpcs_from_db(
+            db_path, token, sensor_source,
+            list(range(1, cfg.T_HIST + 1)), future=False          # H past frames
+        ))
+        # past_pcs is ordered oldest→newest (furthest past first)
+        # Pad from the left with t=0 if fewer than H past frames are available
+        n_past = len(past_pcs)
+        for i, pc in enumerate(past_pcs):
+            hist_idx = (cfg.T_HIST - n_past) + i   # place in correct slot
+            t_norm   = -(n_past - i)                # time index: -n_past...-1
+            arr_h, _ = _load_agents_at_token(pc.token, time_step=float(t_norm))
+            agents_history[hist_idx] = arr_h
+        # Last slot is always t=0 (agents_now, already set by fallback)
+        agents_history[-1] = agents_now
+        # Fill any remaining early slots (if fewer than H past frames) with oldest available
+        if n_past < cfg.T_HIST - 1:
+            oldest = agents_history[cfg.T_HIST - n_past] if n_past > 0 else agents_now
+            for i in range(cfg.T_HIST - n_past):
+                agents_history[i] = oldest
+    except Exception:
+        pass  # fallback already set above
 
     # ── GT agent futures (t=1..T) — used by AutoregressivePolicy IVM ──────────
     # Get future lidar_pc tokens, then load agents at each step
@@ -626,6 +651,66 @@ def make_dataloader(split: str, batch_size: int = cfg.BATCH_SIZE,
         num_workers=num_workers,
         collate_fn=collate_fn,
         drop_last=False,
+        pin_memory=True,                        # faster CPU→GPU transfer
+        persistent_workers=(num_workers > 0),   # avoid worker respawn per epoch
+    )
+
+
+# ── Pre-extracted fast dataset (no SQLite at training time) ────────────────────
+
+class PreextractedDataset(Dataset):
+    """
+    Loads pre-extracted data from a single .pt cache file.
+    Serves all fields needed by Stages A, B, and C.
+    Zero SQLite queries, zero map API calls — pure tensor indexing.
+    """
+    def __init__(self, cache_path: str, device=None):
+        print(f"[PreextractedDataset] Loading {cache_path}...")
+        t0 = time.time()
+        data = torch.load(cache_path, map_location=device or 'cpu')
+        elapsed = time.time() - t0
+        self.agents_history = data['agents_history']
+        self.agents_mask = data['agents_mask']
+        self.agents_seq = data['agents_seq']
+        self.agents_now = data.get('agents_now', self.agents_history[:, -1, :])
+        self.gt_trajectory = data.get('gt_trajectory', None)
+        self.mode_label = data.get('mode_label', None)
+        self.map_lanes = data['map_lanes']
+        self.map_lanes_mask = data['map_lanes_mask']
+        self.n = data['n_samples']
+        print(f"[PreextractedDataset] {self.n} samples loaded in {elapsed:.1f}s")
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, idx):
+        item = {
+            'agents_history':      self.agents_history[idx],
+            'agents_history_mask': self.agents_mask[idx],
+            'agents_seq':          self.agents_seq[idx],
+            'agents_now':          self.agents_now[idx],
+            'map_lanes':           self.map_lanes[idx],
+            'map_lanes_mask':      self.map_lanes_mask[idx],
+        }
+        if self.gt_trajectory is not None:
+            item['gt_trajectory'] = self.gt_trajectory[idx]
+        if self.mode_label is not None:
+            item['mode_label'] = self.mode_label[idx]
+        return item
+
+
+def make_cached_dataloader(cache_path: str, batch_size: int = cfg.BATCH_SIZE,
+                           shuffle: bool = True, num_workers: int = 0):
+    """Create a DataLoader from a pre-extracted .pt cache."""
+    dataset = PreextractedDataset(cache_path)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        drop_last=False,
+        pin_memory=True,
     )
 
 

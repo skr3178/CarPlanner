@@ -30,3 +30,4 @@ venv/
 
 # Claude / IDE
 .claude/
+planTF/

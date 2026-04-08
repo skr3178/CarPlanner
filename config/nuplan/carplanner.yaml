@@ -1,0 +1,16 @@
+# CarPlanner planner config for nuPlan simulation
+#
+# Usage:
+#   python scripts/eval_nuplan.py \
+#       --checkpoint checkpoints/stage_c_best.pt \
+#       --stage c \
+#       --split test14-random
+
+planner:
+  _target_: src.nuplan_wrapper.carplanner_planner.CarPlannerPlanner
+  _convert_: all
+
+  checkpoint_path: null   # Set via --checkpoint
+  stage: c                # 'a', 'b', or 'c'
+  replan_interval: 1      # Replan every step (10Hz)
+  use_gpu: true

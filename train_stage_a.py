@@ -1,13 +1,20 @@
 """
 CarPlanner — Stage A: Transition Model Pre-training.
 
-Trains P_τ(s^{1:N}_{1:T} | s_0) with masked L1 loss (Eq 5).
+Trains P_tau(s^{1:N}_{1:T} | s_0) with masked L1 loss (Eq 5).
 The transition model predicts future agent states given current agent states.
 Pre-trained here, then frozen during Stages B and C.
 
+Data pipeline:
+  1. Extract once:   python extract_stage_a.py --split mini
+  2. Train from cache: python train_stage_a.py --split mini --epochs 50 --batch_size 256
+
+The cache file is a single .pt with all tensors — no SQLite, no map API at train time.
+If no cache exists, falls back to the slow DataLoader (for testing/debugging only).
+
 Usage:
-    python train_stage_a.py --split mini --epochs 5 --batch_size 4
-    python train_stage_a.py --split mini --epochs 10 --resume checkpoints/stage_a_best.pt
+    python train_stage_a.py --split mini --epochs 50 --batch_size 256
+    python train_stage_a.py --split mini --epochs 50 --resume checkpoints/stage_a_best.pt
 """
 
 import os
@@ -22,7 +29,7 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 import torch
 
 import config as cfg
-from data_loader import make_dataloader
+from data_loader import make_dataloader, make_cached_dataloader
 from model import TransitionModel
 
 
@@ -54,23 +61,44 @@ def train(args):
     print(f"[Stage A] Split: {args.split}, Epochs: {args.epochs}, "
           f"Batch: {args.batch_size}")
 
-    # Data — same dataloader as Stage B, we only use agent-related fields
-    loader = make_dataloader(
-        args.split,
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=args.num_workers,
-        max_per_file=args.max_per_file,
+    # ── Data loading: cache-first, slow fallback ────────────────────────────
+    cache_path = os.path.join(
+        cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt"
     )
-    print(f"[Stage A] Dataset size: {len(loader.dataset)}, "
-          f"Batches/epoch: {len(loader)}")
+    use_cache = os.path.isfile(cache_path)
 
-    # Only instantiate TransitionModel (not full CarPlanner)
+    if use_cache:
+        print(f"[Stage A] Loading pre-extracted cache: {cache_path}")
+        loader = make_cached_dataloader(
+            cache_path,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=0,            # data already in memory, no workers needed
+        )
+        # For shuffling cached batches across epochs
+        all_batches = list(loader)
+        print(f"[Stage A] Cache loaded: {len(loader.dataset)} samples, "
+              f"{len(all_batches)} batches")
+    else:
+        print(f"[Stage A] WARNING: No cache found at {cache_path}")
+        print(f"[Stage A] Falling back to slow DataLoader (SQLite per sample).")
+        print(f"[Stage A] Run 'python extract_stage_a.py --split {args.split}' first.")
+        loader = make_dataloader(
+            args.split,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+            max_per_file=args.max_per_file,
+        )
+        all_batches = None
+        print(f"[Stage A] Dataset size: {len(loader.dataset)}, "
+              f"Batches/epoch: {len(loader)}")
+
+    # ── Model ───────────────────────────────────────────────────────────────
     model = TransitionModel().to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"[Stage A] TransitionModel parameters: {n_params:,}")
 
-    # Optimizer & scheduler (same hyperparams as Stage B, Section 4.1)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY
     )
@@ -90,62 +118,29 @@ def train(args):
 
     os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
 
-    # Preload all data to GPU once — avoids repeated CPU map queries
-    # Cache is saved to disk so subsequent runs skip the expensive dataloader
-    cache_path = os.path.join(
-        cfg.CHECKPOINT_DIR, f"stage_a_cache_{args.split}_bs{args.batch_size}.pt"
-    )
-    if args.preload and args.split == 'train_boston':
-        print(f"[Stage A] WARNING: --preload with train_boston may OOM GPU memory "
-              f"(~10GB+). Consider running without --preload.")
-    if args.preload:
-        if os.path.isfile(cache_path):
-            print(f"[Stage A] Loading cached data from {cache_path}...")
-            t0 = time.time()
-            cached = torch.load(cache_path, map_location=device)
-            print(f"[Stage A] Loaded cache in {time.time() - t0:.1f}s "
-                  f"({len(cached)} batches)")
-        else:
-            print(f"[Stage A] Preloading {len(loader)} batches into GPU memory...")
-            cached = []
-            t_preload = time.time()
-            for batch in loader:
-                cached.append({
-                    'agents_history': batch['agents_history'].to(device),
-                    'agents_mask':    batch['agents_history_mask'].to(device),
-                    'agents_seq':     batch['agents_seq'].to(device),
-                })
-            elapsed = time.time() - t_preload
-            print(f"[Stage A] Preloaded in {elapsed:.1f}s — saving cache...")
-            torch.save(cached, cache_path)
-            print(f"[Stage A] Cache saved to {cache_path}")
-    else:
-        cached = None
-
     best_loss = float('inf')
 
     for epoch in range(start_epoch, args.epochs):
         model.train()
         epoch_loss = 0.0
+        n_batches = 0
         t0 = time.time()
 
-        batch_iter = random.sample(cached, len(cached)) if cached else loader
-        for batch_idx, batch in enumerate(batch_iter):
-            if cached:
-                agents_history  = batch['agents_history']
-                agents_mask     = batch['agents_mask']
-                agents_seq      = batch['agents_seq']
-                map_lanes       = batch.get('map_lanes')
-                map_lanes_mask  = batch.get('map_lanes_mask')
-            else:
-                agents_history  = batch['agents_history'].to(device)
-                agents_mask     = batch['agents_history_mask'].to(device)
-                agents_seq      = batch['agents_seq'].to(device)
-                map_lanes       = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
-                map_lanes_mask  = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
+        # Epoch data: shuffle cached batches, or use DataLoader
+        if use_cache:
+            epoch_batches = random.sample(all_batches, len(all_batches))
+        else:
+            epoch_batches = loader
 
-            # Forward: predict agent futures from history (map gives social context)
-            agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)  # (B, T, N, Da)
+        for batch_idx, batch in enumerate(epoch_batches):
+            agents_history = batch['agents_history'].to(device)
+            agents_mask = batch['agents_history_mask'].to(device)
+            agents_seq = batch['agents_seq'].to(device)
+            map_lanes = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
+            map_lanes_mask = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
+
+            # Forward: predict agent futures from history + map context
+            agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
 
             # Loss: masked L1 (Eq 5)
             loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
@@ -157,19 +152,19 @@ def train(args):
             optimizer.step()
 
             epoch_loss += loss.item()
+            n_batches += 1
 
-            n_batches = len(cached) if cached else len(loader)
-            if (batch_idx + 1) % max(1, n_batches // 5) == 0:
+            if (batch_idx + 1) % max(1, len(epoch_batches) // 5) == 0:
                 print(f"  Epoch {epoch+1}/{args.epochs}  "
-                      f"[{batch_idx+1}/{len(loader)}]  "
+                      f"[{batch_idx+1}/{len(epoch_batches)}]  "
                       f"L_tm={loss.item():.4f}")
 
         # Epoch summary
-        avg_loss = epoch_loss / len(loader)
+        avg_loss = epoch_loss / max(n_batches, 1)
         elapsed = time.time() - t0
         print(f"Epoch {epoch+1}/{args.epochs}  "
               f"L_tm={avg_loss:.4f}  "
-              f"({elapsed:.1f}s)")
+              f"({elapsed:.1f}s, {elapsed/max(n_batches,1):.2f}s/batch)")
 
         scheduler.step(avg_loss)
 
@@ -205,11 +200,10 @@ def parse_args():
                    choices=['mini', 'train_boston'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
-    p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)
+    p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS,
+                   help='Workers for slow DataLoader fallback only')
     p.add_argument('--max_per_file', type=int, default=None,
-                   help='Cap on samples per DB file (default: from config)')
-    p.add_argument('--preload', action='store_true',
-                   help='Preload all data into GPU memory before training')
+                   help='Cap on samples per DB file (slow fallback only)')
     p.add_argument('--resume', default=None,
                    help='Path to Stage A checkpoint to resume from')
     return p.parse_args()

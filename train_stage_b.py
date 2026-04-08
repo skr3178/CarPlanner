@@ -12,6 +12,7 @@ Optimizer: AdamW, lr=1e-4, ReduceLROnPlateau schedule (Section 4.1).
 import os
 import sys
 import argparse
+import random
 
 # Flush stdout immediately so nohup log updates in real time
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
@@ -23,7 +24,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 import config as cfg
-from data_loader import make_dataloader
+from data_loader import make_dataloader, make_cached_dataloader
 from model import CarPlanner
 
 
@@ -64,16 +65,35 @@ def train(args):
     print(f"[Train] Split: {args.split}, Epochs: {args.epochs}, "
           f"Batch: {args.batch_size}")
 
-    # Data
-    loader = make_dataloader(
-        args.split,
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=args.num_workers,
-        max_per_file=args.max_per_file,
+    # Data — cache-first, slow fallback
+    cache_path = os.path.join(
+        cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt"
     )
-    print(f"[Train] Dataset size: {len(loader.dataset)}, "
-          f"Batches/epoch: {len(loader)}")
+    use_cache = os.path.isfile(cache_path)
+
+    if use_cache:
+        print(f"[Train] Loading pre-extracted cache: {cache_path}")
+        loader = make_cached_dataloader(
+            cache_path,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=0,
+        )
+        all_batches = list(loader)
+        print(f"[Train] Cache loaded: {len(loader.dataset)} samples, "
+              f"{len(all_batches)} batches")
+    else:
+        print(f"[Train] WARNING: No cache found. Falling back to slow DataLoader.")
+        loader = make_dataloader(
+            args.split,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+            max_per_file=args.max_per_file,
+        )
+        all_batches = None
+        print(f"[Train] Dataset size: {len(loader.dataset)}, "
+              f"Batches/epoch: {len(loader)}")
 
     # Model
     model = CarPlanner().to(device)
@@ -112,7 +132,8 @@ def train(args):
         epoch_losses = {'L_CE': 0., 'L_side': 0., 'L_gen': 0., 'L_total': 0.}
         t0 = time.time()
 
-        for batch_idx, batch in enumerate(loader):
+        epoch_batches = random.sample(all_batches, len(all_batches)) if use_cache else loader
+        for batch_idx, batch in enumerate(epoch_batches):
             agents_now      = batch['agents_now'].to(device)          # (B, N, Da)
             agents_history  = batch['agents_history'].to(device)      # (B, H, N, Da)
             agents_mask     = batch['agents_history_mask'].to(device) # (B, N)
@@ -151,7 +172,7 @@ def train(args):
                       f"L_gen={loss_dict['L_gen']:.4f}")
 
         # Epoch summary
-        n = len(loader)
+        n = len(epoch_batches)
         avg = {k: v / n for k, v in epoch_losses.items()}
         elapsed = time.time() - t0
         print(f"Epoch {epoch+1}/{args.epochs}  "
