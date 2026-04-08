@@ -204,50 +204,293 @@ class IVMBlock(nn.Module):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Decomposed Mode Encoder  (Section 3.2: lon/lat mode construction)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def select_candidate_routes(map_lanes: torch.Tensor,
+                            map_lanes_mask: torch.Tensor,
+                            n_routes: int = cfg.N_LAT) -> tuple:
+    """
+    Select up to n_routes heading-aligned candidate lanes from map data.
+
+    Uses the same filtering logic as data_loader._collect_candidate_lanes
+    but operates on torch tensors and returns selected lane polylines.
+
+    Args:
+        map_lanes:      (B, N_LANES, N_PTS, 9) — all lane polylines in ego frame
+        map_lanes_mask: (B, N_LANES) — validity mask
+        n_routes:       number of candidate routes to select (default N_LAT=5)
+
+    Returns:
+        route_polylines: (B, n_routes, N_PTS, 9) — selected candidate lanes
+        route_mask:      (B, n_routes) — validity mask for selected lanes
+    """
+    B, N_L, N_P, D = map_lanes.shape
+    device = map_lanes.device
+
+    route_polylines = torch.zeros(B, n_routes, N_P, D, device=device,
+                                   dtype=map_lanes.dtype)
+    route_mask = torch.zeros(B, n_routes, device=device, dtype=map_lanes_mask.dtype)
+
+    for b in range(B):
+        candidates = []
+        for i in range(N_L):
+            if map_lanes_mask[b, i] < 0.5:
+                continue
+            lane = map_lanes[b, i]                              # (N_P, 9)
+            valid = lane[torch.abs(lane[:, 0]) + torch.abs(lane[:, 1]) > 1e-6]
+            if len(valid) < 2:
+                continue
+
+            # Closest point to ego (origin)
+            dists = torch.sqrt(valid[:, 0] ** 2 + valid[:, 1] ** 2)
+            closest_idx = int(torch.argmin(dists))
+
+            # Heading alignment (ego faces +x, heading ≈ 0)
+            heading = torch.atan2(valid[closest_idx, 2], valid[closest_idx, 3])
+            if abs(heading.item()) > math.pi / 3:
+                continue
+
+            candidates.append((i, dists[closest_idx].item(), valid[closest_idx, 1].item()))
+
+        # Sort by lateral offset to spread across left/center/right
+        candidates.sort(key=lambda c: c[2])
+
+        # Pick up to n_routes, spread evenly
+        if len(candidates) <= n_routes:
+            selected = candidates
+        else:
+            indices = torch.linspace(0, len(candidates) - 1, n_routes).long().tolist()
+            selected = [candidates[i] for i in indices]
+
+        for j, (lane_idx, _, _) in enumerate(selected[:n_routes]):
+            route_polylines[b, j] = map_lanes[b, lane_idx]
+            route_mask[b, j] = 1.0
+
+    return route_polylines, route_mask
+
+
+class DecomposedModeEncoder(nn.Module):
+    """
+    Paper-faithful decomposed mode construction (Section 3.2).
+
+    Longitudinal: c_lon,j = j/N_lon scalar, repeated across D → N_lon × D
+    Lateral:      PointNet over N_lat route polylines → N_lat × D (per scene)
+    Combined:     concat lon + lat → N_lat × N_lon × 2D → Linear → N_lat × N_lon × D
+    """
+
+    def __init__(self):
+        super().__init__()
+        D = cfg.D_HIDDEN
+
+        # Lateral: PointNet over route polylines (reuse LaneEncoder architecture)
+        self.route_pointnet = LaneEncoder(
+            in_dim=cfg.D_MAP_POINT, d_model=cfg.D_LANE
+        )
+        self.route_proj = nn.Linear(cfg.D_LANE, D)
+
+        # Combined: linear projection 2D → D
+        self.combine = nn.Linear(2 * D, D)
+
+    def encode_longitudinal(self, device: torch.device) -> torch.Tensor:
+        """
+        Construct N_lon × D longitudinal mode tensor.
+        c_lon,j = j/N_lon repeated across D dimensions.
+        No learned parameters — deterministic construction.
+        """
+        scalars = torch.arange(cfg.N_LON, dtype=torch.float32, device=device) / cfg.N_LON
+        return scalars.unsqueeze(1).expand(cfg.N_LON, cfg.D_HIDDEN)  # (N_lon, D)
+
+    def encode_lateral(self, route_polylines: torch.Tensor,
+                       route_mask: torch.Tensor) -> torch.Tensor:
+        """
+        Encode N_lat candidate routes via PointNet (per scene).
+
+        Args:
+            route_polylines: (B, N_lat, N_PTS, 9)
+            route_mask:      (B, N_lat)
+        Returns:
+            lat_modes: (B, N_lat, D) — scene-dependent lateral mode features
+        """
+        # LaneEncoder: (B, N_lat, N_PTS, 9) → (B, N_lat, D_LANE)
+        lat_feats = self.route_pointnet(route_polylines, route_mask)
+        # Project to D_HIDDEN: (B, N_lat, D)
+        return self.route_proj(lat_feats)
+
+    def construct_mode_tensor(self, lon_modes: torch.Tensor,
+                              lat_modes: torch.Tensor) -> torch.Tensor:
+        """
+        Combine lon + lat → N_lat × N_lon × 2D → Linear → N_lat × N_lon × D.
+
+        Args:
+            lon_modes: (N_lon, D) or (B, N_lon, D)
+            lat_modes: (B, N_lat, D)
+        Returns:
+            mode_tensor: (B, N_lat, N_lon, D)
+        """
+        B = lat_modes.size(0)
+        N_lon, N_lat = cfg.N_LON, cfg.N_LAT
+        D = cfg.D_HIDDEN
+
+        # Ensure lon_modes has batch dim
+        if lon_modes.dim() == 2:
+            lon_exp = lon_modes.unsqueeze(0).expand(B, -1, -1)  # (B, N_lon, D)
+        else:
+            lon_exp = lon_modes
+
+        # Expand for cartesian product: (B, N_lat, N_lon, D)
+        lon_exp = lon_exp.unsqueeze(1).expand(-1, N_lat, -1, -1)  # (B, N_lat, N_lon, D)
+        lat_exp = lat_modes.unsqueeze(2).expand(-1, -1, N_lon, -1)  # (B, N_lat, N_lon, D)
+
+        # Concatenate + linear projection: (B, N_lat, N_lon, 2D) → (B, N_lat, N_lon, D)
+        combined = torch.cat([lon_exp, lat_exp], dim=-1)
+        return self.combine(combined)
+
+    def get_mode_query(self, mode_c: torch.Tensor,
+                       mode_tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Extract single mode embedding for IVM query initialisation.
+
+        Args:
+            mode_c:        (B,) int64 — flat mode index in [0, N_MODES)
+            mode_tensor:   (B, N_lat, N_lon, D)
+        Returns:
+            mode_query: (B, 1, D)
+        """
+        lon_idx = mode_c // cfg.N_LAT                      # (B,)
+        lat_idx = mode_c % cfg.N_LAT                        # (B,)
+        B = mode_c.size(0)
+
+        # Gather: for each batch element, pick mode_tensor[b, lat_idx[b], lon_idx[b], :]
+        mode_embed = mode_tensor[
+            torch.arange(B, device=mode_c.device),
+            lat_idx, lon_idx
+        ]                                                    # (B, D)
+        return mode_embed.unsqueeze(1)                       # (B, 1, D)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mode Selector  (Eq 6 + Eq 7)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ModeSelector(nn.Module):
     """
-    Predicts mode distribution and side-task ego trajectory from s_0.
-    Paper (Alg 1 line 20): σ, s̄ ← f_selector(s_0, c)
-    — σ (mode logits) depends on s_0 only.
-    — s̄ (side task trajectory) is conditioned on mode c.
+    Mode selector with decomposed lon/lat mode construction (Section 3.2 + 3.3).
 
-    Inputs:  global_feat (B, D)  — PointNet global encoding of agents at t=0
-             mode_c (B,) int64   — mode index c (for side-task conditioning)
+    Architecture:
+      1. Construct mode tensor: lon scalar × D + lat PointNet(route) → 2D → Linear D
+      2. Transformer decoder: mode features as query, scene features as K/V
+      3. MLP per mode → logits → softmax
+      4. Side task head conditioned on selected mode
+
+    Inputs:
+      global_feat:     (B, D)  — s0 PointNet global feature
+      map_lanes:       (B, N_LANES, N_PTS, 9) — lane polylines for route encoding
+      map_lanes_mask:  (B, N_LANES)
+      mode_c:          (B,) int64 — positive mode c* (for side-task conditioning)
+
     Outputs:
-      logits    (B, N_MODES)               — Eq (6): CrossEntropy against c*
-      side_traj (B, T_FUTURE, 3)           — Eq (7): L1 against gt_trajectory
+      logits:    (B, N_MODES)
+      side_traj: (B, T_FUTURE, 3)
     """
     def __init__(self):
         super().__init__()
         D = cfg.D_HIDDEN
+
+        # Decomposed mode encoder
+        self.decomposed_mode = DecomposedModeEncoder()
+
+        # s0 shared encoder
         self.shared = nn.Sequential(
             nn.Linear(D, D), nn.ReLU(inplace=True),
             nn.Linear(D, D), nn.ReLU(inplace=True),
         )
-        self.mode_head = nn.Linear(D, cfg.N_MODES)
-        # Side-task conditioned on mode c: [global_feat ; mode_embed(c)]
-        self.mode_embed = nn.Embedding(cfg.N_MODES, cfg.D_MODE_EMBED)
+
+        # Transformer decoder: mode features as query, scene features as K/V
+        self.mode_transformer = nn.MultiheadAttention(
+            D, num_heads=8, batch_first=True, dropout=0.1
+        )
+        self.mode_norm = nn.LayerNorm(D)
+        self.mode_ffn = nn.Sequential(
+            nn.Linear(D, D * 4), nn.ReLU(inplace=True),
+            nn.Linear(D * 4, D),
+        )
+        self.mode_norm2 = nn.LayerNorm(D)
+
+        # Score head: per-mode scalar → (B, N_MODES)
+        self.mode_head = nn.Linear(D, 1)
+
+        # Side-task conditioned on selected mode c*
+        self.side_proj = nn.Linear(D, cfg.D_MODE_EMBED)
         self.side_task_head = nn.Linear(D + cfg.D_MODE_EMBED, cfg.T_FUTURE * 3)
 
-    def forward(self, global_feat: torch.Tensor, mode_c: torch.Tensor = None):
-        h = self.shared(global_feat)                     # (B, D)
-        logits = self.mode_head(h)                       # (B, N_MODES)
+    def forward(self, global_feat: torch.Tensor,
+                map_lanes: torch.Tensor = None,
+                map_lanes_mask: torch.Tensor = None,
+                mode_c: torch.Tensor = None):
+        """
+        Args:
+            global_feat:    (B, D)
+            map_lanes:      (B, N_LANES, N_PTS, 9) — for lateral mode encoding
+            map_lanes_mask: (B, N_LANES)
+            mode_c:         (B,) int64 — for side-task conditioning (None at inference)
+        Returns:
+            logits:    (B, N_MODES)
+            side_traj: (B, T_FUTURE, 3)
+        """
+        B = global_feat.size(0)
+        D = cfg.D_HIDDEN
+        device = global_feat.device
 
-        # Side-task trajectory conditioned on mode c (Alg 1 line 20: s̄ ← f_selector(s_0, c))
-        if mode_c is not None:
-            c_embed = self.mode_embed(mode_c)             # (B, D_MODE_EMBED)
-            h_side = torch.cat([h, c_embed], dim=-1)      # (B, D + D_MODE_EMBED)
+        # 1. Encode s0 features
+        h = self.shared(global_feat)                          # (B, D)
+
+        # 2. Construct decomposed mode tensor
+        lon_modes = self.decomposed_mode.encode_longitudinal(device)  # (N_lon, D)
+
+        lat_modes = None
+        if map_lanes is not None and map_lanes_mask is not None:
+            route_polylines, route_mask = select_candidate_routes(
+                map_lanes, map_lanes_mask
+            )                                                # (B, N_lat, N_PTS, 9)
+            lat_modes = self.decomposed_mode.encode_lateral(
+                route_polylines, route_mask
+            )                                                # (B, N_lat, D)
+
+        if lat_modes is None:
+            # Fallback: zero lateral modes (no map data)
+            lat_modes = torch.zeros(B, cfg.N_LAT, D, device=device)
+
+        mode_tensor = self.decomposed_mode.construct_mode_tensor(
+            lon_modes, lat_modes
+        )                                                    # (B, N_lat, N_lon, D)
+
+        # Flatten mode grid: (B, N_lat, N_lon, D) → (B, N_MODES, D)
+        mode_feats = mode_tensor.view(B, cfg.N_MODES, D)
+
+        # 3. Transformer decoder: modes as query, scene as K/V
+        #    Query: (B, N_MODES, D),  K/V: (B, 1, D)
+        scene_kv = h.unsqueeze(1)                             # (B, 1, D)
+        attn_out, _ = self.mode_transformer(
+            query=mode_feats, key=scene_kv, value=scene_kv
+        )
+        mode_updated = self.mode_norm(mode_feats + attn_out)
+        mode_updated = self.mode_norm2(mode_updated + self.mode_ffn(mode_updated))
+
+        # 4. Score each mode → logits
+        logits = self.mode_head(mode_updated).squeeze(-1)     # (B, N_MODES)
+
+        # 5. Side task: conditioned on c* mode feature from the updated tensor
+        if mode_c is not None and mode_tensor is not None:
+            mode_embed = self.decomposed_mode.get_mode_query(mode_c, mode_tensor)
+            c_proj = self.side_proj(mode_embed.squeeze(1))    # (B, D_MODE_EMBED)
+            h_side = torch.cat([h, c_proj], dim=-1)
         else:
-            # Inference: use zero embedding (no specific mode)
             h_side = torch.cat([h, torch.zeros(
-                h.size(0), cfg.D_MODE_EMBED, device=h.device
+                h.size(0), cfg.D_MODE_EMBED, device=device
             )], dim=-1)
-        side_traj = self.side_task_head(h_side).view(
-            global_feat.size(0), cfg.T_FUTURE, 3
-        )                                                # (B, T_FUTURE, 3)
+        side_traj = self.side_task_head(h_side).view(B, cfg.T_FUTURE, 3)
+
         return logits, side_traj
 
 
@@ -289,7 +532,8 @@ class AutoregressivePolicy(nn.Module):
         # Time-aware encoder: 4 agent features + 1 normalised time index
         self.agent_encoder_time = PointNetEncoder(in_dim=cfg.D_AGENT, d_model=D)
         self.lane_encoder  = LaneEncoder(in_dim=cfg.D_MAP_POINT, d_model=cfg.D_LANE)
-        self.mode_embed    = nn.Embedding(cfg.N_MODES, D)
+        # Decomposed mode encoder (Section 3.2) — replaces flat nn.Embedding
+        self.decomposed_mode = DecomposedModeEncoder()
         self.ivm           = IVMBlock(d_model=D, n_heads=8,
                                       k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
         # Action head: updated mode query → (x, y, yaw)
@@ -355,8 +599,17 @@ class AutoregressivePolicy(nn.Module):
         device = agents_seq.device
         H = cfg.T_HIST  # history window length for IVM time normalisation
 
-        # Initialise mode query from embedding (B, 1, D)
-        mode_query = self.mode_embed(mode_c).unsqueeze(1)
+        # Initialise mode query from decomposed mode tensor (Section 3.2)
+        lon_modes = self.decomposed_mode.encode_longitudinal(device)  # (N_lon, D)
+        if map_lanes is not None:
+            route_polylines, route_mask = select_candidate_routes(
+                map_lanes, map_lanes_mask
+            )
+            lat_modes = self.decomposed_mode.encode_lateral(route_polylines, route_mask)
+        else:
+            lat_modes = torch.zeros(B, cfg.N_LAT, cfg.D_HIDDEN, device=device)
+        mode_tensor = self.decomposed_mode.construct_mode_tensor(lon_modes, lat_modes)
+        mode_query = self.decomposed_mode.get_mode_query(mode_c, mode_tensor)  # (B, 1, D)
 
         # Ego pose accumulator for coordinate transforms
         ego_x = torch.zeros(B, device=device)
@@ -513,8 +766,17 @@ class AutoregressivePolicy(nn.Module):
         device = agents_seq.device
         H = cfg.T_HIST
 
-        # Initialise mode query from embedding
-        mode_query = self.mode_embed(mode_c).unsqueeze(1)  # (B, 1, D)
+        # Initialise mode query from decomposed mode tensor
+        lon_modes = self.decomposed_mode.encode_longitudinal(device)
+        if map_lanes is not None:
+            route_polylines, route_mask = select_candidate_routes(
+                map_lanes, map_lanes_mask
+            )
+            lat_modes = self.decomposed_mode.encode_lateral(route_polylines, route_mask)
+        else:
+            lat_modes = torch.zeros(B, cfg.N_LAT, cfg.D_HIDDEN, device=device)
+        mode_tensor = self.decomposed_mode.construct_mode_tensor(lon_modes, lat_modes)
+        mode_query = self.decomposed_mode.get_mode_query(mode_c, mode_tensor)  # (B, 1, D)
 
         # Ego pose accumulator
         ego_x = torch.zeros(B, device=device)
@@ -891,7 +1153,12 @@ class CarPlanner(nn.Module):
         _, s0_global = self.s0_encoder(agents_now, agents_mask)  # (B, D)
 
         # Mode selector  (Eq 6 + Eq 7) — side task conditioned on c* (Alg 1 line 20)
-        mode_logits, side_traj = self.mode_selector(s0_global, mode_c=mode_label)
+        mode_logits, side_traj = self.mode_selector(
+            s0_global,
+            map_lanes=map_lanes,
+            map_lanes_mask=map_lanes_mask,
+            mode_c=mode_label,
+        )
 
         # Mode dropout (Table 4: improves both IL and RL)
         c = mode_label.clone()
@@ -948,7 +1215,12 @@ class CarPlanner(nn.Module):
         _, s0_global = self.s0_encoder(agents_now, agents_mask)  # (B, D)
 
         # Mode selector (Eq 6 + Eq 7)
-        mode_logits, side_traj = self.mode_selector(s0_global, mode_c=mode_label)
+        mode_logits, side_traj = self.mode_selector(
+            s0_global,
+            map_lanes=map_lanes,
+            map_lanes_mask=map_lanes_mask,
+            mode_c=mode_label,
+        )
 
         # Mode dropout (applied for RL too)
         c = mode_label.clone()
@@ -1005,7 +1277,11 @@ class CarPlanner(nn.Module):
         _, s0_global = self.s0_encoder(agents_now, agents_mask)
 
         # Step 2: mode scores
-        mode_logits, _ = self.mode_selector(s0_global)
+        mode_logits, _ = self.mode_selector(
+            s0_global,
+            map_lanes=map_lanes,
+            map_lanes_mask=map_lanes_mask,
+        )
 
         # Step 3: transition model → agent futures for all steps
         agent_futures = self.transition_model(
