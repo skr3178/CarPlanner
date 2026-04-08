@@ -778,8 +778,72 @@ Different losses:
 2. L_selector → f_selector. The selector has to answer two questions simultaneously — which mode is correct (classification), and can it also roughly predict the ego trajectory (regression). CrossEntropy handles the classification part. The L1 side task is a bonus signal that forces the selector's internal features to be rich enough to reason about the future, not just assign labels.
 3. L_generator → π. This is where IL and RL diverge. In IL, the generator is just told "copy the expert" — L1 between predicted and GT waypoints. In RL, the generator is told "maximise reward" — PPO loss which includes the policy gradient term, a value regression term, and an entropy bonus to prevent the policy from collapsing to a single deterministic action too early.
 
-# claude
+
+### The value of c*:
+A single integer pointing to one cell in the 4×12 grid
+
+### Weight of entropy
+
+ValueLoss   magnitude ~ 10³   weight = 3      → contribution ~ 3,000
+PolicyLoss  magnitude ~ 10⁰   weight = 100    → contribution ~ 100
+Entropy     magnitude ~ 10⁻³  weight = 0.001  → contribution ~ tiny
+
+Entropy of gaussian distribution is the H(X)=21​ln(2πeσ2), which is dependent on the variance or the spread of the distribution. 
+High σ → distribution is wide → high entropy → policy is uncertain
+Low σ  → distribution is narrow → low entropy → policy is confident
+
+The minus sign on entropy. Minimising L_gen means maximising entropy. This is deliberate — it is called an entropy bonus and it serves one purpose: preventing the policy from collapsing too early.
+
+### Check with actual loss term values
+
+Term          Raw magnitude    Weight    Contribution
+──────────────────────────────────────────────────────
+ValueLoss         ~10³           3          ~3,000
+PolicyLoss        ~10⁰          100          ~100
+Entropy           ~10⁻³        0.001        ~tiny
+
+
+ValueLoss dominates because accurate value estimation is the foundation of PPO. If V is wrong, the advantage estimates A_t are wrong, and the policy gradient signal is meaningless noise. You need the critic to be well-calibrated before the actor can improve.
+
+PolicyLoss is secondary because the actual policy update should be conservative — PPO is designed to take small, stable steps. A contribution of ~100 versus ~3,000 for value means the policy updates are restrained relative to critic updates. This matches the PPO philosophy of trust region — do not let the policy change too fast.
+
+Entropy is a whisper because it is purely a regulariser. It should never compete with the actual learning signal. 0.001 weight means it only matters when ValueLoss and PolicyLoss are both near zero — i.e. when the policy is already good and in danger of collapsing. At that point the entropy term nudges it to stay exploratory.
+
+
+
+  ┌──────────────────────────┬───────────────────────────────────┬────────────────────────────────────────────────────────────┐                           
+  │        Component         │            Input shape            │                        Output shape                        │                           
+  ├──────────────────────────┼───────────────────────────────────┼────────────────────────────────────────────────────────────┤                           
+  │ LaneEncoder              │ (2, 20, 10, **27**)               │ (2, 20, 64)                                                │                           
+  ├──────────────────────────┼───────────────────────────────────┼────────────────────────────────────────────────────────────┤                           
+  │ DecomposedModeEncoder    │ routes (2, 5, 10, **27**)         │ lon(12,256) lat(2,5,256) tensor(2,5,12,256) query(2,1,256) │                           
+  ├──────────────────────────┼───────────────────────────────────┼────────────────────────────────────────────────────────────┤                           
+  │ ModeSelector             │ global(2,256) + map(2,20,10,27)   │ logits(2,60) side(2,8,3)                                   │                           
+  ├──────────────────────────┼───────────────────────────────────┼────────────────────────────────────────────────────────────┤                           
+  │ TransitionModel          │ agents(2,20,10) + map(2,20,10,27) │ (2,8,20,10)                                                │                           
+  ├──────────────────────────┼───────────────────────────────────┼────────────────────────────────────────────────────────────┤                           
+  │ AutoregressivePolicy     │ agents_seq(2,8,20,10)             │ (2,8,3)                                                    │                           
+  ├──────────────────────────┼───────────────────────────────────┼────────────────────────────────────────────────────────────┤                           
+  │ CarPlanner.forward_train │ full inputs                       │ logits(2,60) side(2,8,3) pred(2,8,3)                       │  
+
+
+## commands to start training: 
+
+# Stage B — IL training (run after Stage A finishes)
+nohup python -u train_stage_b.py --split mini --epochs 50 --batch_size 4 \
+     --transition_ckpt checkpoints/stage_a_best.pt \
+     > checkpoints/stage_b_train.log 2>&1 &
+echo "Stage B PID: $!"
+
+# Stage C — RL fine-tuning (run after Stage B finishes)
+nohup python -u train_stage_c.py --split mini --epochs 50 --batch_size 4 \
+     --stage_a_ckpt checkpoints/stage_a_best.pt \
+     --stage_b_ckpt checkpoints/best.pt \
+     > checkpoints/stage_c_train.log 2>&1 &
+echo "Stage C PID: $!"
+
+claude:
 claude --resume c9c246ec-6d4a-48b2-9aa6-bae8fc225246 
 
-# claude-glm
-claude --resume "stage-a-transition-model-training" 
+claude-glm:
+claude --resume "stage-c-rl-finetuning"

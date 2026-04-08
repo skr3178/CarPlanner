@@ -34,6 +34,7 @@ LAT_BIN_EDGES = [-float('inf'), -3.0, -1.0, 1.0, 3.0, float('inf')]  # 5 bins
 # ── Feature dimensions (paper: Da=10, Dm=9) ──────────────────────────────────
 D_AGENT = 10          # per-agent pose: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
 D_MAP_POINT = 9       # per-map-point: x, y, sin_h, cos_h, speed_limit, 4×category_onehot
+D_POLYLINE_POINT = 3 * D_MAP_POINT  # = 27: center + left_boundary + right_boundary per point (paper §2.3: Np × 3Dm)
 
 # ── Architecture ──────────────────────────────────────────────────────────────
 D_ACTION = 3          # (x, y, yaw) per step

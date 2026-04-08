@@ -116,17 +116,47 @@ def _resample_polyline(points: list, n_points: int) -> np.ndarray:
     return resampled
 
 
+def _encode_polyline_pts(pts_2d: np.ndarray, speed_limit: float,
+                         cat_onehot: np.ndarray,
+                         ref_x: float, ref_y: float, ref_h: float) -> np.ndarray:
+    """
+    Encode a resampled polyline (N_LANE_POINTS × 2) into per-point features (N_LANE_POINTS × 9).
+    Features: x, y, sin(h), cos(h), speed_limit, 4×category_onehot — all in ego frame.
+    """
+    N = len(pts_2d)
+    headings = np.zeros(N, dtype=np.float32)
+    for j in range(N - 1):
+        dx = pts_2d[j+1, 0] - pts_2d[j, 0]
+        dy = pts_2d[j+1, 1] - pts_2d[j, 1]
+        headings[j] = math.atan2(dy, dx)
+    headings[-1] = headings[-2]
+
+    feats = np.zeros((N, cfg.D_MAP_POINT), dtype=np.float32)
+    for j in range(N):
+        x_e, y_e, h_e = _to_ego_frame(
+            pts_2d[j, 0], pts_2d[j, 1], headings[j],
+            ref_x, ref_y, ref_h
+        )
+        feats[j] = np.concatenate([
+            [x_e, y_e, math.sin(h_e), math.cos(h_e), speed_limit],
+            cat_onehot,
+        ])
+    return feats
+
+
 def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
                     ref_x: float, ref_y: float, ref_h: float):
     """
-    Load nearby lane centerlines and transform to ego-centric frame.
-    Dm=9 per point: x, y, sin(heading), cos(heading), speed_limit, 4×category_onehot
+    Load nearby lane polylines and transform to ego-centric frame.
+
+    Per paper §2.3: each polyline point has 3×Dm = 27 features —
+    center + left_boundary + right_boundary concatenated per point.
+    If a boundary is unavailable, centerline features are duplicated for that slot.
 
     Returns:
-      lanes:      (N_LANES, N_LANE_POINTS, Dm=9) — per-point features in ego frame
+      lanes:      (N_LANES, N_LANE_POINTS, D_POLYLINE_POINT=27) — per-point features in ego frame
       lanes_mask: (N_LANES,) — 1 if valid lane, 0 if padding
     """
-    # Map element categories (one-hot, 4 dims)
     _MAP_CATEGORIES = ['LANE', 'LANE_CONNECTOR', 'INTERSECTION', 'OTHER']
 
     point = Point2D(ref_x, ref_y)
@@ -138,7 +168,7 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
     except Exception:
         raw_lanes = []
 
-    lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT), dtype=np.float32)
+    lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32)
     lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
 
     for i, lane in enumerate(raw_lanes[:cfg.N_LANES]):
@@ -151,16 +181,9 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
         if len(centerline) < 2:
             continue
 
-        pts_2d = _resample_polyline(centerline, cfg.N_LANE_POINTS)
+        pts_center = _resample_polyline(centerline, cfg.N_LANE_POINTS)
 
-        headings = np.zeros(cfg.N_LANE_POINTS, dtype=np.float32)
-        for j in range(cfg.N_LANE_POINTS - 1):
-            dx = pts_2d[j+1, 0] - pts_2d[j, 0]
-            dy = pts_2d[j+1, 1] - pts_2d[j, 1]
-            headings[j] = math.atan2(dy, dx)
-        headings[-1] = headings[-2]
-
-        # Lane-level features
+        # Lane-level features (shared across center/left/right)
         _sl = getattr(lane, 'speed_limit_mps', None)
         speed_limit = float(_sl) if _sl is not None else 0.0
         lane_type = type(lane).__name__
@@ -174,16 +197,36 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
         else:
             cat_onehot[3] = 1.0
 
-        for j in range(cfg.N_LANE_POINTS):
-            x_e, y_e, h_e = _to_ego_frame(
-                pts_2d[j, 0], pts_2d[j, 1], headings[j],
-                ref_x, ref_y, ref_h
-            )
-            lanes[i, j] = np.concatenate([
-                [x_e, y_e, math.sin(h_e), math.cos(h_e), speed_limit],
-                cat_onehot,
-            ])
+        # Encode centerline
+        feats_center = _encode_polyline_pts(pts_center, speed_limit, cat_onehot,
+                                            ref_x, ref_y, ref_h)
 
+        # Left boundary (fallback: duplicate centerline)
+        try:
+            left_path = lane.left_boundary.discrete_path
+            if len(left_path) >= 2:
+                pts_left = _resample_polyline(left_path, cfg.N_LANE_POINTS)
+                feats_left = _encode_polyline_pts(pts_left, speed_limit, cat_onehot,
+                                                  ref_x, ref_y, ref_h)
+            else:
+                feats_left = feats_center.copy()
+        except Exception:
+            feats_left = feats_center.copy()
+
+        # Right boundary (fallback: duplicate centerline)
+        try:
+            right_path = lane.right_boundary.discrete_path
+            if len(right_path) >= 2:
+                pts_right = _resample_polyline(right_path, cfg.N_LANE_POINTS)
+                feats_right = _encode_polyline_pts(pts_right, speed_limit, cat_onehot,
+                                                   ref_x, ref_y, ref_h)
+            else:
+                feats_right = feats_center.copy()
+        except Exception:
+            feats_right = feats_center.copy()
+
+        # Concatenate: [center(9) | left(9) | right(9)] per point → (N_LANE_POINTS, 27)
+        lanes[i] = np.concatenate([feats_center, feats_left, feats_right], axis=-1)
         lanes_mask[i] = 1.0
 
     return lanes, lanes_mask
@@ -475,7 +518,7 @@ def _load_sample(db_path: str, token: str):
         )
     except Exception:
         # Fallback to zeros if map loading fails
-        map_lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT), dtype=np.float32)
+        map_lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32)
         map_lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
 
     # ── Mode assignment ───────────────────────────────────────────────────────
@@ -560,7 +603,7 @@ class NuPlanCarPlannerDataset(Dataset):
                 'agents_seq':          torch.zeros(cfg.T_FUTURE, cfg.N_AGENTS, cfg.D_AGENT),
                 'gt_trajectory':       torch.zeros(cfg.T_FUTURE, 3),
                 'mode_label':          torch.zeros(1, dtype=torch.long).squeeze(),
-                'map_lanes':           torch.zeros(cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT),
+                'map_lanes':           torch.zeros(cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT),
                 'map_lanes_mask':      torch.zeros(cfg.N_LANES),
             }
 
@@ -616,7 +659,7 @@ if __name__ == '__main__':
     assert batch['map_raster'].shape          == (8, cfg.BEV_C, cfg.BEV_H, cfg.BEV_W)
     assert batch['gt_trajectory'].shape       == (8, cfg.T_FUTURE, 3)
     assert batch['mode_label'].shape          == (8,)
-    assert batch['map_lanes'].shape           == (8, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT)
+    assert batch['map_lanes'].shape           == (8, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT)
     assert batch['map_lanes_mask'].shape      == (8, cfg.N_LANES)
 
     assert not torch.isnan(batch['ego_history']).any(), "NaN in ego_history"

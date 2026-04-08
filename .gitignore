@@ -7,20 +7,26 @@ __pycache__/
 dist/
 build/
 
-# Dataset and large files
+# Datasets and large files
 checkpoints/
 *.db
 *.zip
 *.log
 *.pt
+*.png
+*.jpg
+*.jpeg
+*.pdf
 
-# Paper: include docs but exclude large data
-paper/dataset/
-paper/.venv
+# Paper directory (symlink to external)
+paper/
 
 # Jupyter
 .ipynb_checkpoints/
 
-# Env
+# Virtual environments
 .venv/
 venv/
+
+# Claude / IDE
+.claude/

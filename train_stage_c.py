@@ -18,9 +18,13 @@ Usage:
 """
 
 import os
+import sys
 import argparse
 import copy
 import time
+
+# Flush stdout immediately so nohup log updates in real time
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 
 import torch
 import torch.nn.functional as F
@@ -171,17 +175,18 @@ def train(args):
         t0 = time.time()
 
         for batch_idx, batch in enumerate(loader):
-            agents_now   = batch['agents_now'].to(device)
-            agents_mask  = batch['agents_history_mask'].to(device)
-            gt_traj      = batch['gt_trajectory'].to(device)
-            mode_label   = batch['mode_label'].to(device)
-            map_lanes    = batch['map_lanes'].to(device)
-            map_lanes_mask = batch['map_lanes_mask'].to(device)
+            agents_now      = batch['agents_now'].to(device)
+            agents_history  = batch['agents_history'].to(device)      # (B, H, N, Da)
+            agents_mask     = batch['agents_history_mask'].to(device)
+            gt_traj         = batch['gt_trajectory'].to(device)
+            mode_label      = batch['mode_label'].to(device)
+            map_lanes       = batch['map_lanes'].to(device)
+            map_lanes_mask  = batch['map_lanes_mask'].to(device)
 
             # Step 1: Simulate agents with frozen transition model
             with torch.no_grad():
                 agent_futures = model.transition_model(
-                    agents_now, agents_mask
+                    agents_history, agents_mask
                 )                                            # (B, T, N, Da)
 
             # Step 2: Rollout with π_old (no grad)
@@ -216,6 +221,7 @@ def train(args):
                     map_lanes=map_lanes,
                     map_lanes_mask=map_lanes_mask,
                     stored_actions=traj_old,
+                    agents_history=agents_history,
                 )
 
             # Step 5: Losses

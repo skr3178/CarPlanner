@@ -11,9 +11,13 @@ Usage:
 """
 
 import os
+import sys
 import argparse
 import random
 import time
+
+# Flush stdout immediately so nohup log updates in real time
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 
 import torch
 
@@ -107,9 +111,9 @@ def train(args):
             t_preload = time.time()
             for batch in loader:
                 cached.append({
-                    'agents_now':  batch['agents_now'].to(device),
-                    'agents_mask': batch['agents_history_mask'].to(device),
-                    'agents_seq':  batch['agents_seq'].to(device),
+                    'agents_history': batch['agents_history'].to(device),
+                    'agents_mask':    batch['agents_history_mask'].to(device),
+                    'agents_seq':     batch['agents_seq'].to(device),
                 })
             elapsed = time.time() - t_preload
             print(f"[Stage A] Preloaded in {elapsed:.1f}s — saving cache...")
@@ -128,16 +132,20 @@ def train(args):
         batch_iter = random.sample(cached, len(cached)) if cached else loader
         for batch_idx, batch in enumerate(batch_iter):
             if cached:
-                agents_now  = batch['agents_now']
-                agents_mask = batch['agents_mask']
-                agents_seq  = batch['agents_seq']
+                agents_history  = batch['agents_history']
+                agents_mask     = batch['agents_mask']
+                agents_seq      = batch['agents_seq']
+                map_lanes       = batch.get('map_lanes')
+                map_lanes_mask  = batch.get('map_lanes_mask')
             else:
-                agents_now  = batch['agents_now'].to(device)
-                agents_mask = batch['agents_history_mask'].to(device)
-                agents_seq  = batch['agents_seq'].to(device)
+                agents_history  = batch['agents_history'].to(device)
+                agents_mask     = batch['agents_history_mask'].to(device)
+                agents_seq      = batch['agents_seq'].to(device)
+                map_lanes       = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
+                map_lanes_mask  = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
 
-            # Forward: predict agent futures from current state
-            agents_pred = model(agents_now, agents_mask)            # (B, T, N, Da)
+            # Forward: predict agent futures from history (map gives social context)
+            agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)  # (B, T, N, Da)
 
             # Loss: masked L1 (Eq 5)
             loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)

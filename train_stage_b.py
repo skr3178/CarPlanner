@@ -12,6 +12,9 @@ Optimizer: AdamW, lr=1e-4, ReduceLROnPlateau schedule (Section 4.1).
 import os
 import sys
 import argparse
+
+# Flush stdout immediately so nohup log updates in real time
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 import math
 import time
 
@@ -110,18 +113,20 @@ def train(args):
         t0 = time.time()
 
         for batch_idx, batch in enumerate(loader):
-            agents_now   = batch['agents_now'].to(device)            # (B, N, 4)
-            agents_mask  = batch['agents_history_mask'].to(device)  # (B, N)
-            agents_seq   = batch['agents_seq'].to(device)           # (B, T, N, 4)
-            gt_traj      = batch['gt_trajectory'].to(device)        # (B, T, 3)
-            mode_label   = batch['mode_label'].to(device)           # (B,)
-            map_lanes    = batch['map_lanes'].to(device)            # (B, N_LANES, N_PTS, 3)
-            map_lanes_mask = batch['map_lanes_mask'].to(device)     # (B, N_LANES)
+            agents_now      = batch['agents_now'].to(device)          # (B, N, Da)
+            agents_history  = batch['agents_history'].to(device)      # (B, H, N, Da)
+            agents_mask     = batch['agents_history_mask'].to(device) # (B, N)
+            agents_seq      = batch['agents_seq'].to(device)          # (B, T, N, Da)
+            gt_traj         = batch['gt_trajectory'].to(device)       # (B, T, 3)
+            mode_label      = batch['mode_label'].to(device)          # (B,)
+            map_lanes       = batch['map_lanes'].to(device)           # (B, N_LANES, N_PTS, 27)
+            map_lanes_mask  = batch['map_lanes_mask'].to(device)      # (B, N_LANES)
 
             # Forward (Algorithm 1, Stage 2 IL branch)
             mode_logits, side_traj, pred_traj = model.forward_train(
                 agents_now, agents_mask, agents_seq, gt_traj, mode_label,
-                map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
+                map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+                agents_history=agents_history,
             )
 
             # Loss (L_IL = L_CE + L_SideTask + L_generator)
