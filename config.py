@@ -34,6 +34,10 @@ LAT_BIN_EDGES = [-float('inf'), -3.0, -1.0, 1.0, 3.0, float('inf')]  # 5 bins
 # ── Feature dimensions (paper: Da=10, Dm=9) ──────────────────────────────────
 D_AGENT = 10          # per-agent pose: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
 D_MAP_POINT = 9       # per-map-point: x, y, sin_h, cos_h, speed_limit, 4×category_onehot
+
+# Per-feature normalization stds (from training data stats, valid agents only)
+# Dims: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
+AGENT_FEATURE_STD = [34.55, 16.12, 1.84, 1.90, 1.58, 0.76, 2.71, 0.66, 10.0, 1.0]
 D_POLYLINE_POINT = 3 * D_MAP_POINT  # = 27: center + left_boundary + right_boundary per point (paper §2.3: Np × 3Dm)
 
 # ── Architecture ──────────────────────────────────────────────────────────────
@@ -48,7 +52,7 @@ BATCH_SIZE = 64
 LR = 1e-4
 WEIGHT_DECAY = 1e-4
 EPOCHS = 50
-LR_PATIENCE = 0       # ReduceLROnPlateau — paper Section 4.1
+LR_PATIENCE = 0       # ReduceLROnPlateau — val loss patience
 LR_FACTOR = 0.3
 
 # ablation flags (IL best config: all True; RL best: dropout=True, side_task=True, rest=False)

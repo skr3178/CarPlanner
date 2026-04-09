@@ -39,16 +39,20 @@ def compute_transition_loss(pred, gt, mask):
     """
     Masked L1 loss for agent future prediction (Eq 5).
 
+    Only computes loss over motion dims 0-7 (x, y, heading, vx, vy, box_w, box_l, box_h).
+    Dims 8 (time_step) and 9 (category) are excluded — time_step is a deterministic
+    ramp and category is a fixed label, neither is a prediction target.
+
     Args:
         pred: (B, T, N, Da) — predicted agent futures
         gt:   (B, T, N, Da) — ground-truth agent futures (agents_seq)
         mask: (B, N)        — agent validity mask (1=valid, 0=padding)
 
     Returns:
-        Scalar loss: mean L1 over valid (B, T, N) entries.
+        Scalar loss: mean L1 over valid (B, T, N) entries on motion dims only.
     """
-    diff = (pred - gt).abs().sum(dim=-1)        # (B, T, N) — L1 per agent per step
-    mask_t = mask.unsqueeze(1).expand_as(diff)  # (B, T, N) — broadcast mask over time
+    diff = (pred[..., :8] - gt[..., :8]).abs().sum(dim=-1)  # (B, T, N) — L1 on motion dims
+    mask_t = mask.unsqueeze(1).expand_as(diff)               # (B, T, N)
     return (diff * mask_t).sum() / (mask_t.sum() + 1e-6)
 
 
@@ -66,8 +70,37 @@ def train(args):
         cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt"
     )
     use_cache = os.path.isfile(cache_path)
+    pin_gpu = args.pin_gpu and device.type == 'cuda'
 
-    if use_cache:
+    if use_cache and pin_gpu:
+        # GPU-pinned path: load entire cache to GPU once, zero transfers after
+        print(f"[Stage A] Loading cache to GPU (pin_gpu): {cache_path}")
+        t0 = time.time()
+        data = torch.load(cache_path, map_location=device)
+        gpu_cache = {
+            'agents_history':      data['agents_history'],
+            'agents_mask':         data['agents_mask'],
+            'agents_seq':          data['agents_seq'],
+            'map_lanes':           data['map_lanes'],
+            'map_lanes_mask':      data['map_lanes_mask'],
+        }
+        n_samples = data['n_samples']
+
+        # Train/val split (90/10)
+        n_val = max(1, int(n_samples * 0.1))
+        n_train = n_samples - n_val
+        perm = torch.randperm(n_samples, device=device)
+        train_idx, val_idx = perm[:n_train], perm[n_train:]
+        gpu_cache['train_idx'] = train_idx
+        gpu_cache['val_idx'] = val_idx
+        print(f"[Stage A] GPU cache: {n_samples} samples loaded in "
+              f"{time.time()-t0:.1f}s, ~{torch.cuda.memory_allocated()/1e9:.1f}GB GPU used")
+        print(f"[Stage A] Split: {n_train} train, {n_val} val")
+        loader = None
+        all_batches = None
+        n_train_samples = n_train
+        n_val_samples = n_val
+    elif use_cache:
         print(f"[Stage A] Loading pre-extracted cache: {cache_path}")
         loader = make_cached_dataloader(
             cache_path,
@@ -77,8 +110,11 @@ def train(args):
         )
         # For shuffling cached batches across epochs
         all_batches = list(loader)
+        # Train/val split (90/10) on batches
+        n_val_batches = max(1, int(len(all_batches) * 0.1))
+        n_train_batches = len(all_batches) - n_val_batches
         print(f"[Stage A] Cache loaded: {len(loader.dataset)} samples, "
-              f"{len(all_batches)} batches")
+              f"{len(all_batches)} batches (train={n_train_batches}, val={n_val_batches})")
     else:
         print(f"[Stage A] WARNING: No cache found at {cache_path}")
         print(f"[Stage A] Falling back to slow DataLoader (SQLite per sample).")
@@ -118,65 +154,143 @@ def train(args):
 
     os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
 
-    best_loss = float('inf')
+    best_val_loss = float('inf')
 
     for epoch in range(start_epoch, args.epochs):
+        # ── Training ──────────────────────────────────────────────────────────
         model.train()
         epoch_loss = 0.0
         n_batches = 0
         t0 = time.time()
 
-        # Epoch data: shuffle cached batches, or use DataLoader
-        if use_cache:
-            epoch_batches = random.sample(all_batches, len(all_batches))
+        # GPU-pinned fast path: direct tensor indexing, zero transfers
+        if pin_gpu:
+            # Shuffle train indices only
+            train_perm = torch.randperm(n_train_samples, device=device)
+            n_batches_epoch = (n_train_samples + args.batch_size - 1) // args.batch_size
+
+            for b in range(n_batches_epoch):
+                idx = train_idx[train_perm[b * args.batch_size : (b + 1) * args.batch_size]]
+
+                agents_history = gpu_cache['agents_history'][idx]
+                agents_mask = gpu_cache['agents_mask'][idx]
+                agents_seq = gpu_cache['agents_seq'][idx]
+                map_lanes = gpu_cache['map_lanes'][idx]
+                map_lanes_mask = gpu_cache['map_lanes_mask'][idx]
+
+                agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
+
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
+
+                epoch_loss += loss.item()
+                n_batches += 1
+
+                if (b + 1) % max(1, n_batches_epoch // 5) == 0:
+                    print(f"  Epoch {epoch+1}/{args.epochs}  "
+                          f"[{b+1}/{n_batches_epoch}]  "
+                          f"L_tm={loss.item():.4f}")
+
+        # Non-pinned path: shuffle cached batches, or use DataLoader
         else:
-            epoch_batches = loader
+            if use_cache:
+                # Split into train/val batches
+                shuffled = random.sample(all_batches, len(all_batches))
+                epoch_batches = shuffled[:n_train_batches]
+            else:
+                epoch_batches = loader
 
-        for batch_idx, batch in enumerate(epoch_batches):
-            agents_history = batch['agents_history'].to(device)
-            agents_mask = batch['agents_history_mask'].to(device)
-            agents_seq = batch['agents_seq'].to(device)
-            map_lanes = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
-            map_lanes_mask = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
+            for batch_idx, batch in enumerate(epoch_batches):
+                agents_history = batch['agents_history'].to(device)
+                agents_mask = batch['agents_history_mask'].to(device)
+                agents_seq = batch['agents_seq'].to(device)
+                map_lanes = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
+                map_lanes_mask = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
 
-            # Forward: predict agent futures from history + map context
-            agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                # Forward: predict agent futures from history + map context
+                agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
 
-            # Loss: masked L1 (Eq 5)
-            loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
+                # Loss: masked L1 (Eq 5)
+                loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
 
-            # Backward
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
+                # Backward
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
 
-            epoch_loss += loss.item()
-            n_batches += 1
+                epoch_loss += loss.item()
+                n_batches += 1
 
-            if (batch_idx + 1) % max(1, len(epoch_batches) // 5) == 0:
-                print(f"  Epoch {epoch+1}/{args.epochs}  "
-                      f"[{batch_idx+1}/{len(epoch_batches)}]  "
-                      f"L_tm={loss.item():.4f}")
+                if (batch_idx + 1) % max(1, len(epoch_batches) // 5) == 0:
+                    print(f"  Epoch {epoch+1}/{args.epochs}  "
+                          f"[{batch_idx+1}/{len(epoch_batches)}]  "
+                          f"L_tm={loss.item():.4f}")
 
-        # Epoch summary
-        avg_loss = epoch_loss / max(n_batches, 1)
+        avg_train_loss = epoch_loss / max(n_batches, 1)
         elapsed = time.time() - t0
+
+        # ── Validation ────────────────────────────────────────────────────────
+        model.eval()
+        val_loss_sum = 0.0
+        val_batches = 0
+
+        if pin_gpu:
+            n_val_batches = (n_val_samples + args.batch_size - 1) // args.batch_size
+            with torch.no_grad():
+                for b in range(n_val_batches):
+                    idx = val_idx[b * args.batch_size : (b + 1) * args.batch_size]
+                    agents_history = gpu_cache['agents_history'][idx]
+                    agents_mask = gpu_cache['agents_mask'][idx]
+                    agents_seq = gpu_cache['agents_seq'][idx]
+                    map_lanes = gpu_cache['map_lanes'][idx]
+                    map_lanes_mask = gpu_cache['map_lanes_mask'][idx]
+
+                    agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                    loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
+                    val_loss_sum += loss.item()
+                    val_batches += 1
+        elif use_cache:
+            val_batches_data = shuffled[n_train_batches:]
+            with torch.no_grad():
+                for batch in val_batches_data:
+                    agents_history = batch['agents_history'].to(device)
+                    agents_mask = batch['agents_history_mask'].to(device)
+                    agents_seq = batch['agents_seq'].to(device)
+                    map_lanes = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
+                    map_lanes_mask = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
+
+                    agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                    loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
+                    val_loss_sum += loss.item()
+                    val_batches += 1
+        else:
+            # Fallback: no val split for slow DataLoader, use train loss
+            val_loss_sum = epoch_loss
+            val_batches = n_batches
+
+        avg_val_loss = val_loss_sum / max(val_batches, 1)
+
         print(f"Epoch {epoch+1}/{args.epochs}  "
-              f"L_tm={avg_loss:.4f}  "
+              f"train={avg_train_loss:.4f}  val={avg_val_loss:.4f}  "
+              f"lr={optimizer.param_groups[0]['lr']:.2e}  "
               f"({elapsed:.1f}s, {elapsed/max(n_batches,1):.2f}s/batch)")
 
-        scheduler.step(avg_loss)
+        # LR scheduler based on VALIDATION loss
+        scheduler.step(avg_val_loss)
 
-        # Save checkpoint
-        is_best = avg_loss < best_loss
-        best_loss = min(avg_loss, best_loss)
+        # Save checkpoint based on VALIDATION loss
+        is_best = avg_val_loss < best_val_loss
+        best_val_loss = min(avg_val_loss, best_val_loss)
 
         ckpt = {
             'epoch': epoch,
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'loss': avg_loss,
+            'loss': avg_val_loss,
         }
         ckpt_path = os.path.join(
             cfg.CHECKPOINT_DIR, f"stage_a_epoch_{epoch+1:03d}.pt"
@@ -185,9 +299,9 @@ def train(args):
         if is_best:
             best_path = os.path.join(cfg.CHECKPOINT_DIR, "stage_a_best.pt")
             torch.save(ckpt, best_path)
-            print(f"  * New best saved: {best_path}")
+            print(f"  * New best (val) saved: {best_path}")
 
-    print(f"\n[Stage A] Done. Best L_tm={best_loss:.4f}")
+    print(f"\n[Stage A] Done. Best val L_tm={best_val_loss:.4f}")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
@@ -206,6 +320,8 @@ def parse_args():
                    help='Cap on samples per DB file (slow fallback only)')
     p.add_argument('--resume', default=None,
                    help='Path to Stage A checkpoint to resume from')
+    p.add_argument('--pin_gpu', action='store_true',
+                   help='Load entire cache to GPU for zero-transfer training')
     return p.parse_args()
 
 

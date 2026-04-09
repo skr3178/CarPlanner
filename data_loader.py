@@ -525,7 +525,7 @@ def _load_sample(db_path: str, token: str):
             list(range(2, cfg.T_FUTURE * 2 + 1, 2)), future=True  # 10Hz: every 2nd frame of 20Hz DB
         ))
         for step_i, pc in enumerate(future_pcs[:cfg.T_FUTURE]):
-            arr_t, _ = _load_agents_at_token(pc.token)
+            arr_t, _ = _load_agents_at_token(pc.token, time_step=float(step_i + 1))
             agents_seq[step_i] = arr_t
     except Exception:
         # Fallback: hold agents static (current frame repeated)

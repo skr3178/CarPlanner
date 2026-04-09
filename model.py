@@ -1023,6 +1023,12 @@ class TransitionModel(nn.Module):
         super().__init__()
         D = cfg.D_HIDDEN
 
+        # Feature normalization constants (registered buffer for device tracking)
+        self.register_buffer(
+            'feat_std',
+            torch.tensor(cfg.AGENT_FEATURE_STD, dtype=torch.float32).reshape(1, 1, 1, -1)
+        )  # (1, 1, 1, Da) — broadcastable to (B, H, N, Da)
+
         # 1. Agent encoder: shared MLP over Da-dim poses, max-pool over H per agent
         self.agent_encoder = PointNetEncoder(in_dim=cfg.D_AGENT, d_model=D)
 
@@ -1039,7 +1045,7 @@ class TransitionModel(nn.Module):
             self.transformer_layer, num_layers=2
         )
 
-        # 4. Per-agent decoder: [per-agent feat; global feat] → T × D_a
+        # 4. Per-agent decoder: [per-agent feat; global feat] → T × D_a (DELTA from s_0)
         self.per_agent_head = nn.Sequential(
             nn.Linear(D + D, D), nn.ReLU(inplace=True),
             nn.Linear(D, cfg.T_FUTURE * cfg.D_AGENT),
@@ -1053,8 +1059,14 @@ class TransitionModel(nn.Module):
         # agents_history: (B, H, N, Da) — H poses per agent
         B, H, N, Da = agents_history.shape
 
+        # Normalize features to unit scale for stable gradients
+        hist_norm = agents_history / self.feat_std            # (B, H, N, Da)
+
+        # Extract s_0 = current-frame state (last timestep in history, normalized)
+        s_0_norm = hist_norm[:, -1, :, :]                   # (B, N, Da)
+
         # Reshape to (B*N, H, Da) to apply shared MLP per-point over H
-        hist = agents_history.permute(0, 2, 1, 3).reshape(B * N, H, Da)
+        hist = hist_norm.permute(0, 2, 1, 3).reshape(B * N, H, Da)
         per_point = self.agent_encoder.mlp(hist)             # (B*N, H, D)
         per_agent = per_point.max(dim=1).values              # (B*N, D) — pool over H
         per_agent = per_agent.reshape(B, N, -1)              # (B, N, D)
@@ -1096,14 +1108,18 @@ class TransitionModel(nn.Module):
         valid_count = agents_mask.sum(dim=1, keepdim=True).clamp(min=1)  # (B, 1)
         global_fused = valid_sum.sum(dim=1) / valid_count    # (B, D)
 
-        # 4. Per-agent decoder
+        # 4. Per-agent decoder: predict delta from s_0 (in normalized space)
         g_exp = global_fused.unsqueeze(1).expand(-1, N, -1)  # (B, N, D)
-        out = self.per_agent_head(
+        delta_norm = self.per_agent_head(
             torch.cat([per_agent_fused, g_exp], dim=-1)
         )                                                    # (B, N, T*Da)
-        return out.view(B, N, cfg.T_FUTURE, cfg.D_AGENT).permute(
-            0, 2, 1, 3
-        )                                                    # (B, T, N, Da)
+        delta_norm = delta_norm.view(B, N, cfg.T_FUTURE, cfg.D_AGENT)
+        # Residual in normalized space: prediction = current state + learned delta
+        pred_norm = s_0_norm.unsqueeze(2) + delta_norm       # (B, N, T, Da) normalized
+        # Denormalize: (B, N, T, Da) * (1, 1, 1, Da) → raw space
+        pred = pred_norm * self.feat_std
+        pred = pred.permute(0, 2, 1, 3)                      # (B, T, N, Da)
+        return pred
 
 
 # ─────────────────────────────────────────────────────────────────────────────
