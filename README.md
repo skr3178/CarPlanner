@@ -927,3 +927,168 @@ You'll need cv2 installed for nuPlan devkit imports:
 pip install opencv-python
 
 And the nuPlan devkit environment must be fully set up (the simulation requires the full devkit stack).
+Now I have a **much more complete picture**, and my earlier answer was incomplete. Two big new findings:
+
+## Finding 1: The model is **worse than a trivial copy baseline**
+
+```
+Naive baseline "predict s_0 for all T"  →  L_tm = 14.4423
+Trained model (epoch 182, best)          →  L_tm = 15.3507
+Naive baseline "predict zeros"           →  L_tm = 52.5947
+```
+
+**The trained model never even reached the copy-s_0 baseline.** It started at ~50 (close to predict-zeros), descended, and got stuck at 15.35 — *above* 14.44. So the LR decay isn't the only problem; even with a healthy LR, the model found a local minimum worse than a trivial copy.
+
+## Finding 2: Raw, unnormalized features with huge dynamic range
+
+Per-feature stats of `agents_seq` (valid agents only):
+
+| Dim | Feature | abs_mean | std | range |
+|---|---|---|---|---|
+| 0 | x | **29.58** | 34.55 | [-82, +91] |
+| 1 | y | **12.25** | 16.12 | [-80, +81] |
+| 2 | heading | 1.42 | 1.84 | [-π, π] |
+| 3 | vx | 0.63 | 1.90 | [-17.7, 17.8] |
+| 4 | vy | 0.52 | 1.58 | [-15.4, 13.0] |
+| 5 | box_w | 1.71 | 0.76 | [0, 5.8] |
+| 6 | box_l | 3.78 | 2.71 | [0, 20.0] |
+| 7 | box_h | 1.78 | 0.66 | [0, 9.1] |
+| 8 | **time_step** | **0.00** | **0.00** | **[0, 0]** |
+| 9 | category | 0.93 | 1.56 | [0, 4] |
+
+**Dim 8 (time_step) is dead — always zero.** That's a bug in `data_loader.py` extraction. Not critical but a loose end.
+
+## Revised root-cause summary (ranked)
+
+### Cause A: Model has no residual/copy inductive bias — **primary**
+The architecture max-pools over the H=10 history frames (`model.py:1059`), collapsing all temporal information into one per-agent vector. The decoder then has to **reconstruct s_0 from scratch** for the output. There's no skip connection from s_0 to the output.
+
+Consequence: the model can't easily express "predict current state" which is the optimal zero-effort baseline. It gets stuck in a local minimum *worse* than copy.
+
+**Fix:** Make the model predict a **delta from s_0**:
+```python
+pred_delta = self.per_agent_head(...)  # (B, N, T, Da)
+pred = s_0.unsqueeze(1) + pred_delta   # residual: easy init ≈ copy s_0
+```
+With this, zero initialization gives loss 14.44 from epoch 0, and the model only learns the hard part (the motion).
+
+### Cause B: Raw unnormalized features — **contributing**
+x has mean-abs 29.6m, y has 12.2m. The network regresses absolute meter values directly. Without normalization, gradients are dominated by far-away agents and box dims (constant but large). Standard fix: normalize per-feature to unit std.
+
+### Cause C: LR collapse (confirmed) — **secondary**
+At checkpoint: `lr = 6.56e-09` (8 reductions from 1e-4). Happened because `patience=0` was applied to noisy training loss instead of smooth validation loss. This **locked in** the bad local minimum of cause A — once stuck, LR couldn't recover.
+
+### Cause D: PointNet max-pool over time destroys ordering — **architectural**
+With `max(dim=1)` over H frames, the per-agent feature doesn't distinguish "moving right" from "moving left" in the temporal sense — only "which frame had the largest value per channel." A GRU or per-time-step attention would preserve ordering. But this may be secondary if the residual connection (Cause A fix) gives enough signal.
+
+---
+
+## What to actually fix (priority order)
+
+1. **Add residual connection** in `TransitionModel.forward` — `pred = s_0 + delta`. This alone should drop loss below 14.44.
+2. **Validation-based scheduler** — add val split, use val_loss for `scheduler.step()`.
+3. **Normalize features** — at minimum, divide x/y by ~30m before feeding in and after predicting.
+4. **Fix `time_step` extraction bug** in `data_loader.py` (low priority, doesn't affect plateau).
+
+Without fix #1, fixing the LR alone will likely just let the model continue to its bad local minimum more slowly. The core bug is architectural, not just a schedule issue.
+
+## Fixes needed:
+
+
+Now I have a **much more complete picture**, and my earlier answer was incomplete. Two big new findings:
+
+## Finding 1: The model is **worse than a trivial copy baseline**
+
+```
+Naive baseline "predict s_0 for all T"  →  L_tm = 14.4423
+Trained model (epoch 182, best)          →  L_tm = 15.3507
+Naive baseline "predict zeros"           →  L_tm = 52.5947
+```
+
+**The trained model never even reached the copy-s_0 baseline.** It started at ~50 (close to predict-zeros), descended, and got stuck at 15.35 — *above* 14.44. So the LR decay isn't the only problem; even with a healthy LR, the model found a local minimum worse than a trivial copy.
+
+## Finding 2: Raw, unnormalized features with huge dynamic range
+
+Per-feature stats of `agents_seq` (valid agents only):
+
+| Dim | Feature | abs_mean | std | range |
+|---|---|---|---|---|
+| 0 | x | **29.58** | 34.55 | [-82, +91] |
+| 1 | y | **12.25** | 16.12 | [-80, +81] |
+| 2 | heading | 1.42 | 1.84 | [-π, π] |
+| 3 | vx | 0.63 | 1.90 | [-17.7, 17.8] |
+| 4 | vy | 0.52 | 1.58 | [-15.4, 13.0] |
+| 5 | box_w | 1.71 | 0.76 | [0, 5.8] |
+| 6 | box_l | 3.78 | 2.71 | [0, 20.0] |
+| 7 | box_h | 1.78 | 0.66 | [0, 9.1] |
+| 8 | **time_step** | **0.00** | **0.00** | **[0, 0]** |
+| 9 | category | 0.93 | 1.56 | [0, 4] |
+
+**Dim 8 (time_step) is dead — always zero.** That's a bug in `data_loader.py` extraction. Not critical but a loose end.
+
+## Revised root-cause summary (ranked)
+
+### Cause A: Model has no residual/copy inductive bias — **primary**
+The architecture max-pools over the H=10 history frames (`model.py:1059`), collapsing all temporal information into one per-agent vector. The decoder then has to **reconstruct s_0 from scratch** for the output. There's no skip connection from s_0 to the output.
+
+Consequence: the model can't easily express "predict current state" which is the optimal zero-effort baseline. It gets stuck in a local minimum *worse* than copy.
+
+**Fix:** Make the model predict a **delta from s_0**:
+```python
+pred_delta = self.per_agent_head(...)  # (B, N, T, Da)
+pred = s_0.unsqueeze(1) + pred_delta   # residual: easy init ≈ copy s_0
+```
+With this, zero initialization gives loss 14.44 from epoch 0, and the model only learns the hard part (the motion).
+
+### Cause B: Raw unnormalized features — **contributing**
+x has mean-abs 29.6m, y has 12.2m. The network regresses absolute meter values directly. Without normalization, gradients are dominated by far-away agents and box dims (constant but large). Standard fix: normalize per-feature to unit std.
+
+### Cause C: LR collapse (confirmed) — **secondary**
+At checkpoint: `lr = 6.56e-09` (8 reductions from 1e-4). Happened because `patience=0` was applied to noisy training loss instead of smooth validation loss. This **locked in** the bad local minimum of cause A — once stuck, LR couldn't recover.
+
+### Cause D: PointNet max-pool over time destroys ordering — **architectural**
+With `max(dim=1)` over H frames, the per-agent feature doesn't distinguish "moving right" from "moving left" in the temporal sense — only "which frame had the largest value per channel." A GRU or per-time-step attention would preserve ordering. But this may be secondary if the residual connection (Cause A fix) gives enough signal.
+
+---
+
+## What to actually fix (priority order)
+
+1. **Add residual connection** in `TransitionModel.forward` — `pred = s_0 + delta`. This alone should drop loss below 14.44.
+2. **Validation-based scheduler** — add val split, use val_loss for `scheduler.step()`.
+3. **Normalize features** — at minimum, divide x/y by ~30m before feeding in and after predicting.
+4. **Fix `time_step` extraction bug** in `data_loader.py` (low priority, doesn't affect plateau).
+
+Without fix #1, fixing the LR alone will likely just let the model continue to its bad local minimum more slowly. The core bug is architectural, not just a schedule issue.
+
+Want me to implement the residual connection and validation split?
+
+data_loader.py — add polygon extraction alongside lanes:                                                                                   
+# Currently only queries this:
+map_objs = map_api.get_proximal_map_objects(point, cfg.MAP_QUERY_RADIUS, [SemanticMapLayer.LANE])                                          
+                                                                                                                                       
+# Needs to also query:                                                                                                                     
+SemanticMapLayer.INTERSECTION                                                                                                              
+SemanticMapLayer.CROSSWALK                                                                                                                 
+SemanticMapLayer.STOP_LINE                                                                                                                 
+                    
+Each polygon needs to be resampled to Np points and encoded into its own tensor (N_POLY, N_PTS, D_POLY_POINT) — similar to lanes but for
+closed polygons rather than open polylines.                                                                                                
+
+model.py — add a second PointNet for polygons and concatenate with polyline features.                                                               
+config.py — add N_POLYGONS, D_POLYGON_POINT constants.
+
+┌───────────────────────────────┬──────────────────────┐
+│            Metric             │        Value         │
+├───────────────────────────────┼──────────────────────┤
+│ Model L_tm                    │ 9.92                 │
+├───────────────────────────────┼──────────────────────┤
+│ Stationary baseline (copy-s₀) │ 13.25                │
+├───────────────────────────────┼──────────────────────┤
+│ Improvement over baseline     │ +25.2%               │
+├───────────────────────────────┼──────────────────────┤
+│ Non-reactivity ratio          │ 0.022 (target: <0.1) │
+└───────────────────────────────┴──────────────────────┘
+Both tests pass:
+- The transition model beats the stationary baseline by 25% — it's learning meaningful agent dynamics
+- The non-reactivity ratio is 0.022 — predicted agent futures barely change when ego position is perturbed, confirming the model correctly
+ignores ego

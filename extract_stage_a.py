@@ -146,7 +146,8 @@ def extract(args):
 
 def parse_args():
     p = argparse.ArgumentParser(description="Extract data from SQLite to .pt cache (all stages)")
-    p.add_argument('--split', default='mini', choices=['mini', 'train_boston'])
+    p.add_argument('--split', default='mini',
+                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore'])
     p.add_argument('--max_per_file', type=int, default=None)
     p.add_argument('--num_workers', type=int, default=8,
                    help='Parallel CPU workers for DB reads (default: 8)')

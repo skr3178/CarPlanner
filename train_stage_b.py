@@ -70,8 +70,28 @@ def train(args):
         cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt"
     )
     use_cache = os.path.isfile(cache_path)
+    pin_gpu = args.pin_gpu and device.type == 'cuda'
 
-    if use_cache:
+    if use_cache and pin_gpu:
+        print(f"[Train] Loading cache to GPU (pin_gpu): {cache_path}")
+        t0 = time.time()
+        data = torch.load(cache_path, map_location=device)
+        gpu_cache = {
+            'agents_now':          data['agents_now'],
+            'agents_history':      data['agents_history'],
+            'agents_mask':         data['agents_mask'],
+            'agents_seq':          data['agents_seq'],
+            'gt_trajectory':       data['gt_trajectory'],
+            'mode_label':          data['mode_label'],
+            'map_lanes':           data['map_lanes'],
+            'map_lanes_mask':      data['map_lanes_mask'],
+        }
+        n_samples = data['n_samples']
+        loader = None
+        all_batches = None
+        print(f"[Train] GPU cache: {n_samples} samples in "
+              f"{time.time()-t0:.1f}s, ~{torch.cuda.memory_allocated()/1e9:.1f}GB GPU used")
+    elif use_cache:
         print(f"[Train] Loading pre-extracted cache: {cache_path}")
         loader = make_cached_dataloader(
             cache_path,
@@ -80,7 +100,8 @@ def train(args):
             num_workers=0,
         )
         all_batches = list(loader)
-        print(f"[Train] Cache loaded: {len(loader.dataset)} samples, "
+        n_samples = len(loader.dataset)
+        print(f"[Train] Cache loaded: {n_samples} samples, "
               f"{len(all_batches)} batches")
     else:
         print(f"[Train] WARNING: No cache found. Falling back to slow DataLoader.")
@@ -92,7 +113,8 @@ def train(args):
             max_per_file=args.max_per_file,
         )
         all_batches = None
-        print(f"[Train] Dataset size: {len(loader.dataset)}, "
+        n_samples = len(loader.dataset)
+        print(f"[Train] Dataset size: {n_samples}, "
               f"Batches/epoch: {len(loader)}")
 
     # Model
@@ -132,16 +154,43 @@ def train(args):
         epoch_losses = {'L_CE': 0., 'L_side': 0., 'L_gen': 0., 'L_total': 0.}
         t0 = time.time()
 
-        epoch_batches = random.sample(all_batches, len(all_batches)) if use_cache else loader
-        for batch_idx, batch in enumerate(epoch_batches):
-            agents_now      = batch['agents_now'].to(device)          # (B, N, Da)
-            agents_history  = batch['agents_history'].to(device)      # (B, H, N, Da)
-            agents_mask     = batch['agents_history_mask'].to(device) # (B, N)
-            agents_seq      = batch['agents_seq'].to(device)          # (B, T, N, Da)
-            gt_traj         = batch['gt_trajectory'].to(device)       # (B, T, 3)
-            mode_label      = batch['mode_label'].to(device)          # (B,)
-            map_lanes       = batch['map_lanes'].to(device)           # (B, N_LANES, N_PTS, 27)
-            map_lanes_mask  = batch['map_lanes_mask'].to(device)      # (B, N_LANES)
+        if pin_gpu:
+            perm = torch.randperm(n_samples, device=device)
+            n_batches_epoch = n_samples // args.batch_size
+
+        def get_batch(batch_idx, batch=None):
+            if pin_gpu:
+                idx = perm[batch_idx * args.batch_size:(batch_idx + 1) * args.batch_size]
+                return (gpu_cache['agents_now'][idx],
+                        gpu_cache['agents_history'][idx],
+                        gpu_cache['agents_mask'][idx],
+                        gpu_cache['agents_seq'][idx],
+                        gpu_cache['gt_trajectory'][idx],
+                        gpu_cache['mode_label'][idx],
+                        gpu_cache['map_lanes'][idx],
+                        gpu_cache['map_lanes_mask'][idx])
+            else:
+                return (batch['agents_now'].to(device),
+                        batch['agents_history'].to(device),
+                        batch['agents_history_mask'].to(device),
+                        batch['agents_seq'].to(device),
+                        batch['gt_trajectory'].to(device),
+                        batch['mode_label'].to(device),
+                        batch['map_lanes'].to(device),
+                        batch['map_lanes_mask'].to(device))
+
+        cpu_batches = random.sample(all_batches, len(all_batches)) if (use_cache and not pin_gpu) else (loader if not pin_gpu else [])
+        outer = range(n_batches_epoch) if pin_gpu else enumerate(cpu_batches)
+
+        for item in outer:
+            if pin_gpu:
+                batch_idx = item
+                agents_now, agents_history, agents_mask, agents_seq, \
+                    gt_traj, mode_label, map_lanes, map_lanes_mask = get_batch(batch_idx)
+            else:
+                batch_idx, batch = item
+                agents_now, agents_history, agents_mask, agents_seq, \
+                    gt_traj, mode_label, map_lanes, map_lanes_mask = get_batch(batch_idx, batch)
 
             # Forward (Algorithm 1, Stage 2 IL branch)
             mode_logits, side_traj, pred_traj = model.forward_train(
@@ -164,7 +213,8 @@ def train(args):
             for k in epoch_losses:
                 epoch_losses[k] += loss_dict[k]
 
-            if (batch_idx + 1) % max(1, len(loader) // 5) == 0:
+            n_batches_total = n_batches_epoch if pin_gpu else len(cpu_batches)
+            if (batch_idx + 1) % max(1, n_batches_total // 5) == 0:
                 print(f"  Epoch {epoch+1}/{args.epochs}  "
                       f"[{batch_idx+1}/{len(loader)}]  "
                       f"L_total={loss_dict['L_total']:.4f}  "
@@ -172,7 +222,7 @@ def train(args):
                       f"L_gen={loss_dict['L_gen']:.4f}")
 
         # Epoch summary
-        n = len(epoch_batches)
+        n = n_batches_epoch if pin_gpu else len(cpu_batches)
         avg = {k: v / n for k, v in epoch_losses.items()}
         elapsed = time.time() - t0
         print(f"Epoch {epoch+1}/{args.epochs}  "
@@ -209,7 +259,7 @@ def train(args):
 def parse_args():
     p = argparse.ArgumentParser(description="CarPlanner IL training")
     p.add_argument('--split', default='mini',
-                   choices=['mini', 'train_boston'])
+                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore', 'train_all'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)
@@ -219,6 +269,8 @@ def parse_args():
                    help='Path to checkpoint to resume from')
     p.add_argument('--transition_ckpt', default=None,
                    help='Path to Stage A checkpoint (loads frozen transition model)')
+    p.add_argument('--pin_gpu', action='store_true',
+                   help='Load entire cache to GPU for faster training')
     return p.parse_args()
 
 

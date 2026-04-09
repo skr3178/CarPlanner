@@ -326,7 +326,7 @@ def train(args):
 def parse_args():
     p = argparse.ArgumentParser(description="CarPlanner RL fine-tuning (Stage C)")
     p.add_argument('--split', default='mini',
-                   choices=['mini', 'train_boston'])
+                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore', 'train_all'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)

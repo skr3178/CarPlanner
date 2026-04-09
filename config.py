@@ -9,6 +9,8 @@ import os
 BASE_DIR = "/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-extracted"
 MINI_DIR = os.path.join(BASE_DIR, "data/cache/mini")
 TRAIN_DIR = os.path.join(BASE_DIR, "data/cache/train_boston")
+TRAIN_PITTSBURGH_DIR = "/home/skr/nuplan_cities/pittsburgh/data/cache/train_pittsburgh"
+TRAIN_SINGAPORE_DIR = "/home/skr/nuplan_cities/singapore/data/cache/train_singapore"
 MAPS_DIR = os.path.join(BASE_DIR, "nuplan-maps-v1.0")
 
 # ── Data dimensions ───────────────────────────────────────────────────────────
@@ -75,6 +77,10 @@ MAP_QUERY_RADIUS = 50.0          # meters — radius to query nearby lanes
 N_LANES = 20                     # max lanes to encode (padded/truncated)
 N_LANE_POINTS = 10               # points per lane polyline (resampled)
 D_LANE = 64                      # lane encoder output dim
+
+# ── Polygon map encoding ──────────────────────────────────────────────────────
+N_POLYGONS = 10                      # max polygons per scene (crosswalks, intersections, stop lines)
+D_POLYGON_POINT = D_MAP_POINT        # per-polygon point: x, y, heading, speed_limit, category (= 9)
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 CHECKPOINT_DIR = os.path.join(

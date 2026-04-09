@@ -22,14 +22,14 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import config as cfg
-from data_loader import make_dataloader
+from data_loader import make_dataloader, make_cached_dataloader
 from model import TransitionModel
 
 
 # ── Loss (same as train_stage_a) ────────────────────────────────────────────
 
 def compute_transition_loss(pred, gt, mask):
-    diff = (pred - gt).abs().sum(dim=-1)        # (B, T, N)
+    diff = (pred[..., :8] - gt[..., :8]).abs().sum(dim=-1)  # (B, T, N) — motion dims only
     mask_t = mask.unsqueeze(1).expand_as(diff)
     return (diff * mask_t).sum() / (mask_t.sum() + 1e-6)
 
@@ -220,10 +220,17 @@ def main():
     loss  = ckpt.get('loss',  '?')
     print(f'[Stage A Eval] Loaded epoch {epoch}, train L_tm={loss}')
 
-    loader = make_dataloader(
-        args.split, batch_size=args.batch_size,
-        shuffle=False, num_workers=2,
-    )
+    cache_path = os.path.join(cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt")
+    if os.path.isfile(cache_path):
+        print(f'[Stage A Eval] Using cache: {cache_path}')
+        loader = make_cached_dataloader(
+            cache_path, batch_size=args.batch_size, shuffle=False, num_workers=0,
+        )
+    else:
+        print(f'[Stage A Eval] No cache found, using slow DataLoader')
+        loader = make_dataloader(
+            args.split, batch_size=args.batch_size, shuffle=False, num_workers=2,
+        )
 
     test_loss_vs_baseline(model, loader, device, args.n_batches)
     test_trajectory_plot(model, loader, device, args.plot)

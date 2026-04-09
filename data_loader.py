@@ -573,7 +573,7 @@ class NuPlanCarPlannerDataset(Dataset):
 
     def __init__(self, split: str, max_per_file: int = None):
         """
-        split: 'mini' | 'train_boston'
+        split: 'mini' | 'train_boston' | 'train_pittsburgh' | 'train_singapore'
         max_per_file: cap on tokens loaded per .db file (None = all)
         """
         if split == 'mini':
@@ -582,6 +582,14 @@ class NuPlanCarPlannerDataset(Dataset):
                 max_per_file = cfg.MAX_SAMPLES_PER_FILE_MINI
         elif split == 'train_boston':
             db_dir = cfg.TRAIN_DIR
+            if max_per_file is None:
+                max_per_file = cfg.MAX_SAMPLES_PER_FILE_TRAIN
+        elif split == 'train_pittsburgh':
+            db_dir = cfg.TRAIN_PITTSBURGH_DIR
+            if max_per_file is None:
+                max_per_file = cfg.MAX_SAMPLES_PER_FILE_TRAIN
+        elif split == 'train_singapore':
+            db_dir = cfg.TRAIN_SINGAPORE_DIR
             if max_per_file is None:
                 max_per_file = cfg.MAX_SAMPLES_PER_FILE_TRAIN
         else:
