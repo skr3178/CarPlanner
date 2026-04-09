@@ -54,12 +54,12 @@ class PolygonEncoder(nn.Module):
         Returns:  (B, N_POLYGONS, D_POLYGON)
         """
         B, N_poly, N_P, D = polygons.shape
-        flat = polygons.view(B * N_poly, N_P, D)
+        flat = polygons.reshape(B * N_poly, N_P, D)
         per_point = self.point_mlp(flat)                         # (B*N_poly, N_P, d_model)
 
         # Max-pool over points within each polygon
         poly_feat = per_point.max(dim=1).values                  # (B*N_poly, d_model)
-        poly_feat = poly_feat.view(B, N_poly, self.d_model)
+        poly_feat = poly_feat.reshape(B, N_poly, self.d_model)
 
         if mask is not None:
             poly_feat = poly_feat * mask.unsqueeze(-1)
@@ -99,6 +99,9 @@ class CombinedMapEncoder(nn.Module):
         self.map_proj = nn.Linear(cfg.D_LANE, cfg.D_HIDDEN)
 
     def forward(self, lane_polylines, lane_mask, polygons, polygon_mask):
+        # Ensure contiguous (sliced tensors may be non-contiguous)
+        lane_polylines = lane_polylines.contiguous()
+        polygons = polygons.contiguous()
         # Polyline features: (B, N_LANES, D_LANE)
         polyline_feats = self.polyline_encoder(lane_polylines, lane_mask)
         # Polygon features: (B, N_POLYGONS, D_LANE)

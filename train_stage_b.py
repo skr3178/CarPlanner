@@ -127,6 +127,34 @@ def train(args):
         model.load_transition_model(args.transition_ckpt, freeze=True)
         print(f"[Train] Loaded frozen transition model from: {args.transition_ckpt}")
 
+    # Pre-compute β outputs for all samples once, store on CPU RAM (1.67 GB).
+    # β is frozen + inputs are fixed → output is identical every epoch.
+    # Per-batch: slice CPU tensor → transfer ~200KB to GPU → no redundant recomputes.
+    beta_seq_cpu = None
+    if args.transition_ckpt and pin_gpu:
+        print(f"[Train] Pre-computing β outputs for {n_samples} samples (stored on CPU)...")
+        t0 = time.time()
+        model.eval()
+        precomp_bs = 512
+        chunks = []
+        with torch.no_grad():
+            for start in range(0, n_samples, precomp_bs):
+                end = min(start + precomp_bs, n_samples)
+                out = model.transition_model(
+                    gpu_cache['agents_history'][start:end],
+                    gpu_cache['agents_mask'][start:end],
+                    gpu_cache['map_lanes'][start:end],
+                    gpu_cache['map_lanes_mask'][start:end],
+                )                                          # (chunk, T, N, Da) on GPU
+                chunks.append(out.cpu())                   # move to CPU immediately
+                del out
+        beta_seq_cpu = torch.cat(chunks, dim=0)            # (N, T, N_agents, Da) on CPU
+        model._transition_loaded = False                   # disable per-batch β — we cached it
+        model.train()
+        size_gb = beta_seq_cpu.element_size() * beta_seq_cpu.nelement() / 1e9
+        print(f"[Train] β pre-computation done in {time.time()-t0:.1f}s  "
+              f"({size_gb:.2f} GB on CPU RAM)")
+
     # Optimizer & scheduler (Section 4.1)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY
@@ -161,10 +189,15 @@ def train(args):
         def get_batch(batch_idx, batch=None):
             if pin_gpu:
                 idx = perm[batch_idx * args.batch_size:(batch_idx + 1) * args.batch_size]
+                # Use pre-computed β output (CPU→GPU slice) if available, else GT agents_seq
+                if beta_seq_cpu is not None:
+                    agents_seq_batch = beta_seq_cpu[idx.cpu()].to(device)
+                else:
+                    agents_seq_batch = gpu_cache['agents_seq'][idx]
                 return (gpu_cache['agents_now'][idx],
                         gpu_cache['agents_history'][idx],
                         gpu_cache['agents_mask'][idx],
-                        gpu_cache['agents_seq'][idx],
+                        agents_seq_batch,
                         gpu_cache['gt_trajectory'][idx],
                         gpu_cache['mode_label'][idx],
                         gpu_cache['map_lanes'][idx],
@@ -216,7 +249,7 @@ def train(args):
             n_batches_total = n_batches_epoch if pin_gpu else len(cpu_batches)
             if (batch_idx + 1) % max(1, n_batches_total // 5) == 0:
                 print(f"  Epoch {epoch+1}/{args.epochs}  "
-                      f"[{batch_idx+1}/{len(loader)}]  "
+                      f"[{batch_idx+1}/{n_batches_total}]  "
                       f"L_total={loss_dict['L_total']:.4f}  "
                       f"L_CE={loss_dict['L_CE']:.4f}  "
                       f"L_gen={loss_dict['L_gen']:.4f}")

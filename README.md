@@ -1092,3 +1092,139 @@ Both tests pass:
 - The transition model beats the stationary baseline by 25% — it's learning meaningful agent dynamics
 - The non-reactivity ratio is 0.022 — predicted agent futures barely change when ego position is perturbed, confirming the model correctly
 ignores ego
+
+
+# Need to add
+
+Summary
+
+┌────────────────────────────────┬───────────────────────────┬───────────────────────────────────────────┐
+│              Fix               │          Affects          │            Requires retraining            │
+├────────────────────────────────┼───────────────────────────┼───────────────────────────────────────────┤
+│ IVM: 1 → 3 layers              │ Stage B, Stage C          │ Stage B + C (Stage A checkpoint reusable) │
+├────────────────────────────────┼───────────────────────────┼───────────────────────────────────────────┤
+│ TransitionModel: 2L/4H → 3L/8H │ Stage A                   │ Stage A from scratch, then B + C          │
+├────────────────────────────────┼───────────────────────────┼───────────────────────────────────────────┤
+│ Polygon encoder                │ All stages (data + model) │ Full re-extraction + all stages           │
+├────────────────────────────────┼───────────────────────────┼───────────────────────────────────────────┤
+│ s0 global Transformer          │ Stage B, Stage C          │ Stage B + C                               │
+└────────────────────────────────┴───────────────────────────┴───────────────────────────────────────────┘
+
+# model size: 
+
+┌───────┬─────────────────────┬───────────┬─────────────┐
+│ Stage │        Model        │  Params   │ Size (fp32) │
+├───────┼─────────────────────┼───────────┼─────────────┤
+│ A     │ TransitionModel (β) │ 2,587,024 │ 10.3 MB     │
+├───────┼─────────────────────┼───────────┼─────────────┤
+│ B     │ CarPlanner (IL)     │ 4,888,627 │ 19.6 MB     │
+├───────┼─────────────────────┼───────────┼─────────────┤
+│ C     │ CarPlanner (RL)     │ 4,888,627 │ 19.6 MB     │
+└───────┴─────────────────────┴───────────┴─────────────┘
+
+
+┌──────────────────┬───────────────────────────────────────────────────────┬───────────────────────────────────────────────────────┐   
+│                  │             Option 3 (derived from cache)             │            Option 2 (real nuPlan polygons)            │
+├──────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤   
+│ Geometry         │ Lane centerlines repurposed as "polygons" — these are │ Real closed polygons from GeoPackage — crosswalks,    │
+│                  │  open polylines, not closed shapes                    │ stop lines, intersections                             │
+├──────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ Categories       │ Only cat0=LANE (all derived from lanes) — no          │ 3 distinct categories: crosswalks (17%),              │
+│                  │ diversity                                             │ stop_polygons (33%), intersections (50%)              │   
+├──────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ Spatial          │ x: [-75, 133]m, y: [-117, 143]m — spread across large │ x: [-21, 42]m, y: [-4, 25]m — tighter, more local     │   
+│ distribution     │  area (lane geometry)                                 │ (polygon geometry near intersections)                 │
+├──────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ Valid per sample │ 3.1 avg (limited by how many lanes have valid data)   │ 6.0 avg (consistent — polygons cluster near           │
+│                  │                                                       │ intersections)                                        │
+├──────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ Semantic meaning │ None — lanes treated as polygons don't represent      │ Correct — represents what the paper describes:        │
+│                  │ crosswalks/stop lines                                 │ intersections, crosswalks, stop lines                 │   
+├──────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ Speed limit      │ Non-zero (1.18 std) — inherited from lanes            │ Always 0 — polygons don't have speed limits (correct) │   
+└──────────────────┴───────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
+
+Bottom line: Option 3 only validates that the architecture works on real tensor shapes. Option 2 validates the architecture on actual
+polygon geometry with correct semantics and category diversity. For integration into the training pipeline, Option 2 is the right
+choice.
+
+
+## improvement plan
+
+The plan at `paper/test_paper_encoders_plan.md` is ready but awaiting approval to implement. Before continuing there, here's the prioritized speedup analysis for the currently-running Stage B.
+
+# Stage B speedup — ranked by ROI
+
+β is already pre-computed and cached on CPU — that path is done. The remaining cost is the **autoregressive policy loop in `model.py` (~lines 667–794), which runs T_FUTURE=8 times per batch**. Fix the loop, not the data path.
+
+## Tier 1 — biggest wins, low risk
+
+**1. AMP mixed precision (bf16)** — expect 1.7–2.2× end-to-end
+```python
+scaler = None  # bf16 doesn't need a scaler
+with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+    mode_logits, side_traj, pred_traj = model.forward_train(...)
+    L_total, loss_dict = compute_il_loss(...)
+L_total.backward()
+optimizer.step()
+```
+bf16 is safer than fp16 on your 40-series GPU — no loss scaling, no NaN risk from the L1 losses. Applies to the whole forward pass including all 8 IVM steps. **Do this first.**
+
+**2. Vectorize the H=10 frame-transform Python loop (line 688)** — expect 1.3–1.8×
+Currently a Python `for` loop running 8×batch_size times per step. Replace with a single batched matmul: stack the 10 history frames into `(B, N, H, 3)`, build a single `(B, 2, 2)` rotation matrix per step, and apply it with `einsum`. Zero semantic change.
+
+**3. Cache LaneEncoder output once per sample** — expect 1.2–1.4×
+The lane *coordinates* change each step (ego frame moves), but you can instead:
+- Encode lanes **once** in the global/initial frame → `(B, N_LANES, D_LANE)`
+- At each step, apply a learned or analytic pose delta to the encoded features, OR add the pose delta as a conditioning token to IVM
+
+The cheaper paper-faithful version: encode lanes once in the step-0 ego frame, then for each step pass the ego-delta (Δx, Δy, Δθ) as an extra key to IVM. This preserves the autoregressive structure without rerunning LaneEncoder 8 times.
+
+If that feels too invasive, the safer variant: cache `LaneEncoder(map_lanes)` for step 0, and only re-transform+re-encode lanes that fall inside a tight radius at each step — typically only a few change.
+
+## Tier 2 — material gains, moderate effort
+
+**4. Increase batch size to 96 or 128** — expect 1.2–1.5×
+With β now on CPU and the model at 6.5M params, your GPU memory headroom should allow larger batches. Bigger batches amortize the per-step Python overhead of the autoregressive loop. Watch `nvidia-smi` — target ~85% memory util.
+
+**5. Pin β transfers**
+```python
+beta_seq_cpu = beta_seq_cpu.pin_memory()
+# then:
+agents_seq_batch = beta_seq_cpu[idx.cpu()].to(device, non_blocking=True)
+```
+Small but free. Overlaps H2D transfer with compute.
+
+**6. Route re-filtering (line ~770)** — expect 1.05–1.15×
+Precompute the per-sample route lane mask **once** per batch (route doesn't change across the 8 steps). Index into it per step instead of re-filtering.
+
+## Tier 3 — only if still not fast enough
+
+**7. `torch.compile(model, mode='reduce-overhead')`** — expect 1.1–1.3× on top of the above
+Worth trying AFTER the structural fixes above. The autoregressive loop is dynamic-shape-friendly since T_FUTURE is fixed. Compile the `AutoregressivePolicy.forward` specifically; compiling the whole `CarPlanner` is more fragile. Expect 1–2 min compile time per rank.
+
+**8. Reduce logging/checkpoint frequency**
+You're already checkpointing every epoch. Fine. But the `% (n_batches_total // 5)` print is cheap — no change needed.
+
+## What NOT to do
+
+- **Don't drop to GT `agents_seq`** — you already rejected this; it breaks paper faithfulness and loses the point of Stage A.
+- **Don't skip the IVM 3-layer stack** — that's a paper hyperparameter; reverting to 1 layer would be the single biggest speedup (~2.5×) but invalidates the run.
+- **Don't use fp16** — the L1 losses + long autoregressive chain are fp16-hostile; bf16 is the right call.
+
+## Recommended order of operations
+
+1. **Stop current run**, add bf16 autocast (Tier 1 #1) → restart. Measure new epoch time.
+2. If still slow: vectorize frame transforms (Tier 1 #2). Low-risk, localized edit in `model.py` around line 688.
+3. If still slow: bump batch size (Tier 2 #4) + pin β (#5). Zero risk.
+4. If still not enough: tackle LaneEncoder caching (Tier 1 #3) — this is the biggest structural win but also the most code.
+5. Last resort: `torch.compile`.
+
+**Expected cumulative speedup from steps 1+2+3+5: ~3–4×**, which should bring a Stage B epoch from its current pace down to something tolerable without touching the IVM/autoregressive structure at all.
+
+Want me to implement the bf16 autocast + vectorized frame transform as a first pass? Those are ~30 lines of change total and don't touch model semantics.
+
+# claude
+claude --resume 4fbb0ac8-946b-428b-9ad8-38316cbe1c55  
+## claude-glm
+claude --resume 602e77c9-4ad3-42cf-865f-f2aeb75d6c9f                                                                                                                  

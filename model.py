@@ -569,8 +569,11 @@ class AutoregressivePolicy(nn.Module):
         self.lane_encoder  = LaneEncoder(in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE)
         # Decomposed mode encoder (Section 3.2) — replaces flat nn.Embedding
         self.decomposed_mode = DecomposedModeEncoder()
-        self.ivm           = IVMBlock(d_model=D, n_heads=8,
-                                      k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
+        # IVM: 2 stacked cross-attention layers (reduced from paper's 3 for GPU memory)
+        self.ivm_layers = nn.ModuleList([
+            IVMBlock(d_model=D, n_heads=8, k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
+            for _ in range(2)
+        ])
         # Action head: updated mode query → (x, y, yaw)
         # Gaussian policy head (replaces deterministic action_head for RL)
         self.action_mean_head = nn.Sequential(
@@ -765,14 +768,15 @@ class AutoregressivePolicy(nn.Module):
             if lanes_ego is not None:
                 map_poses = lanes_ego[..., :2].mean(dim=2)         # (B, N_L, 2)
 
-            mode_query = self.ivm(
-                mode_query,
-                per_agent,                               # (B, H*N, D) — full history
-                agents_ego_now[..., :2],                 # (B, N, 2) — current pos for K-NN
-                map_feats,                               # (B, N_LANES, D_LANE)
-                map_poses=map_poses,                     # (B, N_LANES, 2) — for K_m filtering
-                route_feats=route_feats_t,               # (B, N_lat, D) — step-2 filtered routes
-            )  # (B, 1, D)
+            for ivm in self.ivm_layers:
+                mode_query = ivm(
+                    mode_query,
+                    per_agent,                               # (B, H*N, D) — full history
+                    agents_ego_now[..., :2],                 # (B, N, 2) — current pos for K-NN
+                    map_feats,                               # (B, N_LANES, D_LANE)
+                    map_poses=map_poses,                     # (B, N_LANES, 2) — for K_m filtering
+                    route_feats=route_feats_t,               # (B, N_lat, D) — step-2 filtered routes
+                )  # (B, 1, D)
 
             # ── Action head → waypoint in CURRENT ego frame ───────────────
             a_local = self.action_head_deterministic(mode_query.squeeze(1))  # (B, 3)
@@ -933,11 +937,12 @@ class AutoregressivePolicy(nn.Module):
             map_poses = None
             if lanes_ego is not None:
                 map_poses = lanes_ego[..., :2].mean(dim=2)
-            mode_query = self.ivm(
-                mode_query, per_agent, agents_ego_now[..., :2], map_feats,
-                map_poses=map_poses,
-                route_feats=route_feats_t,
-            )
+            for ivm in self.ivm_layers:
+                mode_query = ivm(
+                    mode_query, per_agent, agents_ego_now[..., :2], map_feats,
+                    map_poses=map_poses,
+                    route_feats=route_feats_t,
+                )
 
             # ── Gaussian policy head ──────────────────────────────────────
             action_mean = self.action_mean_head(mode_query.squeeze(1))  # (B, 3)
