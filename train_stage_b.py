@@ -225,17 +225,18 @@ def train(args):
                 agents_now, agents_history, agents_mask, agents_seq, \
                     gt_traj, mode_label, map_lanes, map_lanes_mask = get_batch(batch_idx, batch)
 
-            # Forward (Algorithm 1, Stage 2 IL branch)
-            mode_logits, side_traj, pred_traj = model.forward_train(
-                agents_now, agents_mask, agents_seq, gt_traj, mode_label,
-                map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
-                agents_history=agents_history,
-            )
+            # Forward (Algorithm 1, Stage 2 IL branch) — bf16 for speed
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=device.type == 'cuda'):
+                mode_logits, side_traj, pred_traj = model.forward_train(
+                    agents_now, agents_mask, agents_seq, gt_traj, mode_label,
+                    map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+                    agents_history=agents_history,
+                )
 
-            # Loss (L_IL = L_CE + L_SideTask + L_generator)
-            L_total, loss_dict = compute_il_loss(
-                mode_logits, side_traj, pred_traj, gt_traj, mode_label
-            )
+                # Loss (L_IL = L_CE + L_SideTask + L_generator)
+                L_total, loss_dict = compute_il_loss(
+                    mode_logits, side_traj, pred_traj, gt_traj, mode_label
+                )
 
             # Backward
             optimizer.zero_grad()
@@ -294,7 +295,7 @@ def parse_args():
     p.add_argument('--split', default='mini',
                    choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore', 'train_all'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
-    p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
+    p.add_argument('--batch_size', type=int, default=96)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)
     p.add_argument('--max_per_file', type=int, default=None,
                    help='Cap on samples per DB file (default: from config)')

@@ -100,6 +100,7 @@ def train(args):
     )
     use_cache = os.path.isfile(cache_path)
 
+    pin_gpu = args.pin_gpu and device.type == 'cuda'
     if use_cache:
         print(f"[Stage C] Loading pre-extracted cache: {cache_path}")
         loader = make_cached_dataloader(
@@ -109,6 +110,15 @@ def train(args):
             num_workers=0,
         )
         all_batches = list(loader)
+        if pin_gpu:
+            print(f"[Stage C] Pinning all batches to GPU...")
+            all_batches = [
+                {k: v.to(device) if isinstance(v, torch.Tensor) else v
+                 for k, v in b.items()}
+                for b in all_batches
+            ]
+            print(f"[Stage C] GPU cache ready. "
+                  f"~{torch.cuda.memory_allocated()/1e9:.1f}GB GPU used")
         print(f"[Stage C] Cache loaded: {len(loader.dataset)} samples, "
               f"{len(all_batches)} batches")
     else:
@@ -195,13 +205,13 @@ def train(args):
         t0 = time.time()
 
         for batch_idx, batch in enumerate(random.sample(all_batches, len(all_batches)) if use_cache else loader):
-            agents_now      = batch['agents_now'].to(device)
-            agents_history  = batch['agents_history'].to(device)      # (B, H, N, Da)
-            agents_mask     = batch['agents_history_mask'].to(device)
-            gt_traj         = batch['gt_trajectory'].to(device)
-            mode_label      = batch['mode_label'].to(device)
-            map_lanes       = batch['map_lanes'].to(device)
-            map_lanes_mask  = batch['map_lanes_mask'].to(device)
+            agents_now      = batch['agents_now'] if pin_gpu else batch['agents_now'].to(device)
+            agents_history  = batch['agents_history'] if pin_gpu else batch['agents_history'].to(device)
+            agents_mask     = batch['agents_history_mask'] if pin_gpu else batch['agents_history_mask'].to(device)
+            gt_traj         = batch['gt_trajectory'] if pin_gpu else batch['gt_trajectory'].to(device)
+            mode_label      = batch['mode_label'] if pin_gpu else batch['mode_label'].to(device)
+            map_lanes       = batch['map_lanes'] if pin_gpu else batch['map_lanes'].to(device)
+            map_lanes_mask  = batch['map_lanes_mask'] if pin_gpu else batch['map_lanes_mask'].to(device)
 
             # Step 1: Simulate agents with frozen transition model
             with torch.no_grad():
@@ -337,6 +347,8 @@ def parse_args():
                    help='Path to Stage B checkpoint (policy + selector)')
     p.add_argument('--resume', default=None,
                    help='Path to Stage C checkpoint to resume from')
+    p.add_argument('--pin_gpu', action='store_true',
+                   help='Pre-load entire cache to GPU for faster training')
     return p.parse_args()
 
 

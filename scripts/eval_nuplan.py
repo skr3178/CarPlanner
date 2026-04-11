@@ -116,12 +116,39 @@ def main():
         print("  pip install -e . && pip install -r requirements.txt")
         sys.exit(1)
 
+    # ── Set nuPlan environment variables ──────────────────────────────────────
+    # Maps root: directory containing nuplan-maps-v1.0/
+    if not os.environ.get('NUPLAN_MAPS_ROOT'):
+        maps_root = os.path.join(PROJECT_ROOT, 'paper/dataset/maps')
+        os.environ['NUPLAN_MAPS_ROOT'] = maps_root
+        print(f"[Eval] Set NUPLAN_MAPS_ROOT={maps_root}")
+
+    # Data root fallback (overridden by db_files below)
+    if not os.environ.get('NUPLAN_DATA_ROOT'):
+        os.environ['NUPLAN_DATA_ROOT'] = os.path.join(PROJECT_ROOT, 'paper/dataset')
+        print(f"[Eval] Set NUPLAN_DATA_ROOT={os.environ['NUPLAN_DATA_ROOT']}")
+
+    # DB files by split
+    _db_roots = {
+        'mini':          os.path.join(PROJECT_ROOT, 'paper/dataset/nuplan-extracted/data/cache/mini'),
+        'test14-random': '/home/skr/nuplan_cities/val/data/cache/val',
+        'test14-hard':   '/home/skr/nuplan_cities/val/data/cache/val',
+        'val14':         '/home/skr/nuplan_cities/val/data/cache/val',
+    }
+    db_files_path = _db_roots.get(args.split, '/home/skr/nuplan_cities/val/data/cache/val')
+    print(f"[Eval] DB files: {db_files_path}")
+
     # Build simulation config
     # Using nuPlan's Hydra-based config system
+    checkpoint_abs = os.path.abspath(args.checkpoint)
     overrides = [
         f'+simulation={args.challenge}',
         f'scenario_builder=nuplan_challenge',
+        f'scenario_builder.db_files={db_files_path}',  # bypass data_root
         f'scenario_filter={args.split}',
+        f'planner=carplanner',
+        f'planner.checkpoint_path={checkpoint_abs}',
+        f'planner.stage={args.stage}',
         f'worker=multi_node_thread_pool',
         f'worker.threads_per_node={args.threads}',
         f'experiment_uid=carplanner/stage{args.stage}/{args.split}',

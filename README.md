@@ -1227,4 +1227,155 @@ Want me to implement the bf16 autocast + vectorized frame transform as a first p
 # claude
 claude --resume 4fbb0ac8-946b-428b-9ad8-38316cbe1c55  
 ## claude-glm
-claude --resume 602e77c9-4ad3-42cf-865f-f2aeb75d6c9f                                                                                                                  
+claude-glm --resume 602e77c9-4ad3-42cf-865f-f2aeb75d6c9f                                                                                                     
+
+### Stage B training restart
+```
+  nohup python train_stage_b.py --split train_boston \                                                                        
+    --batch_size 512 --pin_gpu \                                                                                              
+    --resume checkpoints/best.pt \                                                                                            
+    >> checkpoints/stage_b_boston.log 2>&1 &    
+```
+Yes exactly. Here's the concept:
+
+**Ground truth:** nuPlan recorded a real human driver completing a scenario — that's the GT trajectory (a sequence of (x, y, yaw) waypoints over ~8 seconds future).
+
+**What the model does:** Given the current scene (agents, map lanes, ego history), it generates **N_MODES trajectories** — one per driving mode (e.g. lane-keep, left turn, right turn, stop, etc.). Each is a candidate "plan" for what the ego should do next.
+
+**Best-of-K:** Instead of committing to one trajectory, we ask — *of all the modes the model generated, how close is the best one to what the human actually did?* It picks the mode with minimum L2 distance to GT and reports that distance.
+
+```
+GT:    ──────────────►  (what human did)
+Mode 1: ──────────────►  (lane keep)   ← closest → L2 = 0.8m  ✓ picked
+Mode 2: ────────────/    (left turn)              L2 = 3.2m
+Mode 3: ────────────\    (right turn)             L2 = 4.1m
+```
+
+**Why best-of-K and not just the selected mode?**
+- It measures the model's *coverage* — can it at least generate a trajectory close to GT, regardless of which mode it picks?
+- Mode accuracy separately measures whether the selector correctly identifies *which* mode matches GT
+- Together they tell you: does the model generate good trajectories (L2), and does it know which one to use (accuracy)?
+
+**Limitation:** This is open-loop — the model predicts once and we compare. It doesn't simulate what happens if the car actually follows the predicted path (that's closed-loop eval). A trajectory can look close to GT in L2 but still be unsafe in practice.
+
+
+1. Stage A checkpoint (stage_a_best.pt) — the transition model β, which predicts where other agents will be in the future. This is frozen — Stage C never      
+updates it, just uses it to simulate the scene.                                                                                                              
+2. Stage B checkpoint (best.pt) — the policy π and mode selector, used as the warm start. Stage C inherits all of Stage B's learned IL behavior and fine-tunes 
+it with RL.                                                                                                                                                    
+
+---                                                                                                                                                            
+What happens each training step:                          
+                                                                                                                                                                
+Frozen β (Stage A)
+     ↓                                                                                                                                                        
+agent_futures = β(scene)          ← "where will other cars go?"
+     ↓                                                                                                                                                        
+policy_old rollout → traj_old     ← "what would the current policy do?"                                                                                      
+     ↓                                                                                                                                                        
+compute_rewards(traj_old)         ← "was it good? collision? on-road?"                                                                                       
+     ↓                                                                                                                                                        
+GAE advantages                    ← "which timesteps were better than expected?"
+     ↓                                                                                                                                                        
+policy_new forward (with grad)    ← "can we do better than policy_old?"                                                                                      
+     ↓                                                                                                                                                        
+PPO update                        ← nudge policy toward higher-reward trajectories                                                                           
+                                                                                                                                                           
+---                                                                                                                                                            
+In plain terms:                                                                                                                                              
+- Stage A taught the model how the world works (agent motion)                                                                                                  
+- Stage B taught the model what humans do (imitation)                                                                                                        
+- Stage C asks "can we improve on what humans do?" by rewarding safety, staying on-road, and smoothness — using RL to fine-tune without forgetting Stage B's   
+knowledge                                                                                                                                                      
+                                                                                                                                                                
+The L_gen + L_selector losses in Stage C act as a leash to prevent RL from wandering too far from Stage B's behavior.                                          
+                                                                                                                        
+=== Evaluation Results (mini) ===
+  Best-of-60 L2 displacement:  0.4756 m
+  Mode prediction accuracy:             5.94%
+  Samples evaluated:                    12567         
+
+
+# Stage C architecture
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                        STAGE C INPUTS                           │
+  │  agents_now (B,N,10)  │  map_lanes (B,20,10,27)  │  gt_traj     │
+  └──────────┬────────────────────────┬───────────────────┬─────────┘
+             │                        │                   │
+             ▼                        │                   │
+  ┌──────────────────────┐            │                   │
+  │   TRANSITION MODEL β │  (FROZEN)  │                   │
+  │   Stage A weights    │            │                   │
+  │   transformer ×2     │            │                   │
+  └──────────┬───────────┘            │                   │
+             │ agent_futures          │                   │
+             │ (B, T, N, Da)          │                   │
+             ▼                        ▼                   │
+  ┌──────────────────────────────────────────────┐        │
+  │              S0 ENCODER                      │        │
+  │   MLP → s0_per_agent (B,N,256)               │        │
+  │         s0_global    (B,256)                 │        │
+  └──────────────────────┬───────────────────────┘        │
+                         │                                │
+             ┌───────────┴───────────┐                    │
+             ▼                       ▼                    │
+  ┌─────────────────┐   ┌────────────────────────────┐    │
+  │  MODE SELECTOR  │   │       POLICY π             │    │
+  │  map_encoder    │   │  lane_encoder (PointNet)   │    │
+  │  mode_transform │   │  decomposed_mode_embed     │    │
+  │  mode_ffn       │   │  IVM cross-attn ×2         │    │
+  │       ↓         │   │       ↓                    │    │
+  │  logits (B,60)  │   │  action_mean_head → traj   │    │
+  │  side_traj      │   │  action_log_std  → σ       │    │
+  └────────┬────────┘   │  value_head      → V(s)    │    │
+           │            └────────┬─────────┬─────────┘    │
+           │                     │         │              │
+           │              traj_old       V(s)             │
+           │                     │         │              │
+           │                     ▼         │              │
+           │            ┌────────────────┐ │              │
+           │            │ REWARD ENGINE  │◄───────────────┘
+           │            │ R_displacement │  gt_traj
+           │            │ R_collision    │
+           │            │ R_drivable     │
+           │            │ R_comfort      │
+           │            └───────┬────────┘
+           │                    │ rewards (B,T)
+           │                    ▼
+           │            ┌───────────────┐
+           │            │  GAE (γ=0.1,  │
+           │            │   λ=0.9)      │
+           │            │  advantages   │
+           │            │  returns      │
+           │            └───────┬───────┘
+           │                    │
+           ▼                    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │                    PPO LOSS                         │
+  │                                                     │
+  │  L_total = 100·L_policy  (PPO clip ε=0.2)           │
+  │           +  3·L_value   (MSE vs returns)           │
+  │           - 0.001·L_entropy (exploration bonus)     │
+  │           +  1·L_gen     (L1 vs gt_traj)            │
+  │           +  1·L_selector (CE + side task)          │
+  └─────────────────────────────────────────────────────┘
+           │
+           ▼  AdamW lr=1e-4
+  ┌─────────────────────┐
+  │  UPDATE every batch │  policy_old refreshed every 10 batches
+  │  (policy + selector)│  transition_model stays FROZEN
+  └─────────────────────┘
+
+# Eval and training models to be used: 
+                                                       
+1. Training / open-loop eval venv:                                                                                                     
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/.venv
+- Has: torch, our CarPlanner model code                                                                                                
+- Used for: train_stage_a/b/c.py, evaluate.py, preextract_features.py
+- Does NOT have nuPlan simulation deps (pytorch_lightning, tensorboard, etc.)                                                          
+                                                                                                                                       
+2. nuPlan closed-loop eval venv:                                                                                                       
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv                                      
+- Has: full nuPlan devkit deps (pytorch_lightning 1.3.8, tensorboard, ray, shapely, etc.)                                              
+- Used for: scripts/eval_nuplan.py (CLS-NR, CLS-R metrics)                                                                             
+- Activate via: source paper/dataset/nuplan-devkit/activate_nuplan_env.sh   
