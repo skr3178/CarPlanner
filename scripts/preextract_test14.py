@@ -16,6 +16,7 @@ Run with nuplan_venv:
 import os
 import sys
 import argparse
+import warnings
 import numpy as np
 import torch
 from collections import Counter
@@ -131,23 +132,72 @@ def extract_scenario(scenario) -> dict:
                 agents_world[i, idx] = [ag.center.x, ag.center.y, ag.center.heading, vx, vy]
                 agents_valid[i, idx] = 1.0
 
-    # ── Map lanes (world-frame centerline xy) ──────────────────────────────
+    # ── Map lanes (world-frame: center + left + right boundaries) ───────
+    _MAP_CATEGORIES = ['LANE', 'LANE_CONNECTOR', 'INTERSECTION', 'OTHER']
     ego0   = scenario.initial_ego_state
     ref_pt = Point2D(ego0.rear_axle.x, ego0.rear_axle.y)
+
     try:
-        map_objs  = scenario.map_api.get_proximal_map_objects(
+        map_objs = scenario.map_api.get_proximal_map_objects(
             ref_pt, MAP_RADIUS, [SemanticMapLayer.LANE])
         raw_lanes = map_objs[SemanticMapLayer.LANE]
-    except Exception:
+    except Exception as e:
+        print(f"    WARNING map query failed for {scenario.token}: {e}")
         raw_lanes = []
 
-    map_pts_world  = np.zeros((N_LANES, N_PTS, 2), dtype=np.float32)
-    map_lanes_mask = np.zeros(N_LANES, dtype=np.float32)
+    # Store 3 polylines per lane (center, left, right) + metadata
+    map_center_world = np.zeros((N_LANES, N_PTS, 2), dtype=np.float32)
+    map_left_world   = np.zeros((N_LANES, N_PTS, 2), dtype=np.float32)
+    map_right_world  = np.zeros((N_LANES, N_PTS, 2), dtype=np.float32)
+    map_speed_limit  = np.zeros(N_LANES, dtype=np.float32)
+    map_category     = np.zeros(N_LANES, dtype=np.int32)
+    map_lanes_mask   = np.zeros(N_LANES, dtype=np.float32)
+
     for i, lane in enumerate(raw_lanes[:N_LANES]):
-        bp = lane.baseline_path
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", "invalid value encountered in cast")
+            bp = lane.baseline_path
         if bp is None or len(bp.discrete_path) < 2:
             continue
-        map_pts_world[i]  = _resample_polyline(bp.discrete_path, N_PTS)
+
+        pts_center = _resample_polyline(bp.discrete_path, N_PTS)
+        map_center_world[i] = pts_center
+
+        # Left boundary (fallback: duplicate centerline)
+        try:
+            left_path = lane.left_boundary.discrete_path
+            if len(left_path) >= 2:
+                map_left_world[i] = _resample_polyline(left_path, N_PTS)
+            else:
+                map_left_world[i] = pts_center
+        except Exception:
+            map_left_world[i] = pts_center
+
+        # Right boundary (fallback: duplicate centerline)
+        try:
+            right_path = lane.right_boundary.discrete_path
+            if len(right_path) >= 2:
+                map_right_world[i] = _resample_polyline(right_path, N_PTS)
+            else:
+                map_right_world[i] = pts_center
+        except Exception:
+            map_right_world[i] = pts_center
+
+        # Speed limit
+        _sl = getattr(lane, 'speed_limit_mps', None)
+        map_speed_limit[i] = float(_sl) if _sl is not None else 0.0
+
+        # Category
+        lane_type = type(lane).__name__
+        if 'LaneConnector' in lane_type:
+            map_category[i] = 1
+        elif 'Intersection' in lane_type:
+            map_category[i] = 2
+        elif 'Lane' in lane_type:
+            map_category[i] = 0
+        else:
+            map_category[i] = 3
+
         map_lanes_mask[i] = 1.0
 
     # ── Goal ───────────────────────────────────────────────────────────────
@@ -156,18 +206,22 @@ def extract_scenario(scenario) -> dict:
                  if goal is not None else np.zeros(2, dtype=np.float32)
 
     return {
-        'scenario_type':  scenario.scenario_type,
-        'scenario_token': scenario.token,
-        'log_name':       scenario.log_name,
-        'ego_gt':         torch.from_numpy(ego_gt),          # (T_SIM, 4)
-        'agents_world':   torch.from_numpy(agents_world),    # (T_SIM, N, 5)
-        'agents_size':    torch.from_numpy(agents_size),     # (N, 3)
-        'agents_cat':     torch.from_numpy(agents_cat),      # (N,)
-        'agents_valid':   torch.from_numpy(agents_valid),    # (T_SIM, N)
-        'map_pts_world':  torch.from_numpy(map_pts_world),   # (N_L, N_P, 2)
-        'map_lanes_mask': torch.from_numpy(map_lanes_mask),  # (N_L,)
-        'goal_world':     torch.from_numpy(goal_world),      # (2,)
-        'n_iters':        n_iters,
+        'scenario_type':    scenario.scenario_type,
+        'scenario_token':   scenario.token,
+        'log_name':         scenario.log_name,
+        'ego_gt':           torch.from_numpy(ego_gt),            # (T_SIM, 4)
+        'agents_world':     torch.from_numpy(agents_world),      # (T_SIM, N, 5)
+        'agents_size':      torch.from_numpy(agents_size),       # (N, 3)
+        'agents_cat':       torch.from_numpy(agents_cat),        # (N,)
+        'agents_valid':     torch.from_numpy(agents_valid),      # (T_SIM, N)
+        'map_center_world': torch.from_numpy(map_center_world),  # (N_L, N_P, 2)
+        'map_left_world':   torch.from_numpy(map_left_world),    # (N_L, N_P, 2)
+        'map_right_world':  torch.from_numpy(map_right_world),   # (N_L, N_P, 2)
+        'map_speed_limit':  torch.from_numpy(map_speed_limit),   # (N_L,)
+        'map_category':     torch.from_numpy(map_category),      # (N_L,)
+        'map_lanes_mask':   torch.from_numpy(map_lanes_mask),    # (N_L,)
+        'goal_world':       torch.from_numpy(goal_world),        # (2,)
+        'n_iters':          n_iters,
     }
 
 
@@ -180,7 +234,8 @@ def main():
     parser.add_argument('--db_files',
                         default='/home/skr/nuplan_cities/val/data/cache/val')
     parser.add_argument('--maps_root',
-                        default=os.path.join(PROJECT_ROOT, 'paper/dataset/maps'))
+                        default=os.path.join(PROJECT_ROOT,
+                                             'paper/dataset/nuplan-extracted/nuplan-maps-v1.0'))
     parser.add_argument('--output',
                         default=os.path.join(PROJECT_ROOT,
                                              'checkpoints/test14_random_cache.pt'))
@@ -247,15 +302,23 @@ def main():
     print(f"[Preextract] Found {len(scenarios)} scenarios")
 
     # ── Extract ────────────────────────────────────────────────────────────
-    cache, failed = [], 0
+    cache, failed, map_stats = [], 0, {'with_lanes': 0, 'no_lanes': 0}
     for scenario in tqdm(scenarios, desc='Extracting'):
         try:
-            cache.append(extract_scenario(scenario))
+            result = extract_scenario(scenario)
+            n_valid = result['map_lanes_mask'].sum().item()
+            if n_valid > 0:
+                map_stats['with_lanes'] += 1
+            else:
+                map_stats['no_lanes'] += 1
+            cache.append(result)
         except Exception as e:
+            import traceback; traceback.print_exc()
             print(f"  WARNING: {scenario.token}: {e}")
             failed += 1
 
     print(f"[Preextract] Done: {len(cache)} extracted, {failed} failed")
+    print(f"[Preextract] Map stats: {map_stats['with_lanes']} with lanes, {map_stats['no_lanes']} without")
 
     type_counts = Counter(d['scenario_type'] for d in cache)
     print("[Preextract] Type distribution:")

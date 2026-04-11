@@ -58,10 +58,11 @@ LR_PATIENCE = 0       # ReduceLROnPlateau — val loss patience
 LR_FACTOR = 0.3
 
 # ablation flags (IL best config: all True; RL best: dropout=True, side_task=True, rest=False)
+# NOTE: switch to RL-best config when running Stage C
 MODE_DROPOUT = True
 SELECTOR_SIDE_TASK = True
-EGO_HISTORY_DROPOUT = True
-BACKBONE_SHARING = True
+EGO_HISTORY_DROPOUT = False   # RL best: False (Table 4)
+BACKBONE_SHARING = False       # RL best: False (Table 4)
 MODE_DROPOUT_P = 0.1  # probability of zeroing mode embedding during training
 
 # ── RL coefficients (Eq 8-10, unused in IL-only baseline) ────────────────────

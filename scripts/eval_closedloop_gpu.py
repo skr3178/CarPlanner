@@ -60,15 +60,19 @@ W_PROGRESS   = 0.2
 def prestack(scenarios):
     """Stack list of scenario dicts into a single dict of batched tensors (CPU)."""
     return {
-        'agents_world':   torch.stack([s['agents_world']   for s in scenarios]),  # (B,T,N,5)
-        'agents_valid':   torch.stack([s['agents_valid']   for s in scenarios]),  # (B,T,N)
-        'agents_size':    torch.stack([s['agents_size']    for s in scenarios]),  # (B,N,3)
-        'agents_cat':     torch.stack([s['agents_cat']     for s in scenarios]),  # (B,N)
-        'map_pts_world':  torch.stack([s['map_pts_world']  for s in scenarios]),  # (B,NL,NP,2)
-        'map_lanes_mask': torch.stack([s['map_lanes_mask'] for s in scenarios]),  # (B,NL)
-        'goal_world':     torch.stack([s['goal_world']     for s in scenarios]),  # (B,2)
-        'ego_gt':         torch.stack([s['ego_gt']         for s in scenarios]),  # (B,T,4)
-        'n_iters':        torch.tensor([s['n_iters']       for s in scenarios]),  # (B,)
+        'agents_world':     torch.stack([s['agents_world']     for s in scenarios]),  # (B,T,N,5)
+        'agents_valid':     torch.stack([s['agents_valid']     for s in scenarios]),  # (B,T,N)
+        'agents_size':      torch.stack([s['agents_size']      for s in scenarios]),  # (B,N,3)
+        'agents_cat':       torch.stack([s['agents_cat']       for s in scenarios]),  # (B,N)
+        'map_center_world': torch.stack([s['map_center_world'] for s in scenarios]),  # (B,NL,NP,2)
+        'map_left_world':   torch.stack([s['map_left_world']   for s in scenarios]),  # (B,NL,NP,2)
+        'map_right_world':  torch.stack([s['map_right_world']  for s in scenarios]),  # (B,NL,NP,2)
+        'map_speed_limit':  torch.stack([s['map_speed_limit']  for s in scenarios]),  # (B,NL)
+        'map_category':     torch.stack([s['map_category']     for s in scenarios]),  # (B,NL)
+        'map_lanes_mask':   torch.stack([s['map_lanes_mask']   for s in scenarios]),  # (B,NL)
+        'goal_world':       torch.stack([s['goal_world']       for s in scenarios]),  # (B,2)
+        'ego_gt':           torch.stack([s['ego_gt']           for s in scenarios]),  # (B,T,4)
+        'n_iters':          torch.tensor([s['n_iters']         for s in scenarios]),  # (B,)
     }
 
 
@@ -173,27 +177,46 @@ def build_batch_inputs(batch, t, ego_states, device):
         t_off = float(hi - (T_HIST - 1))
         agents_hist[:, hi], _ = encode_agents_at(t_h, t_off)
 
-    # ── map lanes ─────────────────────────────────────────────────────────
-    mp = batch['map_pts_world']    # (B, NL, NP, 2)
-    ml = batch['map_lanes_mask']   # (B, NL)
+    # ── map lanes (full 27-dim: center + left + right boundaries) ───────
+    ml = batch['map_lanes_mask']     # (B, NL)
+    speed_lim = batch['map_speed_limit']  # (B, NL)
+    cat_idx = batch['map_category']       # (B, NL) int
 
-    dx_m = mp[:, :, :, 0] - ego_x[:, None, None]   # (B, NL, NP)
-    dy_m = mp[:, :, :, 1] - ego_y[:, None, None]
-    xe_m = cos_h[:, None, None] * dx_m - sin_h[:, None, None] * dy_m
-    ye_m = sin_h[:, None, None] * dx_m + cos_h[:, None, None] * dy_m
+    # Build category one-hot (4 classes: LANE, LANE_CONNECTOR, INTERSECTION, OTHER)
+    cat_onehot = torch.zeros(B, N_LANES, 4)
+    cat_idx_long = cat_idx.long().clamp(0, 3)
+    cat_onehot.scatter_(2, cat_idx_long.unsqueeze(-1), 1.0)  # (B, NL, 4)
 
-    dx_seg = xe_m[:, :, 1:] - xe_m[:, :, :-1]   # (B, NL, NP-1)
-    dy_seg = ye_m[:, :, 1:] - ye_m[:, :, :-1]
-    headings = torch.atan2(dy_seg, dx_seg)        # (B, NL, NP-1)
-    headings = torch.cat([headings, headings[:, :, -1:]], dim=2)  # (B, NL, NP)
+    def _encode_polyline(pts_world):
+        """Transform world-frame xy to ego-frame 9-dim features per point.
+        pts_world: (B, NL, NP, 2) → returns (B, NL, NP, 9)"""
+        dx = pts_world[:, :, :, 0] - ego_x[:, None, None]
+        dy = pts_world[:, :, :, 1] - ego_y[:, None, None]
+        xe = cos_h[:, None, None] * dx - sin_h[:, None, None] * dy
+        ye = sin_h[:, None, None] * dx + cos_h[:, None, None] * dy
 
-    map_lanes = torch.zeros(B, N_LANES, N_PTS, D_MAP)
-    map_lanes[:, :, :, 0] = xe_m
-    map_lanes[:, :, :, 1] = ye_m
-    map_lanes[:, :, :, 2] = torch.sin(headings)
-    map_lanes[:, :, :, 3] = torch.cos(headings)
-    # feature 4 = speed limit (unknown = 0), feature 5 = LANE category flag
-    map_lanes[:, :, :, 5] = ml.unsqueeze(-1).expand(-1, -1, N_PTS)
+        # Headings from point-to-point differences
+        dx_seg = xe[:, :, 1:] - xe[:, :, :-1]
+        dy_seg = ye[:, :, 1:] - ye[:, :, :-1]
+        headings = torch.atan2(dy_seg, dx_seg)
+        headings = torch.cat([headings, headings[:, :, -1:]], dim=2)
+
+        # Build 9-dim: [x, y, sin_h, cos_h, speed_limit, cat_onehot(4)]
+        feats = torch.zeros(B, N_LANES, N_PTS, 9)
+        feats[:, :, :, 0] = xe
+        feats[:, :, :, 1] = ye
+        feats[:, :, :, 2] = torch.sin(headings)
+        feats[:, :, :, 3] = torch.cos(headings)
+        feats[:, :, :, 4] = speed_lim.unsqueeze(-1).expand(-1, -1, N_PTS)
+        feats[:, :, :, 5:9] = cat_onehot.unsqueeze(2).expand(-1, -1, N_PTS, -1)
+        return feats
+
+    feats_center = _encode_polyline(batch['map_center_world'])  # (B, NL, NP, 9)
+    feats_left   = _encode_polyline(batch['map_left_world'])    # (B, NL, NP, 9)
+    feats_right  = _encode_polyline(batch['map_right_world'])   # (B, NL, NP, 9)
+
+    # Concatenate: [center(9) | left(9) | right(9)] = 27 per point
+    map_lanes = torch.cat([feats_center, feats_left, feats_right], dim=-1)  # (B, NL, NP, 27)
 
     return {
         'agents_now':     agents_now.to(device),        # (B, N, D)
@@ -226,7 +249,7 @@ def compute_metrics_batch(ego_trajs, batch, device):
     no_collision = 1.0 - coll_steps.mean(dim=1)                 # (B,)
 
     # ── Drivable ──────────────────────────────────────────────────────────
-    map_pts  = batch['map_pts_world'].to(device)                # (B, NL, NP, 2)
+    map_pts  = batch['map_center_world'].to(device)             # (B, NL, NP, 2)
     map_mask = batch['map_lanes_mask'].to(device)               # (B, NL)
     map_flat = map_pts.reshape(B, -1, 2)                        # (B, NL*NP, 2)
     mask_flat = map_mask.unsqueeze(2).expand(-1, -1, N_PTS).reshape(B, -1)  # (B, NL*NP)

@@ -727,23 +727,34 @@ class AutoregressivePolicy(nn.Module):
             lanes_ego = None
             if map_lanes is not None:
                 # map_lanes: (B, N_LANES, N_PTS, 27) — center[9] + left[9] + right[9]
-                # Transform center x,y,h (indices 0-3) to ego frame at step t;
-                # non-positional features (speed_limit, category, boundary pts) carried over.
+                # Each 9-dim block: [x, y, sin_h, cos_h, speed_limit, cat_onehot(4)]
+                # Transform x,y,heading for ALL three polylines to ego frame at step t.
                 lanes_t = map_lanes.clone()
-                lane_xy = lanes_t[..., :2]
-                lane_h = torch.atan2(lanes_t[..., 2], lanes_t[..., 3])  # (B, N_L, P)
-                dx_l = lane_xy[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
-                dy_l = lane_xy[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
                 cos_hl = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
                 sin_hl = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
-                x_el = cos_hl * dx_l - sin_hl * dy_l
-                y_el = sin_hl * dx_l + cos_hl * dy_l
-                h_el = (lane_h - ego_h.unsqueeze(1).unsqueeze(1) + math.pi) % (2 * math.pi) - math.pi
-                lanes_ego = torch.cat([
-                    x_el.unsqueeze(-1), y_el.unsqueeze(-1),
-                    torch.sin(h_el).unsqueeze(-1), torch.cos(h_el).unsqueeze(-1),
-                    lanes_t[..., 4:],                              # remaining 23 features carried over
-                ], dim=-1)                                          # (B, N_L, P, 27)
+                ego_x_exp = ego_x.unsqueeze(1).unsqueeze(1)
+                ego_y_exp = ego_y.unsqueeze(1).unsqueeze(1)
+                ego_h_exp = ego_h.unsqueeze(1).unsqueeze(1)
+
+                parts = []
+                for offset in (0, 9, 18):  # center, left, right
+                    poly = lanes_t[..., offset:offset+9]
+                    px, py = poly[..., 0], poly[..., 1]
+                    ph = torch.atan2(poly[..., 2], poly[..., 3])
+
+                    dx_l = px - ego_x_exp
+                    dy_l = py - ego_y_exp
+                    x_el = cos_hl * dx_l - sin_hl * dy_l
+                    y_el = sin_hl * dx_l + cos_hl * dy_l
+                    h_el = (ph - ego_h_exp + math.pi) % (2 * math.pi) - math.pi
+
+                    parts.append(torch.cat([
+                        x_el.unsqueeze(-1), y_el.unsqueeze(-1),
+                        torch.sin(h_el).unsqueeze(-1), torch.cos(h_el).unsqueeze(-1),
+                        poly[..., 4:],  # speed_limit + cat_onehot (unchanged)
+                    ], dim=-1))
+
+                lanes_ego = torch.cat(parts, dim=-1)  # (B, N_L, P, 27)
                 map_feats = self.lane_encoder(lanes_ego, map_lanes_mask)
 
             # ── IVM Step 2: route filtering (Alg 3) ──────────────────────
@@ -904,20 +915,33 @@ class AutoregressivePolicy(nn.Module):
             map_feats = None
             lanes_ego = None
             if map_lanes is not None:
+                # Transform x,y,heading for ALL three polylines (center/left/right)
                 lanes_t = map_lanes.clone()
-                lane_h = torch.atan2(lanes_t[..., 2], lanes_t[..., 3])
-                dx_l = lanes_t[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
-                dy_l = lanes_t[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
                 cos_hl = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
                 sin_hl = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
-                x_el = cos_hl * dx_l - sin_hl * dy_l
-                y_el = sin_hl * dx_l + cos_hl * dy_l
-                h_el = (lane_h - ego_h.unsqueeze(1).unsqueeze(1) + math.pi) % (2 * math.pi) - math.pi
-                lanes_ego = torch.cat([
-                    x_el.unsqueeze(-1), y_el.unsqueeze(-1),
-                    torch.sin(h_el).unsqueeze(-1), torch.cos(h_el).unsqueeze(-1),
-                    lanes_t[..., 4:],                              # remaining 23 features
-                ], dim=-1)                                          # (B, N_L, P, 27)
+                ego_x_exp = ego_x.unsqueeze(1).unsqueeze(1)
+                ego_y_exp = ego_y.unsqueeze(1).unsqueeze(1)
+                ego_h_exp = ego_h.unsqueeze(1).unsqueeze(1)
+
+                parts = []
+                for offset in (0, 9, 18):  # center, left, right
+                    poly = lanes_t[..., offset:offset+9]
+                    px, py = poly[..., 0], poly[..., 1]
+                    ph = torch.atan2(poly[..., 2], poly[..., 3])
+
+                    dx_l = px - ego_x_exp
+                    dy_l = py - ego_y_exp
+                    x_el = cos_hl * dx_l - sin_hl * dy_l
+                    y_el = sin_hl * dx_l + cos_hl * dy_l
+                    h_el = (ph - ego_h_exp + math.pi) % (2 * math.pi) - math.pi
+
+                    parts.append(torch.cat([
+                        x_el.unsqueeze(-1), y_el.unsqueeze(-1),
+                        torch.sin(h_el).unsqueeze(-1), torch.cos(h_el).unsqueeze(-1),
+                        poly[..., 4:],
+                    ], dim=-1))
+
+                lanes_ego = torch.cat(parts, dim=-1)  # (B, N_L, P, 27)
                 map_feats = self.lane_encoder(lanes_ego, map_lanes_mask)
 
             # IVM Step 2: route filtering
