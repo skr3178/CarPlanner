@@ -54,7 +54,7 @@ BATCH_SIZE = 64
 LR = 1e-4
 WEIGHT_DECAY = 1e-4
 EPOCHS = 50
-LR_PATIENCE = 0       # ReduceLROnPlateau — val loss patience
+LR_PATIENCE = 5       # ReduceLROnPlateau — bigger model + batch256 needs more exploration time
 LR_FACTOR = 0.3
 
 # ablation flags (IL best config: all True; RL best: dropout=True, side_task=True, rest=False)

@@ -22,6 +22,7 @@ import sys
 import argparse
 import random
 import time
+from datetime import datetime
 
 # Flush stdout immediately so nohup log updates in real time
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
@@ -39,9 +40,9 @@ def compute_transition_loss(pred, gt, mask):
     """
     Masked L1 loss for agent future prediction (Eq 5).
 
-    Only computes loss over motion dims 0-7 (x, y, heading, vx, vy, box_w, box_l, box_h).
-    Dims 8 (time_step) and 9 (category) are excluded — time_step is a deterministic
-    ramp and category is a fixed label, neither is a prediction target.
+    Only computes loss over dims 0-7 (x, y, sin_h, cos_h, vx, vy, box_w, box_l).
+    Excluded: dim 8 (box_h, constant), dim 9 (time_step, deterministic),
+    dims 10-13 (category one-hot, fixed label).
 
     Args:
         pred: (B, T, N, Da) — predicted agent futures
@@ -154,7 +155,10 @@ def train(args):
         start_epoch = ckpt['epoch'] + 1
         print(f"[Stage A] Resumed from epoch {start_epoch}")
 
-    os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
+    run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_dir = os.path.join(cfg.CHECKPOINT_DIR, f"stage_a_{run_id}")
+    os.makedirs(run_dir, exist_ok=True)
+    print(f"[Stage A] Checkpoints → {run_dir}")
 
     best_val_loss = float('inf')
 
@@ -305,13 +309,13 @@ def train(args):
             'optimizer': optimizer.state_dict(),
             'loss': avg_val_loss,
         }
-        ckpt_path = os.path.join(
-            cfg.CHECKPOINT_DIR, f"stage_a_epoch_{epoch+1:03d}.pt"
-        )
+        ckpt_path = os.path.join(run_dir, f"stage_a_epoch_{epoch+1:03d}.pt")
         torch.save(ckpt, ckpt_path)
         if is_best:
-            best_path = os.path.join(cfg.CHECKPOINT_DIR, "stage_a_best.pt")
+            best_path = os.path.join(run_dir, "stage_a_best.pt")
             torch.save(ckpt, best_path)
+            # Also copy to top-level for easy access by Stage B
+            torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_a_best.pt"))
             print(f"  * New best (val) saved: {best_path}")
 
     print(f"\n[Stage A] Done. Best val L_tm={best_val_loss:.4f}")

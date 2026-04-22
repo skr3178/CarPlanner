@@ -13,6 +13,7 @@ import os
 import sys
 import argparse
 import random
+from datetime import datetime
 
 # Flush stdout immediately so nohup log updates in real time
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
@@ -177,9 +178,21 @@ def train(args):
         start_epoch = ckpt['epoch'] + 1
         print(f"[Train] Resumed from epoch {start_epoch}")
 
-    os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
+    run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_dir = os.path.join(cfg.CHECKPOINT_DIR, f"stage_b_{run_id}")
+    os.makedirs(run_dir, exist_ok=True)
+    print(f"[Train] Checkpoints → {run_dir}")
 
-    best_loss = float('inf')
+    # Train/val split (90/10)
+    if pin_gpu:
+        n_val = max(1, int(n_samples * 0.1))
+        n_train = n_samples - n_val
+        split_perm = torch.randperm(n_samples, device=device)
+        train_idx = split_perm[:n_train]
+        val_idx = split_perm[n_train:]
+        print(f"[Train] Split: {n_train} train, {n_val} val")
+
+    best_val_loss = float('inf')
 
     for epoch in range(start_epoch, args.epochs):
         model.train()
@@ -187,12 +200,15 @@ def train(args):
         t0 = time.time()
 
         if pin_gpu:
-            perm = torch.randperm(n_samples, device=device)
-            n_batches_epoch = n_samples // args.batch_size
+            train_perm = torch.randperm(n_train, device=device)
+            n_batches_epoch = n_train // args.batch_size
 
-        def get_batch(batch_idx, batch=None):
+        def get_batch(batch_idx, batch=None, indices=None):
             if pin_gpu:
-                idx = perm[batch_idx * args.batch_size:(batch_idx + 1) * args.batch_size]
+                if indices is not None:
+                    idx = indices
+                else:
+                    idx = train_idx[train_perm[batch_idx * args.batch_size:(batch_idx + 1) * args.batch_size]]
                 if beta_seq_cpu is not None:
                     agents_seq_batch = beta_seq_cpu[idx.cpu()].to(device)
                 else:
@@ -264,37 +280,74 @@ def train(args):
                       f"L_CE={loss_dict['L_CE']:.4f}  "
                       f"L_gen={loss_dict['L_gen']:.4f}")
 
-        # Epoch summary
+        # Epoch train summary
         n = n_batches_epoch if pin_gpu else len(cpu_batches)
-        avg = {k: v / n for k, v in epoch_losses.items()}
+        avg_train = {k: v / n for k, v in epoch_losses.items()}
         elapsed = time.time() - t0
+
+        # Validation
+        model.eval()
+        val_losses = {'L_CE': 0., 'L_side': 0., 'L_gen': 0., 'L_total': 0.}
+        val_batches = 0
+
+        if pin_gpu:
+            n_val_batches = max(1, n_val // args.batch_size)
+            with torch.no_grad():
+                for b in range(n_val_batches):
+                    idx = val_idx[b * args.batch_size : (b + 1) * args.batch_size]
+                    agents_now, agents_history, agents_mask, agents_seq, \
+                        gt_traj, mode_label, map_lanes, map_lanes_mask, \
+                        map_polygons, map_polygons_mask = get_batch(b, indices=idx)
+
+                    with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+                        mode_logits, side_traj, pred_traj = model.forward_train(
+                            agents_now, agents_mask, agents_seq, gt_traj, mode_label,
+                            map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+                            agents_history=agents_history,
+                            map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+                        )
+                        _, loss_dict = compute_il_loss(
+                            mode_logits, side_traj, pred_traj, gt_traj, mode_label
+                        )
+                    for k in val_losses:
+                        val_losses[k] += loss_dict[k]
+                    val_batches += 1
+        else:
+            val_losses = avg_train.copy()
+            val_batches = 1
+
+        avg_val = {k: v / max(val_batches, 1) for k, v in val_losses.items()}
+
         print(f"Epoch {epoch+1}/{args.epochs}  "
-              f"L_total={avg['L_total']:.4f}  "
-              f"L_CE={avg['L_CE']:.4f}  "
-              f"L_side={avg['L_side']:.4f}  "
-              f"L_gen={avg['L_gen']:.4f}  "
+              f"train={avg_train['L_total']:.4f}  val={avg_val['L_total']:.4f}  "
+              f"L_CE={avg_val['L_CE']:.4f}  "
+              f"L_side={avg_val['L_side']:.4f}  "
+              f"L_gen={avg_val['L_gen']:.4f}  "
+              f"lr={optimizer.param_groups[0]['lr']:.2e}  "
               f"({elapsed:.1f}s)")
 
-        scheduler.step(avg['L_total'])
+        scheduler.step(avg_val['L_total'])
 
-        # Save checkpoint
-        is_best = avg['L_total'] < best_loss
-        best_loss = min(avg['L_total'], best_loss)
+        # Save checkpoint based on val loss
+        is_best = avg_val['L_total'] < best_val_loss
+        best_val_loss = min(avg_val['L_total'], best_val_loss)
 
         ckpt = {
             'epoch': epoch,
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'loss': avg,
+            'train_loss': avg_train,
+            'val_loss': avg_val,
         }
-        ckpt_path = os.path.join(cfg.CHECKPOINT_DIR, f"epoch_{epoch+1:03d}.pt")
+        ckpt_path = os.path.join(run_dir, f"stage_b_epoch_{epoch+1:03d}.pt")
         torch.save(ckpt, ckpt_path)
         if is_best:
-            best_path = os.path.join(cfg.CHECKPOINT_DIR, "best.pt")
+            best_path = os.path.join(run_dir, "stage_b_best.pt")
             torch.save(ckpt, best_path)
-            print(f"  ★ New best saved: {best_path}")
+            torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_b_best.pt"))
+            print(f"  * New best (val) saved: {best_path}")
 
-    print(f"\n[Train] Done. Best L_total={best_loss:.4f}")
+    print(f"\n[Train] Done. Best val L_total={best_val_loss:.4f}")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
@@ -302,7 +355,8 @@ def train(args):
 def parse_args():
     p = argparse.ArgumentParser(description="CarPlanner IL training")
     p.add_argument('--split', default='mini',
-                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore', 'train_all'])
+                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore',
+                            'train_all', 'train_all_balanced'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=96)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)
