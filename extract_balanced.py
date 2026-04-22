@@ -17,6 +17,7 @@ import os
 import sys
 import argparse
 import glob
+import json
 import time
 import random
 from collections import defaultdict, Counter
@@ -38,6 +39,7 @@ CITY_DIRS = {
     'train_boston': cfg.TRAIN_DIR,
     'train_pittsburgh': cfg.TRAIN_PITTSBURGH_DIR,
     'train_singapore': cfg.TRAIN_SINGAPORE_DIR,
+    'train_vegas': cfg.TRAIN_VEGAS_DIR,
 }
 
 
@@ -131,7 +133,9 @@ def extract_city(city, pairs, types_list, args):
     keys = ['agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
             'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
             'map_polygons', 'map_polygons_mask']
-    buffers = {k: [] for k in keys}
+    # Preallocate output tensors (lazy-init on first valid batch) to avoid the
+    # 2x memory spike that torch.cat over per-batch buffer lists caused before.
+    out = None
     type_buffer = []
 
     valid_count = 0
@@ -157,13 +161,19 @@ def extract_city(city, pairs, types_list, args):
         if not keep.any():
             continue
 
+        if out is None:
+            out = {k: torch.empty((n_total,) + tuple(batch[k].shape[1:]),
+                                  dtype=batch[k].dtype) for k in keys}
+
+        n_keep = int(keep.sum().item())
+        end = valid_count + n_keep
         for k in keys:
-            buffers[k].append(batch[k][keep])
+            out[k][valid_count:end] = batch[k][keep]
 
         kept_indices = type_indices[keep].tolist()
         for idx in kept_indices:
             type_buffer.append(types_list[idx])
-        valid_count += keep.sum().item()
+        valid_count = end
 
         if (batch_idx + 1) % log_interval == 0:
             elapsed = time.time() - t0
@@ -181,8 +191,12 @@ def extract_city(city, pairs, types_list, args):
     if valid_count == 0:
         return None, None
 
-    # Build tensors
-    data = {k: torch.cat(buffers[k], dim=0) for k in keys}
+    # Trim preallocated tail. Clone + drop each key one-by-one so peak memory
+    # stays ~constant (old oversized tensor is freed as its trimmed copy lands).
+    data = {}
+    for k in keys:
+        data[k] = out[k][:valid_count].clone()
+        out[k] = None
     data['agents_mask'] = data.pop('agents_history_mask')
     data['n_samples'] = valid_count
     data['split'] = city
@@ -199,6 +213,19 @@ def extract(args):
     # Phase 1: Build full index
     type_to_samples = build_full_index(cities)
 
+    # Load per-type budget if provided (overrides args.cap on a per-type basis)
+    per_type_budget = None
+    if args.per_type_budget:
+        with open(args.per_type_budget) as f:
+            per_type_budget = json.load(f)
+        print(f"\n[Budget] Loaded per-type budget from {args.per_type_budget}: "
+              f"{len(per_type_budget)} types, sum={sum(per_type_budget.values()):,}")
+
+    def type_cap(stype, count):
+        if per_type_budget is not None:
+            return min(count, per_type_budget.get(stype, 0))
+        return min(count, args.cap)
+
     # Show type distribution
     type_counts = {t: len(samples) for t, samples in type_to_samples.items()}
     sorted_types = sorted(type_counts.items(), key=lambda x: -x[1])
@@ -207,15 +234,23 @@ def extract(args):
     print("-" * 77)
     total_keep = 0
     for stype, count in sorted_types:
-        keep = min(count, args.cap)
+        keep = type_cap(stype, count)
         total_keep += keep
-        status = "capped" if count > args.cap else "all"
+        if per_type_budget is not None:
+            budgeted = per_type_budget.get(stype, 0)
+            status = f"budget={budgeted}" if budgeted > 0 else "skip"
+        else:
+            status = "capped" if count > args.cap else "all"
         print(f"  {stype:<53} {count:>10,} {keep:>8,}  {status}")
 
-    types_at_cap = sum(1 for _, c in sorted_types if c >= args.cap)
-    types_below = len(sorted_types) - types_at_cap
-    print(f"\n[Phase 1] {len(sorted_types)} types, {types_at_cap} at cap, "
-          f"{types_below} below cap")
+    if per_type_budget is None:
+        types_at_cap = sum(1 for _, c in sorted_types if c >= args.cap)
+        types_below = len(sorted_types) - types_at_cap
+        print(f"\n[Phase 1] {len(sorted_types)} types, {types_at_cap} at cap, "
+              f"{types_below} below cap")
+    else:
+        print(f"\n[Phase 1] {len(sorted_types)} types indexed, "
+              f"using per-type budget")
     print(f"[Phase 1] Will extract: {total_keep:,} samples")
 
     if args.dry_run:
@@ -223,12 +258,15 @@ def extract(args):
         return
 
     # Phase 2: Sample per type, then split by city
-    print(f"\n[Phase 2] Sampling {args.cap}/type (seed={args.seed})...")
+    label = "per-type budget" if per_type_budget is not None else f"{args.cap}/type"
+    print(f"\n[Phase 2] Sampling {label} (seed={args.seed})...")
     city_pairs = defaultdict(list)      # city → [(db_path, token)]
     city_types = defaultdict(list)      # city → [scenario_type]
 
     for stype, samples in type_to_samples.items():
-        n_keep = min(len(samples), args.cap)
+        n_keep = type_cap(stype, len(samples))
+        if n_keep <= 0:
+            continue
         if n_keep < len(samples):
             chosen = random.sample(samples, n_keep)
         else:
@@ -310,8 +348,10 @@ if __name__ == '__main__':
     p.add_argument('--num_workers', type=int, default=12)
     p.add_argument('--batch_size', type=int, default=64)
     p.add_argument('--cities', nargs='+', default=None,
-                   choices=['train_boston', 'train_pittsburgh', 'train_singapore'],
+                   choices=['train_boston', 'train_pittsburgh', 'train_singapore', 'train_vegas'],
                    help='Cities to include (default: all 3)')
+    p.add_argument('--per_type_budget', type=str, default=None,
+                   help='Path to JSON {type: n} overriding --cap per-type (missing types = skipped)')
     p.add_argument('--dry_run', action='store_true',
                    help='Phase 1 only — show type counts, no extraction')
     args = p.parse_args()

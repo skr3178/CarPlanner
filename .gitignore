@@ -9,6 +9,9 @@ build/
 
 # Datasets and large files
 checkpoints/
+data/
+nuplan-maps-v1.0/
+nuplan-devkit/
 *.db
 *.zip
 *.log

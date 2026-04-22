@@ -13,6 +13,14 @@ TRAIN_PITTSBURGH_DIR = "/home/skr/nuplan_cities/pittsburgh/data/cache/train_pitt
 TRAIN_SINGAPORE_DIR = "/home/skr/nuplan_cities/singapore/data/cache/train_singapore"
 MAPS_DIR = os.path.join(BASE_DIR, "nuplan-maps-v1.0")
 
+# Repo-local overrides — applied only when the in-repo path exists on this machine,
+# so hosts using the canonical BASE_DIR layout are unaffected.
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+_REPO_MAPS = os.path.join(_REPO_ROOT, "nuplan-maps-v1.0")
+if os.path.isdir(_REPO_MAPS):
+    MAPS_DIR = _REPO_MAPS
+TRAIN_VEGAS_DIR = os.path.join(_REPO_ROOT, "data/cache/train_vegas")
+
 # ── Data dimensions ───────────────────────────────────────────────────────────
 T_HIST = 10           # history frames (~1s at 10Hz)
 T_FUTURE = 8          # horizon steps (paper default, Fig 4)
