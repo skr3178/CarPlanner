@@ -46,7 +46,7 @@ The crucial change: the policy now depends on c. Since c is fixed across all tim
 
 
 ## Paper excerpt on encoders (lines 29-55): Describes how CarPlanner's "vectorized" state s_0 is built:                                     
-                                                                                                                                    
+                                                                                                    
 ┌────────────────────────────────────────────────┬───────────────────────────────────┬────────────────────────┐                             
 │                     Source                     │               Shape               │        Encoder         │                             
 ├────────────────────────────────────────────────┼───────────────────────────────────┼────────────────────────┤                             
@@ -56,32 +56,32 @@ The crucial change: the policy now depends on c. Since c is fixed across all tim
 ├────────────────────────────────────────────────┼───────────────────────────────────┼────────────────────────┤                             
 │ Agent history                                  │ N × H × D_a where D_a=10          │ PointNet → N × D       │                             
 └────────────────────────────────────────────────┴───────────────────────────────────┴────────────────────────┘                             
-        
+
 All three feature tensors get concatenated → overall (N_m + N) × D feature set = s_0.                                                       
 
 That's why config.py has D_AGENT=10, D_MAP_POINT=9, and D_POLYLINE_POINT=27 (= 3 × D_m, the concatenation of center + left + right per      
 polyline point). The notes file is essentially a pasted copy of paper §2 that maps directly onto those config constants — looks like
 in-progress reference material, not something being actively imported or run.                                                               
-        
+
 ❯ why are these start 2 starting out as seperate? polylines and polygons? are they not from the same map?                                     
-                                                                                                                            
+                                                                                          
 ● They are from the same map, but they represent fundamentally different types of geometry and different semantics, so the encoders treat them
 separately:                                                                                                                                
-                                                                                                                                    
+                                                                                                    
 Polylines = 1D directional curves (lanes)                                                                                                   
 - Lane centerlines, left/right boundaries                                                                                                   
 - Have a direction of travel — the order of points matters                                                                                  
 - Answer "where can I drive and in what direction?"       
 - Come in a natural triplet: for each lane, you have center + left boundary + right boundary, which is why the code stacks them into a      
 27-dim point (3 × 9)                                                                                                                        
-                                                                                                                                    
+                                                                                                    
 Polygons = 2D closed regions (intersections, crosswalks, stop lines)                                                                        
 - Areas, not paths — points trace a closed loop                                                                                             
 - No direction of travel; you just need to know "am I inside this region?"                                                                  
 - Answer "what kind of zone am I in?"                                                                                                       
-                                                                                                                                    
+                                                                                                    
 Why separate encoders?
-                                                                                                                                    
+                                                                                                    
 1. Different shape: polylines pack as N_{m,1} × N_p × 3·D_m (=27), polygons pack as N_{m,2} × N_p × D_m (=9). You literally can't feed both 
 through the same tensor op.                                                                                                                 
 2. Different semantics per point: on a lane centerline, the heading at point k means "direction you'd drive at k." On a crosswalk polygon,  
@@ -90,20 +90,20 @@ that same "heading" field is the edge direction of the region — not comparable
 permutation-invariant over their points (a square is a square regardless of where you start tracing). Separate PointNets let each head     
 learn the right symmetry.
 4. Different counts: N_{m,1} (lanes) and N_{m,2} (polygons) are different sizes per scene, so they'd need separate padding/masking anyway.  
-                                                                                                                                    
+                                                                                                    
 After encoding, both get projected to the same feature dim D and concatenated into one set of N_m × D map tokens — at that point the        
 transformer/attention layers treat them uniformly. The separation is only at the geometric-feature-extraction stage, where it matters.      
-                                                                                                                                    
+                                                                                                    
 ❯ why is the dimension as this? - Come in a natural triplet: for each lane, you have center + left boundary + right boundary, which is why    
 the code stacks them into a                                                                                                                 
 27-dim point (3 × 9)                                                                                                                      
-                                                                                                                                    
+                                                                                                    
 ● The 27 comes from two independent expansions:                                                                                               
-                                                                                                                                    
+                                                                                                    
 The 9 (per-point features, D_m=9):                                                                                                          
 
 Each single point on a lane carries 9 scalar features describing what's at that point:                                                      
-        
+
 ┌─────┬────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────┐       
 │  #  │        Feature         │                                                Why                                                 │
 ├─────┼────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -121,57 +121,57 @@ Each single point on a lane carries 9 scalar features describing what's at that 
 └─────┴────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────┘       
 
 So 2 (xy) + 2 (heading) + 1 (speed) + 4 (category one-hot) = 9. This matches D_MAP_POINT = 9 in config.py.                                  
-        
+
 The 3 (three parallel polylines per lane):                                                                                                  
-        
+
 A "lane" in the data isn't just a centerline — it's three co-sampled polylines that share the same point index:                             
-        
+
 point k of lane i:                                                                                                                          
 center_k       ← 9 features
 left_bound_k   ← 9 features                                                                                                              
 right_bound_k  ← 9 features                                                                                                              
-                                                                                                                                    
+                                                                                                    
 The three are sampled at the same longitudinal position along the lane, so point k on the centerline corresponds geometrically to point k on
 the left edge and point k on the right edge (roughly perpendicular-across).
-                                                                                                                                    
+                                                                                                    
 Stacking them gives 3 × 9 = 27 features per point index, which is D_POLYLINE_POINT = 27 in config.py.                                       
 
 Why store all three as one "point" instead of as 3 separate polylines?                                                                      
-        
+
 - Preserves the cross-lane geometry: the PointNet sees the centerline sample together with the lane width on both sides at that location.   
 Width + curvature of the boundaries tells the model things the centerline alone can't (e.g., "this lane narrows here" or "the shoulder is
 wide").                                                                                                                                     
 - Saves sequence length: 1 polyline of length N_p instead of 3 polylines of length N_p each — fewer tokens for attention later.
 - Keeps the "lane" as a single object so masking/batching stays simple.                                                                     
-                                                                                                                                    
+                                                                                                    
 Polygons don't need this triplet structure (no left/right to speak of — they're closed regions), which is why they stay at D_m = 9 per point
 rather than 3 × 9 = 27.                                                                                                                    
-                                                                                                                                    
+                                                                                                    
 ※ recap: We improved eval_sanity.py to produce readable BEV plots with map context and a paper-benchmark comparison table, and regenerated    
 eval_stage_b_sanity.png and eval_stage_c_sanity.png. Next action: waiting for your next request. (disable recaps in /config)
-                                                                                                                                    
+                                                                                                    
 ❯ explain the shape for each type:  │ Map polylines (lanes: center+left+right)       │ N_{m,1} × N_p × 3·D_m where D_m=9 │ PointNet → N_{m,1} 
 × D │                                                                                                                                      
 ├────────────────────────────────────────────────┼───────────────────────────────────┼────────────────────────┤                           
 │ Map polygons (intersections, crosswalks, etc.) │ N_{m,2} × N_p × D_m               │ PointNet → N_{m,2} × D │                           
-                                                                                                                                    
+                                                                                                    
 ├────────────────────────────────────────────────┼───────────────────────────────────┼────────────────────────┤                           
-                                                                                                                                    
+                                                                                                    
 │ Agent history                                  │ N × H × D_a where D_a=10          │ PointNet → N × D       │                           
 
 ● Here's what each axis means. I'll use concrete numbers from config.py so it's easier to picture.
 
 ---                                                                                                                                         
 1. Lane polylines: N_{m,1} × N_p × 3·D_m
-                                                                                                                                    
+                                                                                                    
 Think of this as a 3D tensor, one lane per outer slice.
-                                                                                                                                    
+                                                                                                    
 outer axis = lane index       ──────────►  N_{m,1}  lanes  (e.g. 20)                                                                     
-                                    │                                                                                             
+     │                                                                                             
 middle axis = point index along the lane   ▼  N_p points  (e.g. 20 samples per lane)                                                     
-                                                │                                                                                 
+               │                                                                                 
 inner axis = per-point feature vector                  ▼  3·D_m = 27 floats
-                                                                                                                                    
+                                                                                                    
 ┌──────┬─────────┬─────────────────────────────────────────────────────┬────────────────────────┐
 │ Axis │  Name   │                       Meaning                       │      Example size      │                                           
 ├──────┼─────────┼─────────────────────────────────────────────────────┼────────────────────────┤                                           
@@ -181,23 +181,23 @@ inner axis = per-point feature vector                  ▼  3·D_m = 27 floats
 ├──────┼─────────┼─────────────────────────────────────────────────────┼────────────────────────┤                                           
 │ 2    │ 3·D_m   │ features at that point: [center_9, left_9, right_9] │ 27                     │                                           
 └──────┴─────────┴─────────────────────────────────────────────────────┴────────────────────────┘                                           
-        
+
 One row along axis 1 is one sample location along a lane, holding the centerline point + the matching left-edge point + the matching        
 right-edge point all concatenated.
-                                                                                                                                    
+                                                                                                    
 PointNet collapses axis 1 (all the points along a lane) into a single fixed vector, producing N_{m,1} × D — one embedding per lane.         
 
 ---                                                                                                                                         
 2. Map polygons: N_{m,2} × N_p × D_m
-                                                                                                                                    
+                                                                                                    
 Same idea, but no triplet in the inner axis.
-                                                                                                                                    
+                                                                                                    
 outer axis = polygon index     ──────────►  N_{m,2}  polygons  (e.g. 10)
-                                    │                                                                                             
+     │                                                                                             
 middle axis = point index around polygon   ▼  N_p points
-                                                │                                                                                 
+               │                                                                                 
 inner axis = per-point feature vector                  ▼  D_m = 9 floats
-                                                                                                                                    
+                                                                                                    
 ┌──────┬─────────┬──────────────────────────────────────────────────────────────────────┬─────────┐                                         
 │ Axis │  Name   │                               Meaning                                │ Example │
 ├──────┼─────────┼──────────────────────────────────────────────────────────────────────┼─────────┤                                         
@@ -209,18 +209,18 @@ inner axis = per-point feature vector                  ▼  D_m = 9 floats
 └──────┴─────────┴──────────────────────────────────────────────────────────────────────┴─────────┘                                         
 
 Inner axis is only 9 (not 27) because polygons are closed regions — there's no "left bound vs right bound" pairing to co-sample.            
-        
+
 PointNet collapses axis 1, giving N_{m,2} × D — one embedding per polygon.                                                                  
-        
+
 ---
 3. Agent history: N × H × D_a
-                                                                                                                                    
+                                                                                                    
 outer axis = agent index          ──────────►  N  agents  (e.g. 20, inc. ego)
-                                        │                                                                                         
+          │                                                                                         
 middle axis = history time step                ▼  H time steps  (20 = 2s @ 10 Hz)
-                                                    │                                                                             
+                    │                                                                             
 inner axis = pose at that time step                        ▼  D_a = 10 floats
-                                                                                                                                    
+                                                                                                    
 ┌──────┬──────┬─────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────┐
 │ Axis │ Name │                                   Meaning                                   │                  Example                  │   
 ├──────┼──────┼─────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────┤
@@ -232,48 +232,48 @@ inner axis = pose at that time step                        ▼  D_a = 10 floats
 │ 2    │ D_a  │ per-pose features: x, y, heading, velocity, bounding-box, time step,        │ 10                                        │   
 │      │      │ category                                                                    │                                           │
 └──────┴──────┴─────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────┘   
-        
+
 One row along axis 1 is one snapshot in time for one agent — exactly the s^i_t pose vector from the notation in vectorized.md.              
 
 PointNet collapses axis 1 (the time history of one agent) into a single vector, producing N × D — one embedding per agent summarizing its   
 2-second history.
-                                                                                                                                    
+                                                                                                    
 ---             
 The common pattern
-                                                                                                                                    
+                                                                                                    
 All three tensors share the same recipe:
-                                                                                                                                    
+                                                                                                    
 [ entity × inner-structure × features ]   ──PointNet over inner──►   [ entity × D ]
-                                                                                                                                    
+                                                                                                    
 - For lanes, the "inner structure" is sampled points along the lane.                                                                        
 - For polygons, the "inner structure" is sampled points around the boundary.                                                                
 - For agents, the "inner structure" is a sequence of past time steps.                                                                       
-                                                                                                                                    
+                                                                                                    
 After encoding, you have three same-shaped tensors: (N_{m,1}, D), (N_{m,2}, D), (N, D). They get concatenated along the entity axis into one
 big token set of shape (N_m + N) × D that downstream attention layers operate on uniformly.                                                
-                                                                                                                                    
+                                                                                                    
 ❯ so we have to train an encoder/pointnet? or does it already exist?                                                                          
-                                                            
+                              
 Searched for 1 pattern, read 1 file (ctrl+o to expand)                                                                                      
-                                                                                                                                    
+                                                                                                    
 ● You train it — it's part of the model, not something pre-existing.                                                                          
-                                                                                                                                    
+                                                                                                    
 "PointNet" is a neural network architecture (from Qi et al. 2017), not a specific pretrained model you download. It's defined right in      
 model.py:                                                                                                                                   
-                                                                                                                                    
+                                                                                                    
 - PointNetEncoder (model.py:43) — used for agents                                                                                           
 - LaneEncoder (model.py:85) — used for map polylines                                                                                        
-                                                                                                                                    
+                                                                                                    
 Each is a tiny MLP (3-layer: e.g. 9 → 32 → 64 → 256) applied independently to every point, followed by a max-pool across the set. That's the
 whole "PointNet" recipe:
-                                                                                                                                    
+                                                                                                    
 for each point in the set:
 feat_i = MLP(point_i)       # shared weights, per-point
 global_feat = max_over_i(feat_i)  # symmetric aggregation                                                                                   
-                                                                                                                                    
+                                                                                                    
 The MLP weights are learned end-to-end with the rest of CarPlanner (selector, generator, IVM) via the Stage B IL loss — there's no separate 
 pretraining step and no external PointNet checkpoint.                                                                                       
-                                                                                                                                    
+                                                                                                    
 Why not use a pretrained encoder?
 
 - The input isn't generic 3D point clouds (like ShapeNet, where pretrained PointNets exist). Here each "point" is a domain-specific 9-dim or
@@ -283,15 +283,15 @@ standard practice in this family of models (VectorNet, SceneTransformer, PlanTF,
 
 The parameter count is small. Each PointNet is ~20-30k params — it's essentially free to train compared to the attention backbone and       
 autoregressive generator. All three encoders (agents, lanes, polygons) train together from the first gradient step.
-                                                                                                                                    
+                                                                                                    
 So when you ran train_stage_b.py earlier, those PointNets were being trained from scratch as part of the same loss — nothing pre-existing to
 load.
 
 
 All 3 cities extracted. Now merging.                                                                                                      
-                                                    
+                    
 Extraction Summary:                                                                                                                       
-                                                    
+                    
 ┌────────────┬──────────┬───────────┬─────────┬─────────┬─────────┐                                                                       
 │    City    │ Selected │ Extracted │ Dropped │  Size   │  Speed  │
 ├────────────┼──────────┼───────────┼─────────┼─────────┼─────────┤                                                                       
@@ -303,3 +303,255 @@ Extraction Summary:
 ├────────────┼──────────┼───────────┼─────────┼─────────┼─────────┤                                                                       
 │ Total      │ 117,345  │ 115,941   │ 1,038   │ 6.72 GB │         │
 └────────────┴──────────┴───────────┴─────────┴─────────┴─────────┘ 
+
+
+Here's the issue. The loss is summed across 8 dims, not averaged, and computed in raw physical units     
+(meters, m/s):                                                                                           
+                                                                           
+Loss ≈ |Δx| + |Δy| + |Δsin_h| + |Δcos_h| + |Δvx| + |Δvy| + |Δbox_w| + |Δbox_l|                           
+                                                                           
+A loss of 10 means ~1.25 average error per dimension. For positions in meters, that's ~1.25m position    
+error predicting where 20 agents will be 0.8s into the future — actually reasonable. The loss won't go to
+~1 unless the model gets sub-12cm accuracy on every dimension.
+
+---
+
+# Stage A — Transition Model Training Pipeline
+
+**Goal:** predict next 8 future steps of 20 agents' states from a rich vectorized scene (agents + lanes + polygons).
+
+## 1. Batch inputs (from `stage_cache_train_all_balanced.pt`)
+
+```
+agents_history   (B, 10, 20, 14)   ← 10 past frames × 20 agents × 14 feats
+agents_now       (B,     20, 14)   ← "s_0" — current state (for residual base)
+agents_mask      (B,     20)       ← 1 = valid agent
+map_lanes        (B, 20, 10, 39)   ← 20 lanes × 10 pts × (3·13) polyline triplets
+map_lanes_mask   (B,     20)
+map_polygons     (B, 10, 10, 13)   ← 10 polygons × 10 pts × 13 feats
+map_polygons_mask(B,     10)
+agents_seq       (B,  8, 20, 14)   ← ground-truth future  ★ TARGET
+```
+
+## 2. Three PointNet encoders (shared per-point MLP + max-pool)
+
+```
+agents_history ─► PointNet_A ─► per_agent_feat  (B, 20, D=256)
+│             Linear→ReLU→Linear over each (t, a) point,
+│             max-pool across the 10 time steps
+
+map_lanes      ─► PointNet_L ─► per_lane_feat   (B, 20, D=256)
+│             Linear→ReLU→Linear over each (lane, pt) of 39-d,
+│             max-pool across the 10 polyline points
+
+map_polygons   ─► PointNet_P ─► per_poly_feat   (B, 10, D=256)
+same pattern, max-pool across 10 points
+```
+
+## 3. Token concatenation → Transformer encoder
+
+```
+tokens = cat[ agents(20) | lanes(20) | polys(10) ]    (B, 50, 256)
+mask   = cat[ agents_mask | lanes_mask | polys_mask ] (B, 50)
+
+┌──────────────────────────┐
+│  TransformerEncoder      │
+│   3 layers × 8 heads     │   ← paper Table 5
+│   d_model=256, FF=1024   │
+│   dropout=0.1            │
+└──────────────┬───────────┘
+     │
+fused tokens (B, 50, 256)
+     │
+┌──────────────┴───────────────┐
+│                              │
+per_agent_fused                  mean-pool → global
+(B, 20, 256)                     (B, 256)
+```
+
+Self-attention fuses every agent with every lane / polygon / other agent — one global context pass.
+
+## 4. Decoder (per-agent MLP regression head)
+
+```
+for each of 20 agents:
+x = cat[ per_agent_fused , global ]        (B, 20, 512)
+Δ = Linear(512→256) → ReLU → Linear(256 → 8·14)   (B, 20, 112)
+Δ = reshape → (B, 20, 8, 14)                       ← normalized delta
+
+pred_norm = s_0_norm + Δ                           ← RESIDUAL
+pred      = pred_norm * AGENT_FEATURE_STD          ← denormalize
+pred      = transpose to (B, 8, 20, 14)             ★ OUTPUT
+```
+
+One-shot prediction — all 8 future steps emitted in parallel, non-reactive.
+
+## 5. Loss (train_stage_a.py:54-56)
+
+```
+diff = |pred[..., :8] - gt[..., :8]|.sum(-1)      ← L1 on motion dims only
+(x, y, sinh, cosh, vx, vy, box_w, box_l)
+loss = (diff * agents_mask).sum() / valid_count
+```
+
+Excludes box_h, time_step, 4 category one-hots — those are constants per agent.
+
+## 6. Training loop
+
+```
+┌────────────┐   batch=256   ┌────────────┐
+│ train_all_ │──────────────►│ T ransModel │
+│ balanced   │               │  3.45 M p  │
+│ 115,941 s  │◄── masked L1 ─│            │
+└────────────┘   loss        └────────────┘
+│
+AdamW  lr=1e-4  wd=1e-4
+ReduceLROnPlateau  patience=5  factor=0.3
+50 epochs   → save best on val loss
+│
+checkpoints/stage_a_best.pt
+```
+
+## Quick shape trace (single sample)
+
+```
+s_0 (20, 14)  +  Δ (20, 8, 14)          → pred_norm (20, 8, 14)
+└── from fused scene ──┘
+───────────────────────────────────────►  pred (8, 20, 14)  vs  gt (8, 20, 14)
+               L1 on dims 0-7
+```
+
+The frozen weights from this stage become the reactive world-model used by Stage B's IL training and Stage C's PPO rollouts.   
+
+HF Key takeaways:                                   
+- Vegas raw diversity: 50 scenario types, ~5.6M samples available                        
+- We kept 60,113 (1.08%) — a surgical sample, not a bulk download                        
+- All 21 rare types fully preserved (≤ budget, 100% kept — starting_left_turn,           
+high_magnitude_jerk, stationary_at_crosswalk, etc.)                                      
+- 5 previously-missing types filled to ~4000: on_pickup_dropoff,                         
+near_pedestrian_at_pickup_dropoff, near_construction_zone_sign,                          
+traversing_traffic_light_intersection, near_multiple_pedestrians — these were absent from
+Boston/Pgh/Singapore, so Vegas provides the only coverage                               
+- 24 common types topped up (~1,345 each) — just enough so the 4-city merge hits the     
+paper's 176,218 target                                                              
+- NaN filter cost: 99.7% survival — the "99.58%"/"99.6%"/"99.09%" rows are rare types    
+that lost 1 sample each to NaN                                                       
+
+
+## pape results
+
+Here's the comparison — our results vs the paper's reported numbers:
+
+Paper's Results (Table 1 — Test14-Random, 261 scenarios)
+
+┌──────┬────────────────────┬────────┬───────┐
+│ Type │      Planner       │ CLS-NR │ CLS-R │
+├──────┼────────────────────┼────────┼───────┤
+│ Rule │ PDM-Closed         │ 90.05  │ 91.64 │
+├──────┼────────────────────┼────────┼───────┤
+│ IL   │ PLUTO              │ 91.92  │ 90.03 │
+├──────┼────────────────────┼────────┼───────┤
+│ RL   │ CarPlanner (Paper) │ 94.07  │ 91.1  │
+└──────┴────────────────────┴────────┴───────┘
+
+Our Results (Test14-Random, 258 scenarios)
+
+┌────────────────────────┬────────┬──────────────┬──────────┬──────────┬─────────┐
+│          Run           │ CLS-NR │ No-collision │ Drivable │ Progress │ Comfort │
+├────────────────────────┼────────┼──────────────┼──────────┼──────────┼─────────┤
+│ eval_closedloop_stagec │ 48.07  │ 94.73%       │ 0.00%    │ 3.54%    │ 0.00%   │
+├────────────────────────┼────────┼──────────────┼──────────┼──────────┼─────────┤
+│ eval_test14_v3         │ 54.62  │ 96.87%       │ 22.30%   │ 8.60%    │ 0.00%   │
+├────────────────────────┼────────┼──────────────┼──────────┼──────────┼─────────┤
+│ eval_test14_v4         │ 54.59  │ 96.72%       │ 22.83%   │ 8.32%    │ 0.00%   │
+└────────────────────────┴────────┴──────────────┴──────────┴──────────┴─────────┘
+
+The gap and why
+
+Our CLS-NR ~54 vs paper's 94 — a huge gap. The reasons:
+
+1. Drivable compliance is near 0% — this is the killer. The car leaves the drivable area almost immediately. The paper gets
+~99% (Table 3). This suggests our route selection / lateral mode encoding isn't producing trajectories that stay on-road.
+The heuristic lane selection vs paper's graph search matters here.
+2. Progress ~8% vs paper's ~95% — the car barely moves forward. Likely a consequence of leaving drivable area (score zeroed)
+or the planner generating near-stationary trajectories.
+3. Comfort 0% — trajectory jerk/acceleration violations, likely from poor trajectory quality.
+4. No-collision ~97% — actually comparable to the paper (~99%). The car avoids hitting things — it just doesn't go anywhere
+useful.
+
+Root causes
+- Trained on Boston-only (previous run) with a weaker Stage A — the current 3-city/4-city runs haven't been evaluated yet
+- 2 IVM layers instead of 3 — less representational capacity for the autoregressive policy
+- Heuristic route selection instead of proper lane graph search — bad lateral modes = bad trajectory anchors
+- No drivable area reward during RL — the paper's reward explicitly penalizes leaving the drivable area
+
+
+● The polylines and polygons help the model's scene understanding in the Transformer attention (the model sees lanes,
+crosswalks, intersections as K/V context), but they don't directly fix the route selection problem. These are two separate
+things:
+
+1. Map encoding (what we have): Polylines + polygons encoded via PointNet → fed as K/V tokens to the mode selector and
+policy Transformers. This helps the model understand the road layout. Yes, this is good and matches the paper.
+2. Route selection for lateral modes (the gap): The paper says "we identify N_lat possible routes from the map using a graph
+search algorithm." This means traversing the lane connectivity graph to find actual drivable paths forward. Let me check
+what our implementation does instead.
+
+Read 1 file (ctrl+o to expand)
+
+● Here's the difference:
+
+Our approach (lines 300-333): Pick individual lane segments that are heading-aligned with ego and spread across
+left/center/right by lateral offset. These are disconnected lane fragments, not connected paths.
+
+Paper's approach: Graph search on lane connectivity → finds actual multi-lane drivable paths (e.g., "go straight through
+this intersection then turn left"). These are coherent route plans.
+
+The impact:
+- Our lateral modes represent "which nearby lane segment am I closest to" — local
+- The paper's lateral modes represent "which drivable route do I follow for the next 8 steps" — global
+
+This is why drivable compliance is 0% in our eval — the lateral modes don't encode actual routes, so the planner can't
+commit to a coherent path and drives off-road.
+
+The polyline/polygon encoding helps within each mode (the policy sees nearby lanes and intersections), but the mode itself
+(which route to follow) is poorly defined because we're just picking nearby lane fragments instead of searching for
+connected routes.
+
+To fix this properly, we'd need to use nuPlan's lane graph connectivity (which lanes connect to which) to build actual route
+candidates via BFS/DFS from the ego's current lane. This is the biggest architectural gap to close.
+
+
+The route selection only affects Stage B and Stage C — not data prep or Stage A.
+
+Here's why:
+
+┌──────────────────────────┬───────────┬───────────────────────────────────────────────────────────────────────────────┐
+│          Stage           │   Uses    │                                      Why                                      │
+│                          │  routes?  │                                                                               │
+├──────────────────────────┼───────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Data prep / extraction   │ No        │ Extracts raw lanes, polygons, agents. Routes are computed at model forward    │
+│                          │           │ time, not cached.                                                             │
+├──────────────────────────┼───────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Stage A                  │ No        │ Predicts other agents' futures. Doesn't use modes or routes at all — just     │
+│ (TransitionModel)        │           │ agents + map context via self-attention.                                      │
+├──────────────────────────┼───────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Stage B (IL:             │ Yes       │ ModeSelector.forward() calls select_candidate_routes() to build lateral       │
+│ ModeSelector + Policy)   │           │ modes. AutoregressivePolicy uses mode-conditioned IVM with route features.    │
+├──────────────────────────┼───────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Stage C (RL: PPO)        │ Yes       │ Same model, same forward pass — routes flow through the same ModeSelector +   │
+│                          │           │ Policy path.                                                                  │
+└──────────────────────────┴───────────┴───────────────────────────────────────────────────────────────────────────────┘
+
+The fix is in model.py only — specifically replacing select_candidate_routes() with a proper lane graph search. The function
+takes map_lanes tensors and returns (B, N_lat, N_PTS, 9) route polylines. The interface stays the same, just the selection
+logic changes.
+
+However, there's a catch: the current map_lanes tensor is just the 20 nearest lane segments with no connectivity info. A
+proper graph search needs to know which lanes connect to which. That means we'd either need to:
+
+1. Query the lane graph at extraction time and cache the route candidates alongside the existing data (changes
+extract_stage_a.py + cache format), or
+2. Store lane connectivity in the cache (adjacency list) and do graph search in the model forward pass
+
+Option 1 is cleaner — precompute the N_lat=5 best routes per scenario once and cache them. No model.py changes needed beyond
+using the cached routes instead of computing them on the fly.
