@@ -1,16 +1,29 @@
-# CarPlanner — Python 3.10
-# PyTorch (CUDA 12.8)
+# CarPlanner — Python 3.10, CUDA 12.8
+#
+# Install PyTorch first (see https://pytorch.org/get-started/locally/):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#
+# Install nuplan-devkit from the Motional repo (not on PyPI):
+#   cd nuplan-devkit && pip install -e .
+#   See: https://github.com/motional/nuplan-devkit
+
+# PyTorch
 torch>=2.1.0
 torchvision>=0.16.0
 
 # Core
 numpy>=1.24.0
 matplotlib>=3.5.0
+scipy>=1.8.0
+pandas>=2.0.0
+pillow>=10.0.0
+tqdm>=4.60.0
 
-# nuPlan dataset
-nuplan-devkit>=2.0.0
+# nuPlan dataset (install from source — see header)
+# nuplan-devkit
 
 # Map geometry
 shapely>=2.0.0
 geopandas>=0.14.0
 fiona>=1.9.0
+pyquaternion>=0.9.9
