@@ -117,6 +117,36 @@ def _resample_polyline(points: list, n_points: int) -> np.ndarray:
     return resampled
 
 
+def _resample_polygon_ring(ring_coords: np.ndarray, n_points: int) -> np.ndarray:
+    """Resample a closed polygon ring (Nx2) to n_points via arc-length (endpoint=False)."""
+    if len(ring_coords) < 3:
+        return np.zeros((n_points, 2), dtype=np.float32)
+
+    pts = np.array(ring_coords, dtype=np.float32)
+    if not np.allclose(pts[0], pts[-1]):
+        pts = np.vstack([pts, pts[0]])
+
+    diffs = np.diff(pts, axis=0)
+    seg_lengths = np.linalg.norm(diffs, axis=1)
+    cumlen = np.concatenate([[0], np.cumsum(seg_lengths)])
+    total_len = cumlen[-1]
+
+    if total_len < 1e-6:
+        return np.zeros((n_points, 2), dtype=np.float32)
+
+    sample_dists = np.linspace(0, total_len, n_points, endpoint=False)
+    resampled = np.zeros((n_points, 2), dtype=np.float32)
+    for i, d in enumerate(sample_dists):
+        seg_idx = np.searchsorted(cumlen, d) - 1
+        seg_idx = max(0, min(seg_idx, len(pts) - 2))
+        seg_start = cumlen[seg_idx]
+        seg_len = seg_lengths[seg_idx]
+        t = (d - seg_start) / seg_len if seg_len > 1e-6 else 0.0
+        resampled[i] = pts[seg_idx] + t * (pts[seg_idx + 1] - pts[seg_idx])
+
+    return resampled
+
+
 def _encode_polyline_pts(pts_2d: np.ndarray, speed_limit: float,
                          cat_onehot: np.ndarray,
                          ref_x: float, ref_y: float, ref_h: float) -> np.ndarray:
@@ -231,6 +261,69 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
         lanes_mask[i] = 1.0
 
     return lanes, lanes_mask
+
+
+def _load_map_polygons(map_api, ego_x: float, ego_y: float, ego_h: float,
+                       ref_x: float, ref_y: float, ref_h: float):
+    """
+    Load nearby polygon map elements (crosswalks, stop lines, intersections).
+
+    Per paper: Nm,2 × Np × Dm = N_POLYGONS × N_LANE_POINTS × D_MAP_POINT
+    Each polygon ring is resampled to N_LANE_POINTS points, encoded to D_MAP_POINT dims.
+    Sorted by centroid distance to ego, closest N_POLYGONS kept.
+
+    Returns:
+      polygons:      (N_POLYGONS, N_LANE_POINTS, D_MAP_POINT=9)
+      polygons_mask: (N_POLYGONS,) — 1 if valid, 0 if padding
+    """
+    _POLYGON_LAYERS = [
+        (SemanticMapLayer.CROSSWALK, 0),
+        (SemanticMapLayer.STOP_LINE, 1),
+        (SemanticMapLayer.INTERSECTION, 2),
+    ]
+    _POLYGON_CATEGORIES = ['CROSSWALK', 'STOP_LINE', 'INTERSECTION', 'OTHER']
+
+    point = Point2D(ref_x, ref_y)
+    collected = []
+
+    for layer, cat_idx in _POLYGON_LAYERS:
+        try:
+            map_objs = map_api.get_proximal_map_objects(
+                point, cfg.MAP_QUERY_RADIUS, [layer]
+            )
+            raw_polys = map_objs[layer]
+        except Exception:
+            continue
+
+        cat_onehot = np.zeros(len(_POLYGON_CATEGORIES), dtype=np.float32)
+        cat_onehot[cat_idx] = 1.0
+
+        for poly_obj in raw_polys:
+            try:
+                ring = np.array(poly_obj.polygon.exterior.coords, dtype=np.float64)[:, :2]
+            except Exception:
+                continue
+            if len(ring) < 3:
+                continue
+
+            pts_2d = _resample_polygon_ring(ring, cfg.N_LANE_POINTS)
+            feats = _encode_polyline_pts(pts_2d, speed_limit=0.0, cat_onehot=cat_onehot,
+                                         ref_x=ref_x, ref_y=ref_y, ref_h=ref_h)
+            cx = pts_2d[:, 0].mean()
+            cy = pts_2d[:, 1].mean()
+            dist = math.sqrt((cx - ref_x)**2 + (cy - ref_y)**2)
+            collected.append((dist, feats))
+
+    collected.sort(key=lambda x: x[0])
+
+    polygons = np.zeros((cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT), dtype=np.float32)
+    polygons_mask = np.zeros(cfg.N_POLYGONS, dtype=np.float32)
+
+    for i, (_, feats) in enumerate(collected[:cfg.N_POLYGONS]):
+        polygons[i] = feats
+        polygons_mask[i] = 1.0
+
+    return polygons, polygons_mask
 
 
 # ── Mode assignment (winner-takes-all, Algorithm 1) ────────────────────────────
@@ -542,9 +635,21 @@ def _load_sample(db_path: str, token: str):
             map_api, ref_x, ref_y, ref_h, ref_x, ref_y, ref_h
         )
     except Exception:
-        # Fallback to zeros if map loading fails
+        map_api = None
         map_lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32)
         map_lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
+
+    # ── Map polygon loading ──────────────────────────────────────────────────
+    try:
+        if map_api is None:
+            map_name = _get_map_name_from_db(db_path)
+            map_api = _get_map_api(map_name)
+        map_polygons, map_polygons_mask = _load_map_polygons(
+            map_api, ref_x, ref_y, ref_h, ref_x, ref_y, ref_h
+        )
+    except Exception:
+        map_polygons = np.zeros((cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT), dtype=np.float32)
+        map_polygons_mask = np.zeros(cfg.N_POLYGONS, dtype=np.float32)
 
     # ── Mode assignment ───────────────────────────────────────────────────────
     mode_label = _assign_mode(gt_trajectory, map_lanes, map_lanes_mask)
@@ -554,12 +659,14 @@ def _load_sample(db_path: str, token: str):
         'ego_history':         ego_history,
         'agents_history':      agents_history,
         'agents_history_mask': agents_mask,
-        'agents_now':          agents_now,       # (N, 4)  — t=0 agents
-        'agents_seq':          agents_seq,        # (T_FUTURE, N, 4) — GT future agents
+        'agents_now':          agents_now,
+        'agents_seq':          agents_seq,
         'gt_trajectory':       gt_trajectory,
         'mode_label':          np.int64(mode_label),
-        'map_lanes':           map_lanes,         # (N_LANES, N_LANE_POINTS, 3)
-        'map_lanes_mask':      map_lanes_mask,    # (N_LANES,)
+        'map_lanes':           map_lanes,
+        'map_lanes_mask':      map_lanes_mask,
+        'map_polygons':        map_polygons,
+        'map_polygons_mask':   map_polygons_mask,
     }
 
 
@@ -638,6 +745,8 @@ class NuPlanCarPlannerDataset(Dataset):
                 'mode_label':          torch.zeros(1, dtype=torch.long).squeeze(),
                 'map_lanes':           torch.zeros(cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT),
                 'map_lanes_mask':      torch.zeros(cfg.N_LANES),
+                'map_polygons':        torch.zeros(cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT),
+                'map_polygons_mask':   torch.zeros(cfg.N_POLYGONS),
             }
 
         return {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else torch.tensor(v)
@@ -685,7 +794,13 @@ class PreextractedDataset(Dataset):
         self.mode_label = data.get('mode_label', None)
         self.map_lanes = data['map_lanes']
         self.map_lanes_mask = data['map_lanes_mask']
-        self.n = data['n_samples']
+        # Polygon keys — backward compat with old caches that lack them
+        n = data['n_samples']
+        self.map_polygons = data.get('map_polygons', torch.zeros(
+            n, cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT))
+        self.map_polygons_mask = data.get('map_polygons_mask', torch.zeros(
+            n, cfg.N_POLYGONS))
+        self.n = n
         print(f"[PreextractedDataset] {self.n} samples loaded in {elapsed:.1f}s")
 
     def __len__(self):
@@ -699,6 +814,8 @@ class PreextractedDataset(Dataset):
             'agents_now':          self.agents_now[idx],
             'map_lanes':           self.map_lanes[idx],
             'map_lanes_mask':      self.map_lanes_mask[idx],
+            'map_polygons':        self.map_polygons[idx],
+            'map_polygons_mask':   self.map_polygons_mask[idx],
         }
         if self.gt_trajectory is not None:
             item['gt_trajectory'] = self.gt_trajectory[idx]
@@ -754,6 +871,8 @@ if __name__ == '__main__':
     assert batch['mode_label'].shape          == (8,)
     assert batch['map_lanes'].shape           == (8, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT)
     assert batch['map_lanes_mask'].shape      == (8, cfg.N_LANES)
+    assert batch['map_polygons'].shape        == (8, cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT)
+    assert batch['map_polygons_mask'].shape   == (8, cfg.N_POLYGONS)
 
     assert not torch.isnan(batch['ego_history']).any(), "NaN in ego_history"
     assert not torch.isnan(batch['gt_trajectory']).any(), "NaN in gt_trajectory"
@@ -769,6 +888,9 @@ if __name__ == '__main__':
     # Map lanes: at least some samples should have non-zero mask
     n_valid_lanes = batch['map_lanes_mask'].sum().item()
     print(f"  Valid lanes across batch: {n_valid_lanes:.0f}")
+
+    n_valid_polys = batch['map_polygons_mask'].sum().item()
+    print(f"  Valid polygons across batch: {n_valid_polys:.0f}")
 
     print("\n✓ All checks passed.")
     print(f"  GT trajectory range x: [{batch['gt_trajectory'][...,0].min():.2f}, "

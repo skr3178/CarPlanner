@@ -61,7 +61,8 @@ def extract(args):
     )
 
     keys = ['agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
-            'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask']
+            'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
+            'map_polygons', 'map_polygons_mask']
     buffers = {k: [] for k in keys}
 
     valid_count = 0
@@ -76,7 +77,7 @@ def extract(args):
         # Drop samples with no valid agents
         keep = batch['agents_history_mask'].sum(dim=1) > 0.5
         # Drop samples containing NaN in any numeric tensor
-        nan_check_keys = ['agents_history', 'agents_seq', 'gt_trajectory', 'map_lanes']
+        nan_check_keys = ['agents_history', 'agents_seq', 'gt_trajectory', 'map_lanes', 'map_polygons']
         for k in nan_check_keys:
             has_nan = torch.isnan(batch[k]).view(B, -1).any(dim=1)
             keep = keep & ~has_nan
@@ -129,17 +130,20 @@ def extract(args):
     print(f"  agents_now:     {tuple(data['agents_now'].shape)}")
     print(f"  gt_trajectory:  {tuple(data['gt_trajectory'].shape)}")
     print(f"  mode_label:     {tuple(data['mode_label'].shape)}")
-    print(f"  map_lanes:      {tuple(data['map_lanes'].shape)}")
-    print(f"  map_lanes_mask: {tuple(data['map_lanes_mask'].shape)}")
-    print(f"  Avg valid agents: {data['agents_mask'].sum(1).mean():.1f}")
-    print(f"  Avg valid lanes:  {data['map_lanes_mask'].sum(1).mean():.1f}")
+    print(f"  map_lanes:        {tuple(data['map_lanes'].shape)}")
+    print(f"  map_lanes_mask:   {tuple(data['map_lanes_mask'].shape)}")
+    print(f"  map_polygons:     {tuple(data['map_polygons'].shape)}")
+    print(f"  map_polygons_mask:{tuple(data['map_polygons_mask'].shape)}")
+    print(f"  Avg valid agents:   {data['agents_mask'].sum(1).mean():.1f}")
+    print(f"  Avg valid lanes:    {data['map_lanes_mask'].sum(1).mean():.1f}")
+    print(f"  Avg valid polygons: {data['map_polygons_mask'].sum(1).mean():.1f}")
     print(f"  agents_history range: [{data['agents_history'].min():.2f}, {data['agents_history'].max():.2f}]")
     print(f"  gt_trajectory range:  [{data['gt_trajectory'].min():.2f}, {data['gt_trajectory'].max():.2f}]")
     print(f"  mode_label range:     [{data['mode_label'].min()}, {data['mode_label'].max()}]")
 
     has_nan = any(t.isnan().any() for t in [
         data['agents_history'], data['agents_seq'],
-        data['gt_trajectory'], data['map_lanes']
+        data['gt_trajectory'], data['map_lanes'], data['map_polygons']
     ])
     print(f"  NaN check: {'FAIL' if has_nan else 'OK'}")
 
