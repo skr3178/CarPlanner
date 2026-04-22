@@ -11,7 +11,14 @@ MINI_DIR = os.path.join(BASE_DIR, "data/cache/mini")
 TRAIN_DIR = os.path.join(BASE_DIR, "data/cache/train_boston")
 TRAIN_PITTSBURGH_DIR = "/home/skr/nuplan_cities/pittsburgh/data/cache/train_pittsburgh"
 TRAIN_SINGAPORE_DIR = "/home/skr/nuplan_cities/singapore/data/cache/train_singapore"
+VAL_DIR = "/home/skr/nuplan_cities/val/data/cache/val"
 MAPS_DIR = os.path.join(BASE_DIR, "nuplan-maps-v1.0")
+
+# PDM val14 split: 1,118 scenario tokens from tuplan_garage/val14_split.yaml
+VAL14_YAML = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter/val14_split.yaml",
+)
 
 # ── Data dimensions ───────────────────────────────────────────────────────────
 T_HIST = 10           # history frames (~1s at 10Hz)
@@ -82,6 +89,11 @@ D_LANE = 256                     # lane encoder output dim (= D, paper §3.1)
 # ── Polygon map encoding ──────────────────────────────────────────────────────
 N_POLYGONS = 10                      # max polygons per scene (crosswalks, intersections, stop lines)
 D_POLYGON_POINT = D_MAP_POINT        # per-polygon point: same 13-dim encoding as map points (TL dims = 0 for polygons)
+
+# ── Route extraction (Section 3.3.2: lane graph search) ──────────────────────
+N_ROUTE_POINTS = N_LANE_POINTS       # points per route polyline (resampled from concatenated lanes)
+ROUTE_MAX_DEPTH = 6                  # max lane segments to trace forward per route
+ROUTE_MAX_LENGTH_M = 150.0           # max route length in meters (~10s at 15 m/s)
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 CHECKPOINT_DIR = os.path.join(

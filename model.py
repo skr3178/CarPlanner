@@ -497,16 +497,20 @@ class ModeSelector(nn.Module):
                 map_lanes_mask: torch.Tensor = None,
                 mode_c: torch.Tensor = None,
                 map_polygons: torch.Tensor = None,
-                map_polygons_mask: torch.Tensor = None):
+                map_polygons_mask: torch.Tensor = None,
+                route_polylines: torch.Tensor = None,
+                route_mask: torch.Tensor = None):
         """
         Args:
             global_feat:      (B, D)
             s0_per_agent:     (B, N, D) — per-agent features for Transformer K/V
-            map_lanes:        (B, N_LANES, N_PTS, D_POLYLINE_POINT) — for lateral mode encoding + K/V
+            map_lanes:        (B, N_LANES, N_PTS, D_POLYLINE_POINT) — for K/V scene context
             map_lanes_mask:   (B, N_LANES)
             mode_c:           (B,) int64 — for side-task conditioning (None at inference)
             map_polygons:     (B, N_POLYGONS, N_PTS, D_POLYGON_POINT) — polygon map elements
             map_polygons_mask:(B, N_POLYGONS) — polygon validity mask
+            route_polylines:  (B, N_LAT, N_PTS, D_POLYLINE_POINT) — precomputed route polylines
+            route_mask:       (B, N_LAT) — route validity mask
         Returns:
             logits:    (B, N_MODES)
             side_traj: (B, T_FUTURE, 3)
@@ -522,10 +526,7 @@ class ModeSelector(nn.Module):
         lon_modes = self.decomposed_mode.encode_longitudinal(device)  # (N_lon, D)
 
         lat_modes = None
-        if map_lanes is not None and map_lanes_mask is not None:
-            route_polylines, route_mask = select_candidate_routes(
-                map_lanes, map_lanes_mask
-            )                                                # (B, N_lat, N_PTS, 9)
+        if route_polylines is not None and route_mask is not None:
             lat_modes = self.decomposed_mode.encode_lateral(
                 route_polylines, route_mask
             )                                                # (B, N_lat, D)
@@ -678,7 +679,9 @@ class AutoregressivePolicy(nn.Module):
                 map_lanes: torch.Tensor = None,
                 map_lanes_mask: torch.Tensor = None,
                 map_polygons: torch.Tensor = None,
-                map_polygons_mask: torch.Tensor = None) -> torch.Tensor:
+                map_polygons_mask: torch.Tensor = None,
+                route_polylines: torch.Tensor = None,
+                route_mask: torch.Tensor = None) -> torch.Tensor:
         """
         T-step autoregressive rollout with IVM (Algorithm 2 + Algorithm 3).
 
@@ -691,13 +694,9 @@ class AutoregressivePolicy(nn.Module):
 
         # Initialise mode query from decomposed mode tensor (Section 3.2)
         lon_modes = self.decomposed_mode.encode_longitudinal(device)  # (N_lon, D)
-        if map_lanes is not None:
-            route_polylines, route_mask = select_candidate_routes(
-                map_lanes, map_lanes_mask
-            )                                            # (B, N_lat, N_PTS, 27)
+        if route_polylines is not None and route_mask is not None:
             lat_modes = self.decomposed_mode.encode_lateral(route_polylines, route_mask)
         else:
-            route_polylines = None
             lat_modes = torch.zeros(B, cfg.N_LAT, cfg.D_HIDDEN, device=device)
         mode_tensor = self.decomposed_mode.construct_mode_tensor(lon_modes, lat_modes)
         mode_query = self.decomposed_mode.get_mode_query(mode_c, mode_tensor)  # (B, 1, D)
@@ -901,7 +900,9 @@ class AutoregressivePolicy(nn.Module):
                    map_lanes_mask: torch.Tensor = None,
                    stored_actions: torch.Tensor = None,
                    map_polygons: torch.Tensor = None,
-                   map_polygons_mask: torch.Tensor = None) -> tuple:
+                   map_polygons_mask: torch.Tensor = None,
+                   route_polylines: torch.Tensor = None,
+                   route_mask: torch.Tensor = None) -> tuple:
         """
         RL forward pass with Gaussian policy and value estimation.
 
@@ -921,13 +922,9 @@ class AutoregressivePolicy(nn.Module):
 
         # Initialise mode query from decomposed mode tensor
         lon_modes = self.decomposed_mode.encode_longitudinal(device)
-        if map_lanes is not None:
-            route_polylines, route_mask = select_candidate_routes(
-                map_lanes, map_lanes_mask
-            )                                            # (B, N_lat, N_PTS, 27)
+        if route_polylines is not None and route_mask is not None:
             lat_modes = self.decomposed_mode.encode_lateral(route_polylines, route_mask)
         else:
-            route_polylines = None
             lat_modes = torch.zeros(B, cfg.N_LAT, cfg.D_HIDDEN, device=device)
         mode_tensor = self.decomposed_mode.construct_mode_tensor(lon_modes, lat_modes)
         mode_query = self.decomposed_mode.get_mode_query(mode_c, mode_tensor)  # (B, 1, D)
@@ -1440,7 +1437,9 @@ class CarPlanner(nn.Module):
                       map_lanes_mask: torch.Tensor = None,
                       agents_history: torch.Tensor = None,
                       map_polygons: torch.Tensor = None,
-                      map_polygons_mask: torch.Tensor = None):
+                      map_polygons_mask: torch.Tensor = None,
+                      route_polylines: torch.Tensor = None,
+                      route_mask: torch.Tensor = None):
         """
         IL training pass (Algorithm 1, Stage 2 IL branch).
         """
@@ -1461,6 +1460,8 @@ class CarPlanner(nn.Module):
             mode_c=mode_label,
             map_polygons=map_polygons,
             map_polygons_mask=map_polygons_mask,
+            route_polylines=route_polylines,
+            route_mask=route_mask,
         )
 
         c = mode_label.clone()
@@ -1486,6 +1487,8 @@ class CarPlanner(nn.Module):
             map_lanes_mask=map_lanes_mask,
             map_polygons=map_polygons,
             map_polygons_mask=map_polygons_mask,
+            route_polylines=route_polylines,
+            route_mask=route_mask,
         )
 
         return mode_logits, side_traj, pred_traj
@@ -1500,7 +1503,9 @@ class CarPlanner(nn.Module):
                          stored_actions: torch.Tensor = None,
                          agents_history: torch.Tensor = None,
                          map_polygons: torch.Tensor = None,
-                         map_polygons_mask: torch.Tensor = None) -> tuple:
+                         map_polygons_mask: torch.Tensor = None,
+                         route_polylines: torch.Tensor = None,
+                         route_mask: torch.Tensor = None) -> tuple:
         """
         RL training forward pass (Stage C).
         """
@@ -1514,6 +1519,8 @@ class CarPlanner(nn.Module):
             mode_c=mode_label,
             map_polygons=map_polygons,
             map_polygons_mask=map_polygons_mask,
+            route_polylines=route_polylines,
+            route_mask=route_mask,
         )
 
         c = mode_label.clone()
@@ -1533,6 +1540,8 @@ class CarPlanner(nn.Module):
             stored_actions=stored_actions,
             map_polygons=map_polygons,
             map_polygons_mask=map_polygons_mask,
+            route_polylines=route_polylines,
+            route_mask=route_mask,
         )
 
         return mode_logits, side_traj, trajectory, log_probs, values, entropies
@@ -1545,7 +1554,9 @@ class CarPlanner(nn.Module):
                           map_lanes_mask: torch.Tensor = None,
                           agents_history: torch.Tensor = None,
                           map_polygons: torch.Tensor = None,
-                          map_polygons_mask: torch.Tensor = None):
+                          map_polygons_mask: torch.Tensor = None,
+                          route_polylines: torch.Tensor = None,
+                          route_mask: torch.Tensor = None):
         """
         Full inference pass (Algorithm 2).
         """
@@ -1561,6 +1572,8 @@ class CarPlanner(nn.Module):
             map_lanes_mask=map_lanes_mask,
             map_polygons=map_polygons,
             map_polygons_mask=map_polygons_mask,
+            route_polylines=route_polylines,
+            route_mask=route_mask,
         )
 
         hist = agents_history if agents_history is not None else agents_now.unsqueeze(1)
@@ -1582,6 +1595,8 @@ class CarPlanner(nn.Module):
                 map_lanes_mask=map_lanes_mask,
                 map_polygons=map_polygons,
                 map_polygons_mask=map_polygons_mask,
+                route_polylines=route_polylines,
+                route_mask=route_mask,
             )
             all_trajs.append(traj.unsqueeze(1))
 

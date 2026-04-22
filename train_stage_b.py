@@ -88,6 +88,8 @@ def train(args):
             'map_lanes_mask':      data['map_lanes_mask'],
             'map_polygons':        data.get('map_polygons', torch.zeros(data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
             'map_polygons_mask':   data.get('map_polygons_mask', torch.zeros(data['n_samples'], cfg.N_POLYGONS, device=device)),
+            'route_polylines':     data.get('route_polylines', torch.zeros(data['n_samples'], cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT, device=device)),
+            'route_mask':          data.get('route_mask', torch.zeros(data['n_samples'], cfg.N_LAT, device=device)),
         }
         n_samples = data['n_samples']
         loader = None
@@ -222,7 +224,9 @@ def train(args):
                         gpu_cache['map_lanes'][idx],
                         gpu_cache['map_lanes_mask'][idx],
                         gpu_cache['map_polygons'][idx],
-                        gpu_cache['map_polygons_mask'][idx])
+                        gpu_cache['map_polygons_mask'][idx],
+                        gpu_cache['route_polylines'][idx],
+                        gpu_cache['route_mask'][idx])
             else:
                 return (batch['agents_now'].to(device),
                         batch['agents_history'].to(device),
@@ -233,7 +237,9 @@ def train(args):
                         batch['map_lanes'].to(device),
                         batch['map_lanes_mask'].to(device),
                         batch['map_polygons'].to(device) if 'map_polygons' in batch else None,
-                        batch['map_polygons_mask'].to(device) if 'map_polygons_mask' in batch else None)
+                        batch['map_polygons_mask'].to(device) if 'map_polygons_mask' in batch else None,
+                        batch['route_polylines'].to(device) if 'route_polylines' in batch else None,
+                        batch['route_mask'].to(device) if 'route_mask' in batch else None)
 
         cpu_batches = random.sample(all_batches, len(all_batches)) if (use_cache and not pin_gpu) else (loader if not pin_gpu else [])
         outer = range(n_batches_epoch) if pin_gpu else enumerate(cpu_batches)
@@ -243,12 +249,14 @@ def train(args):
                 batch_idx = item
                 agents_now, agents_history, agents_mask, agents_seq, \
                     gt_traj, mode_label, map_lanes, map_lanes_mask, \
-                    map_polygons, map_polygons_mask = get_batch(batch_idx)
+                    map_polygons, map_polygons_mask, \
+                    route_polylines, route_mask_batch = get_batch(batch_idx)
             else:
                 batch_idx, batch = item
                 agents_now, agents_history, agents_mask, agents_seq, \
                     gt_traj, mode_label, map_lanes, map_lanes_mask, \
-                    map_polygons, map_polygons_mask = get_batch(batch_idx, batch)
+                    map_polygons, map_polygons_mask, \
+                    route_polylines, route_mask_batch = get_batch(batch_idx, batch)
 
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=device.type == 'cuda'):
                 mode_logits, side_traj, pred_traj = model.forward_train(
@@ -256,6 +264,7 @@ def train(args):
                     map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
                     agents_history=agents_history,
                     map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+                    route_polylines=route_polylines, route_mask=route_mask_batch,
                 )
 
                 # Loss (L_IL = L_CE + L_SideTask + L_generator)
@@ -297,7 +306,8 @@ def train(args):
                     idx = val_idx[b * args.batch_size : (b + 1) * args.batch_size]
                     agents_now, agents_history, agents_mask, agents_seq, \
                         gt_traj, mode_label, map_lanes, map_lanes_mask, \
-                        map_polygons, map_polygons_mask = get_batch(b, indices=idx)
+                        map_polygons, map_polygons_mask, \
+                        route_polylines, route_mask_batch = get_batch(b, indices=idx)
 
                     with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                         mode_logits, side_traj, pred_traj = model.forward_train(

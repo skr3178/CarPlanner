@@ -130,7 +130,8 @@ def extract_city(city, pairs, types_list, args):
 
     keys = ['agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
             'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
-            'map_polygons', 'map_polygons_mask']
+            'map_polygons', 'map_polygons_mask',
+            'route_polylines', 'route_mask']
     buffers = {k: [] for k in keys}
     type_buffer = []
 
@@ -148,7 +149,7 @@ def extract_city(city, pairs, types_list, args):
 
         keep = batch['agents_history_mask'].sum(dim=1) > 0.5
         nan_check_keys = ['agents_history', 'agents_seq', 'gt_trajectory',
-                          'map_lanes', 'map_polygons']
+                          'map_lanes', 'map_polygons', 'route_polylines']
         for k in nan_check_keys:
             has_nan = torch.isnan(batch[k]).view(B, -1).any(dim=1)
             keep = keep & ~has_nan
@@ -282,7 +283,8 @@ def extract(args):
         print(f"[{city}] Shapes:")
         for k in ['agents_history', 'agents_mask', 'agents_seq', 'agents_now',
                    'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
-                   'map_polygons', 'map_polygons_mask']:
+                   'map_polygons', 'map_polygons_mask',
+                   'route_polylines', 'route_mask']:
             print(f"  {k}: {tuple(data[k].shape)}")
         print(f"  Avg valid agents:   {data['agents_mask'].sum(1).mean():.1f}")
         print(f"  Avg valid lanes:    {data['map_lanes_mask'].sum(1).mean():.1f}")

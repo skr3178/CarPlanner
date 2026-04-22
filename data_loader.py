@@ -383,6 +383,332 @@ def _load_map_polygons(map_api, ego_x: float, ego_y: float, ego_h: float,
     return polygons, polygons_mask
 
 
+# ── Route extraction via lane graph search (Section 3.3.2) ────────────────────
+
+def _trace_route_forward(start_lane, max_depth: int, max_length: float) -> list:
+    """
+    Trace a single route forward from start_lane by following the lane graph.
+    At each junction, pick the most heading-aligned successor.
+
+    Returns list of lane objects forming the route.
+    """
+    route = [start_lane]
+    total_length = 0.0
+
+    current = start_lane
+    visited = {current.id}
+
+    for _ in range(max_depth - 1):
+        bp = current.baseline_path
+        if bp is None:
+            break
+        pts = bp.discrete_path
+        if len(pts) >= 2:
+            for j in range(len(pts) - 1):
+                total_length += math.sqrt(
+                    (pts[j+1].x - pts[j].x)**2 + (pts[j+1].y - pts[j].y)**2
+                )
+        if total_length >= max_length:
+            break
+
+        last_pt = pts[-1] if pts else None
+        if last_pt is None:
+            break
+        end_heading = math.atan2(
+            pts[-1].y - pts[-2].y, pts[-1].x - pts[-2].x
+        ) if len(pts) >= 2 else 0.0
+
+        best_lane = None
+        best_align = -2.0
+        for connector in current.outgoing_edges:
+            for next_lane in connector.outgoing_edges:
+                if next_lane.id in visited:
+                    continue
+                nbp = next_lane.baseline_path
+                if nbp is None:
+                    continue
+                npts = nbp.discrete_path
+                if len(npts) < 2:
+                    continue
+                next_heading = math.atan2(
+                    npts[1].y - npts[0].y, npts[1].x - npts[0].x
+                )
+                align = math.cos(next_heading - end_heading)
+                if align > best_align:
+                    best_align = align
+                    best_lane = next_lane
+
+        if best_lane is None:
+            break
+        visited.add(best_lane.id)
+        route.append(best_lane)
+        current = best_lane
+
+    return route
+
+
+def _route_to_polyline(route_lanes: list, n_points: int,
+                       ref_x: float, ref_y: float, ref_h: float,
+                       tl_status: dict = None) -> np.ndarray:
+    """
+    Concatenate lane segments into a single polyline and encode to (n_points, D_POLYLINE_POINT).
+    """
+    _MAP_CATEGORIES = ['LANE', 'LANE_CONNECTOR', 'INTERSECTION', 'OTHER']
+    if tl_status is None:
+        tl_status = {}
+
+    all_center_pts = []
+    all_left_pts = []
+    all_right_pts = []
+    all_speed_limits = []
+    all_cat_onehots = []
+    all_tl_onehots = []
+
+    for lane in route_lanes:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", "invalid value encountered in cast")
+            bp = lane.baseline_path
+        if bp is None:
+            continue
+        center_pts = bp.discrete_path
+        if len(center_pts) < 2:
+            continue
+
+        _sl = getattr(lane, 'speed_limit_mps', None)
+        speed_limit = float(_sl) if _sl is not None else 0.0
+        lane_type = type(lane).__name__
+        cat_onehot = np.zeros(len(_MAP_CATEGORIES), dtype=np.float32)
+        if 'LaneConnector' in lane_type:
+            cat_onehot[1] = 1.0
+        elif 'Lane' in lane_type:
+            cat_onehot[0] = 1.0
+        else:
+            cat_onehot[3] = 1.0
+
+        tl_onehot = np.zeros(4, dtype=np.float32)
+        lane_id = int(lane.id) if hasattr(lane, 'id') else -1
+        if lane_id in tl_status:
+            tl_idx = _TL_STATUS_TO_IDX.get(tl_status[lane_id], 3)
+            tl_onehot[tl_idx] = 1.0
+
+        for pt in center_pts:
+            all_center_pts.append([pt.x, pt.y])
+            all_speed_limits.append(speed_limit)
+            all_cat_onehots.append(cat_onehot.copy())
+            all_tl_onehots.append(tl_onehot.copy())
+
+        try:
+            left_path = lane.left_boundary.discrete_path
+            if len(left_path) >= 2:
+                for pt in left_path:
+                    all_left_pts.append([pt.x, pt.y])
+            else:
+                for pt in center_pts:
+                    all_left_pts.append([pt.x, pt.y])
+        except Exception:
+            for pt in center_pts:
+                all_left_pts.append([pt.x, pt.y])
+
+        try:
+            right_path = lane.right_boundary.discrete_path
+            if len(right_path) >= 2:
+                for pt in right_path:
+                    all_right_pts.append([pt.x, pt.y])
+            else:
+                for pt in center_pts:
+                    all_right_pts.append([pt.x, pt.y])
+        except Exception:
+            for pt in center_pts:
+                all_right_pts.append([pt.x, pt.y])
+
+    if len(all_center_pts) < 2:
+        return np.zeros((n_points, cfg.D_POLYLINE_POINT), dtype=np.float32)
+
+    center_arr = np.array(all_center_pts, dtype=np.float32)
+    left_arr = np.array(all_left_pts, dtype=np.float32)
+    right_arr = np.array(all_right_pts, dtype=np.float32)
+
+    center_resampled = _resample_raw_array(center_arr, n_points)
+    left_resampled = _resample_raw_array(left_arr, n_points)
+    right_resampled = _resample_raw_array(right_arr, n_points)
+
+    speed_arr = np.array(all_speed_limits, dtype=np.float32)
+    cat_arr = np.array(all_cat_onehots, dtype=np.float32)
+    tl_arr = np.array(all_tl_onehots, dtype=np.float32)
+    speed_resampled = _resample_scalar_along_polyline(center_arr, speed_arr, center_resampled)
+    cat_resampled = _resample_categorical_along_polyline(center_arr, cat_arr, center_resampled)
+    tl_resampled = _resample_categorical_along_polyline(center_arr, tl_arr, center_resampled)
+
+    feats = np.zeros((n_points, cfg.D_POLYLINE_POINT), dtype=np.float32)
+    Dm = cfg.D_MAP_POINT
+    for offset, pts_2d in [(0, center_resampled), (Dm, left_resampled), (2 * Dm, right_resampled)]:
+        headings = np.zeros(n_points, dtype=np.float32)
+        for j in range(n_points - 1):
+            dx = pts_2d[j+1, 0] - pts_2d[j, 0]
+            dy = pts_2d[j+1, 1] - pts_2d[j, 1]
+            headings[j] = math.atan2(dy, dx)
+        if n_points > 1:
+            headings[-1] = headings[-2]
+
+        for j in range(n_points):
+            x_e, y_e, h_e = _to_ego_frame(
+                pts_2d[j, 0], pts_2d[j, 1], headings[j],
+                ref_x, ref_y, ref_h
+            )
+            feats[j, offset:offset+Dm] = np.concatenate([
+                [x_e, y_e, math.sin(h_e), math.cos(h_e), speed_resampled[j]],
+                cat_resampled[j],
+                tl_resampled[j],
+            ])
+
+    return feats
+
+
+def _resample_raw_array(pts: np.ndarray, n_points: int) -> np.ndarray:
+    """Resample a (M, 2) array of raw global coords to n_points via uniform arc length."""
+    if len(pts) < 2:
+        return np.zeros((n_points, 2), dtype=np.float32)
+
+    diffs = np.diff(pts, axis=0)
+    seg_lengths = np.linalg.norm(diffs, axis=1)
+    cumlen = np.concatenate([[0], np.cumsum(seg_lengths)])
+    total_len = cumlen[-1]
+
+    if total_len < 1e-6:
+        return np.tile(pts[0], (n_points, 1))
+
+    sample_dists = np.linspace(0, total_len, n_points)
+    resampled = np.zeros((n_points, 2), dtype=np.float32)
+    for i, d in enumerate(sample_dists):
+        seg_idx = np.searchsorted(cumlen, d) - 1
+        seg_idx = max(0, min(seg_idx, len(pts) - 2))
+        seg_start = cumlen[seg_idx]
+        seg_len = seg_lengths[seg_idx]
+        t = (d - seg_start) / seg_len if seg_len > 1e-6 else 0.0
+        resampled[i] = pts[seg_idx] + t * (pts[seg_idx + 1] - pts[seg_idx])
+    return resampled
+
+
+def _resample_scalar_along_polyline(orig_pts, orig_vals, resampled_pts):
+    """Nearest-neighbor resample scalar values along a polyline."""
+    n = len(resampled_pts)
+    result = np.zeros(n, dtype=np.float32)
+    for i in range(n):
+        dists = np.sqrt(
+            (orig_pts[:, 0] - resampled_pts[i, 0])**2 +
+            (orig_pts[:, 1] - resampled_pts[i, 1])**2
+        )
+        result[i] = orig_vals[np.argmin(dists)]
+    return result
+
+
+def _resample_categorical_along_polyline(orig_pts, orig_cats, resampled_pts):
+    """Nearest-neighbor resample categorical arrays along a polyline."""
+    n = len(resampled_pts)
+    D = orig_cats.shape[1]
+    result = np.zeros((n, D), dtype=np.float32)
+    for i in range(n):
+        dists = np.sqrt(
+            (orig_pts[:, 0] - resampled_pts[i, 0])**2 +
+            (orig_pts[:, 1] - resampled_pts[i, 1])**2
+        )
+        result[i] = orig_cats[np.argmin(dists)]
+    return result
+
+
+def _extract_routes(map_api, ref_x: float, ref_y: float, ref_h: float,
+                    tl_status: dict = None, gt_trajectory: np.ndarray = None):
+    """
+    Extract up to N_LAT connected routes via lane graph search (Section 3.3.2).
+
+    Algorithm:
+      1. Find ego's current lane via get_one_map_object
+      2. Get all lanes in the current roadblock (parallel lanes = lateral options)
+      3. For each starting lane, trace forward through lane graph
+      4. Encode each route as a resampled polyline with D_POLYLINE_POINT features
+      5. Sort by lateral offset and subsample to N_LAT
+      6. Compute positive lateral mode label from GT trajectory
+
+    Returns:
+        route_polylines: (N_LAT, N_ROUTE_POINTS, D_POLYLINE_POINT)
+        route_mask: (N_LAT,)
+        positive_lat_idx: int in [0, N_LAT)
+    """
+    N_LAT = cfg.N_LAT
+    N_RP = cfg.N_ROUTE_POINTS
+    D_PP = cfg.D_POLYLINE_POINT
+
+    route_polylines = np.zeros((N_LAT, N_RP, D_PP), dtype=np.float32)
+    route_mask = np.zeros(N_LAT, dtype=np.float32)
+
+    point = Point2D(ref_x, ref_y)
+
+    ego_lane = map_api.get_one_map_object(point, SemanticMapLayer.LANE)
+    if ego_lane is None:
+        ego_lane = map_api.get_one_map_object(point, SemanticMapLayer.LANE_CONNECTOR)
+    if ego_lane is None:
+        lat_idx = _bin_lateral_offset(gt_trajectory[-1, 1]) if gt_trajectory is not None else 0
+        return route_polylines, route_mask, lat_idx
+
+    if hasattr(ego_lane, 'parent') and ego_lane.parent is not None:
+        start_lanes = list(ego_lane.parent.interior_edges)
+    else:
+        start_lanes = [ego_lane]
+
+    routes_with_offset = []
+    for lane in start_lanes:
+        route_lanes = _trace_route_forward(
+            lane, cfg.ROUTE_MAX_DEPTH, cfg.ROUTE_MAX_LENGTH_M
+        )
+        polyline = _route_to_polyline(
+            route_lanes, N_RP, ref_x, ref_y, ref_h, tl_status
+        )
+        if np.abs(polyline[:, :2]).sum() < 1e-6:
+            continue
+
+        first_valid = polyline[np.abs(polyline[:, 0]) + np.abs(polyline[:, 1]) > 1e-6]
+        if len(first_valid) < 2:
+            continue
+
+        dists = np.sqrt(first_valid[:, 0]**2 + first_valid[:, 1]**2)
+        closest_idx = int(np.argmin(dists))
+
+        heading = math.atan2(first_valid[closest_idx, 2], first_valid[closest_idx, 3])
+        if abs(heading) > math.pi / 2:
+            continue
+
+        lat_y = float(first_valid[closest_idx, 1])
+        routes_with_offset.append((lat_y, polyline))
+
+    routes_with_offset.sort(key=lambda x: x[0])
+
+    if len(routes_with_offset) > N_LAT:
+        indices = np.linspace(0, len(routes_with_offset) - 1, N_LAT).astype(int).tolist()
+        routes_with_offset = [routes_with_offset[i] for i in indices]
+
+    for i, (_, polyline) in enumerate(routes_with_offset):
+        route_polylines[i] = polyline
+        route_mask[i] = 1.0
+
+    positive_lat_idx = 0
+    if gt_trajectory is not None and len(routes_with_offset) > 0:
+        gt_endpoint = gt_trajectory[-1, :2]
+        best_dist = float('inf')
+        for i, (_, polyline) in enumerate(routes_with_offset):
+            route_xy = polyline[:, :2]
+            valid = route_xy[np.abs(route_xy[:, 0]) + np.abs(route_xy[:, 1]) > 1e-6]
+            if len(valid) == 0:
+                continue
+            dist = float(np.min(np.sqrt(
+                (valid[:, 0] - gt_endpoint[0])**2 + (valid[:, 1] - gt_endpoint[1])**2
+            )))
+            if dist < best_dist:
+                best_dist = dist
+                positive_lat_idx = i
+
+    return route_polylines, route_mask, positive_lat_idx
+
+
 # ── Mode assignment (winner-takes-all, Algorithm 1) ────────────────────────────
 
 def _collect_candidate_lanes(map_lanes: np.ndarray,
@@ -717,8 +1043,34 @@ def _load_sample(db_path: str, token: str):
         map_polygons = np.zeros((cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT), dtype=np.float32)
         map_polygons_mask = np.zeros(cfg.N_POLYGONS, dtype=np.float32)
 
-    # ── Mode assignment ───────────────────────────────────────────────────────
-    mode_label = _assign_mode(gt_trajectory, map_lanes, map_lanes_mask)
+    # ── Route extraction via lane graph search ──────────────────────────────
+    try:
+        if map_api is None:
+            map_name = _get_map_name_from_db(db_path)
+            map_api = _get_map_api(map_name)
+        route_polylines, route_mask, positive_lat_idx = _extract_routes(
+            map_api, ref_x, ref_y, ref_h,
+            tl_status=tl_status, gt_trajectory=gt_trajectory
+        )
+    except Exception:
+        route_polylines = np.zeros(
+            (cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32
+        )
+        route_mask = np.zeros(cfg.N_LAT, dtype=np.float32)
+        positive_lat_idx = 0
+
+    # ── Mode assignment (use route-based lateral label) ───────────────────
+    endpoint = gt_trajectory[-1]
+    dist = math.sqrt(endpoint[0] ** 2 + endpoint[1] ** 2)
+    lon_idx = min(
+        int(dist / (cfg.MAX_SPEED * cfg.T_FUTURE * 0.1 / cfg.N_LON)),
+        cfg.N_LON - 1,
+    )
+    if route_mask.sum() > 0:
+        lat_idx = positive_lat_idx
+    else:
+        lat_idx = _bin_lateral_offset(endpoint[1])
+    mode_label = lon_idx * cfg.N_LAT + lat_idx
 
     return {
         'map_raster':          map_raster,
@@ -733,6 +1085,8 @@ def _load_sample(db_path: str, token: str):
         'map_lanes_mask':      map_lanes_mask,
         'map_polygons':        map_polygons,
         'map_polygons_mask':   map_polygons_mask,
+        'route_polylines':     route_polylines,
+        'route_mask':          route_mask,
     }
 
 
@@ -746,9 +1100,11 @@ class NuPlanCarPlannerDataset(Dataset):
 
     def __init__(self, split: str, max_per_file: int = None):
         """
-        split: 'mini' | 'train_boston' | 'train_pittsburgh' | 'train_singapore'
+        split: 'mini' | 'train_boston' | 'train_pittsburgh' | 'train_singapore' | 'val14'
         max_per_file: cap on tokens loaded per .db file (None = all)
         """
+        allowed_tokens = None  # set → filter index to these scenario tokens only
+
         if split == 'mini':
             db_dir = cfg.MINI_DIR
             if max_per_file is None:
@@ -765,6 +1121,14 @@ class NuPlanCarPlannerDataset(Dataset):
             db_dir = cfg.TRAIN_SINGAPORE_DIR
             if max_per_file is None:
                 max_per_file = cfg.MAX_SAMPLES_PER_FILE_TRAIN
+        elif split == 'val14':
+            db_dir = cfg.VAL_DIR
+            max_per_file = max_per_file or 10**9  # no per-file cap for val
+            import yaml
+            with open(cfg.VAL14_YAML, 'r') as f:
+                y = yaml.safe_load(f)
+            allowed_tokens = set(str(t) for t in y.get('scenario_tokens', []))
+            print(f"[DataLoader] val14: loaded {len(allowed_tokens)} tokens from {cfg.VAL14_YAML}")
         else:
             raise ValueError(f"Unknown split: {split}")
 
@@ -783,6 +1147,8 @@ class NuPlanCarPlannerDataset(Dataset):
                     if token in seen:
                         continue
                     seen.add(token)
+                    if allowed_tokens is not None and token not in allowed_tokens:
+                        continue
                     self._index.append((db_path, token))
                     count += 1
                     if count >= max_per_file:
