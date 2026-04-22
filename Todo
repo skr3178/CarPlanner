@@ -3,9 +3,11 @@
 - Reextract the cache with the additional dimensions
 - For now lets just keep the maps-polylines and polygons added
 - Create the benchmark set according to Test14-Random and Reduced-Val14 
-
+- stage b training currently uses 7GB of GPU memory 
+- 
+- 
 claude 4.7
-claude --resume d1ed99ab-b7e4-45c7-9fda-e92913a044e9
+claude --resume cb4d1c21-a9e2-4a8a-ab99-10c18f6f62a0
 
 claude 4.6
 claude --resume 945331fb-1f68-4c00-95b4-55cba9c2e60c

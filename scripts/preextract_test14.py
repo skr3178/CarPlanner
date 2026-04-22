@@ -1,16 +1,20 @@
 """
-Pre-extract Test14-Random scenarios into a GPU-ready cache.
+Pre-extract evaluation scenarios into a GPU-ready cache.
 
-Scans the 280 nuPlan val scenarios matching the test14-random filter,
-extracts world-frame ego/agent/map data, and saves to a .pt file.
+Supported splits:
+  test14-random  — 280 scenarios (20 per type × 14 types, config-based)
+  val14          — 1,118 scenarios (explicit tokens from PDM val14_split.yaml)
+  reduced-val14  — 318 scenarios (explicit tokens from reduced_val14_split.yaml)
+  test14-hard    — 272 scenarios (explicit tokens from planTF test14-hard.yaml)
+  mini           — 100 random scenarios
 
-Run with nuplan_venv:
+Run:
     cd /media/skr/storage/autoresearch/CarPlanner_Implementation
-    source paper/dataset/nuplan-devkit/activate_nuplan_env.sh
-    PYTHONPATH=/media/skr/storage/autoresearch/CarPlanner_Implementation \
-    python scripts/preextract_test14.py \
-        --split test14-random \
-        --output checkpoints/test14_random_cache.pt
+    source paper/.venv/bin/activate
+    python scripts/preextract_test14.py --split val14
+    python scripts/preextract_test14.py --split test14-random
+    python scripts/preextract_test14.py --split test14-hard
+    python scripts/preextract_test14.py --split reduced-val14
 """
 
 import os
@@ -19,6 +23,7 @@ import argparse
 import warnings
 import numpy as np
 import torch
+import yaml
 from collections import Counter
 from tqdm import tqdm
 
@@ -55,6 +60,30 @@ TEST14_TYPES = [
     'behind_long_vehicle', 'stationary_in_traffic',
     'near_multiple_vehicles', 'changing_lane', 'following_lane_with_lead',
 ]
+
+YAML_SOURCES = {
+    'val14': os.path.join(PROJECT_ROOT,
+        'tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter/val14_split.yaml'),
+    'reduced-val14': os.path.join(PROJECT_ROOT,
+        'tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter/reduced_val14_split.yaml'),
+    'test14-hard': os.path.join(PROJECT_ROOT,
+        'planTF/config/scenario_filter/test14-hard.yaml'),
+}
+
+DEFAULT_OUTPUTS = {
+    'test14-random': 'checkpoints/test14_random_cache.pt',
+    'val14':         'checkpoints/val14_cache.pt',
+    'reduced-val14': 'checkpoints/reduced_val14_cache.pt',
+    'test14-hard':   'checkpoints/test14_hard_cache.pt',
+    'mini':          'checkpoints/mini_cache.pt',
+}
+
+
+def load_tokens_from_yaml(yaml_path):
+    with open(yaml_path, 'r') as f:
+        cfg_yaml = yaml.safe_load(f)
+    tokens = [str(t) for t in cfg_yaml.get('scenario_tokens', [])]
+    return tokens
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -229,19 +258,22 @@ def extract_scenario(scenario) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--split', default='test14-random',
-                        choices=['test14-random', 'mini'])
+    parser.add_argument('--split', default='val14',
+                        choices=['test14-random', 'val14', 'reduced-val14',
+                                 'test14-hard', 'mini'])
     parser.add_argument('--db_files',
                         default='/home/skr/nuplan_cities/val/data/cache/val')
     parser.add_argument('--maps_root',
                         default=os.path.join(PROJECT_ROOT,
                                              'paper/dataset/nuplan-extracted/nuplan-maps-v1.0'))
-    parser.add_argument('--output',
-                        default=os.path.join(PROJECT_ROOT,
-                                             'checkpoints/test14_random_cache.pt'))
+    parser.add_argument('--output', default=None,
+                        help='Output path (default: auto from split name)')
     parser.add_argument('--num_per_type', type=int, default=20,
                         help='Scenarios per type for test14-random (default: 20)')
     args = parser.parse_args()
+
+    if args.output is None:
+        args.output = os.path.join(PROJECT_ROOT, DEFAULT_OUTPUTS[args.split])
 
     print(f"[Preextract] Split:    {args.split}")
     print(f"[Preextract] DB files: {args.db_files}")
@@ -257,13 +289,33 @@ def main():
     builder = NuPlanScenarioBuilder(
         data_root=args.db_files,
         map_root=args.maps_root,
-        sensor_root=args.db_files,   # not used (no cameras), just needs a valid path
+        sensor_root=args.db_files,
         db_files=args.db_files,
         map_version='nuplan-maps-v1.0',
         verbose=True,
     )
 
-    if args.split == 'test14-random':
+    if args.split in YAML_SOURCES:
+        yaml_path = YAML_SOURCES[args.split]
+        tokens = load_tokens_from_yaml(yaml_path)
+        print(f"[Preextract] Loaded {len(tokens)} tokens from {yaml_path}")
+        scenario_filter = ScenarioFilter(
+            scenario_types=TEST14_TYPES,
+            scenario_tokens=tokens,
+            log_names=None,
+            map_names=None,
+            num_scenarios_per_type=100,
+            limit_total_scenarios=None,
+            timestamp_threshold_s=15,
+            ego_displacement_minimum_m=None,
+            ego_start_speed_threshold=None,
+            ego_stop_speed_threshold=None,
+            speed_noise_tolerance=None,
+            expand_scenarios=False,
+            remove_invalid_goals=True,
+            shuffle=False,
+        )
+    elif args.split == 'test14-random':
         scenario_filter = ScenarioFilter(
             scenario_types=TEST14_TYPES,
             scenario_tokens=None,

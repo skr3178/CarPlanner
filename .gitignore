@@ -31,3 +31,7 @@ venv/
 # Claude / IDE
 .claude/
 planTF/
+
+# External repos cloned locally (not submodules)
+tuplan_garage/
+yet-another-vectornet/
