@@ -1,0 +1,16 @@
+# CarPlanner — Python 3.10
+# PyTorch (CUDA 12.8)
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Core
+numpy>=1.24.0
+matplotlib>=3.5.0
+
+# nuPlan dataset
+nuplan-devkit>=2.0.0
+
+# Map geometry
+shapely>=2.0.0
+geopandas>=0.14.0
+fiona>=1.9.0
