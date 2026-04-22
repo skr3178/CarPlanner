@@ -82,6 +82,28 @@ def _get_map_api(map_name: str):
     return _MAP_API_CACHE[map_name]
 
 
+def _get_traffic_light_status(db_path: str, token: str) -> dict:
+    """Get traffic light status for lane connectors at the given frame.
+    Returns: dict mapping lane_connector_id → status string ('green', 'red', 'yellow', 'unknown')
+    """
+    try:
+        token_bytes = bytes.fromhex(token)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT lane_connector_id, status FROM traffic_light_status WHERE lidar_pc_token = ?",
+            (token_bytes,)
+        )
+        result = {int(row[0]): row[1] for row in cursor.fetchall()}
+        conn.close()
+        return result
+    except Exception:
+        return {}
+
+
+_TL_STATUS_TO_IDX = {'green': 0, 'yellow': 1, 'red': 2, 'unknown': 3}
+
+
 def _resample_polyline(points: list, n_points: int) -> np.ndarray:
     """Resample a polyline to exactly n_points via uniform spacing."""
     if len(points) < 2:
@@ -149,11 +171,14 @@ def _resample_polygon_ring(ring_coords: np.ndarray, n_points: int) -> np.ndarray
 
 def _encode_polyline_pts(pts_2d: np.ndarray, speed_limit: float,
                          cat_onehot: np.ndarray,
-                         ref_x: float, ref_y: float, ref_h: float) -> np.ndarray:
+                         ref_x: float, ref_y: float, ref_h: float,
+                         tl_onehot: np.ndarray = None) -> np.ndarray:
     """
-    Encode a resampled polyline (N_LANE_POINTS × 2) into per-point features (N_LANE_POINTS × 9).
-    Features: x, y, sin(h), cos(h), speed_limit, 4×category_onehot — all in ego frame.
+    Encode a resampled polyline (N_LANE_POINTS × 2) into per-point features (N_LANE_POINTS × 13).
+    Features: x, y, sin(h), cos(h), speed_limit, 4×category_onehot, 4×traffic_light_onehot.
     """
+    if tl_onehot is None:
+        tl_onehot = np.zeros(4, dtype=np.float32)
     N = len(pts_2d)
     headings = np.zeros(N, dtype=np.float32)
     for j in range(N - 1):
@@ -171,36 +196,61 @@ def _encode_polyline_pts(pts_2d: np.ndarray, speed_limit: float,
         feats[j] = np.concatenate([
             [x_e, y_e, math.sin(h_e), math.cos(h_e), speed_limit],
             cat_onehot,
+            tl_onehot,
         ])
     return feats
 
 
 def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
-                    ref_x: float, ref_y: float, ref_h: float):
+                    ref_x: float, ref_y: float, ref_h: float,
+                    tl_status: dict = None):
     """
     Load nearby lane polylines and transform to ego-centric frame.
 
-    Per paper §2.3: each polyline point has 3×Dm = 27 features —
+    Per paper §2.3: each polyline point has 3×Dm = 39 features —
     center + left_boundary + right_boundary concatenated per point.
     If a boundary is unavailable, centerline features are duplicated for that slot.
 
     Returns:
-      lanes:      (N_LANES, N_LANE_POINTS, D_POLYLINE_POINT=27) — per-point features in ego frame
+      lanes:      (N_LANES, N_LANE_POINTS, D_POLYLINE_POINT=39) — per-point features in ego frame
       lanes_mask: (N_LANES,) — 1 if valid lane, 0 if padding
     """
     _MAP_CATEGORIES = ['LANE', 'LANE_CONNECTOR', 'INTERSECTION', 'OTHER']
 
     point = Point2D(ref_x, ref_y)
-    try:
-        map_objs = map_api.get_proximal_map_objects(
-            point, cfg.MAP_QUERY_RADIUS, [SemanticMapLayer.LANE]
-        )
-        raw_lanes = map_objs[SemanticMapLayer.LANE]
-    except Exception:
-        raw_lanes = []
+    raw_lanes = []
+
+    # Query both lanes and lane connectors
+    for layer in [SemanticMapLayer.LANE, SemanticMapLayer.LANE_CONNECTOR]:
+        try:
+            map_objs = map_api.get_proximal_map_objects(
+                point, cfg.MAP_QUERY_RADIUS, [layer]
+            )
+            raw_lanes.extend(map_objs[layer])
+        except Exception:
+            pass
+
+    # Sort by centroid distance to ego so closest lanes/connectors get priority
+    def _lane_dist(lane):
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", "invalid value encountered in cast")
+                bp = lane.baseline_path
+            if bp is None:
+                return float('inf')
+            pts = bp.discrete_path
+            if len(pts) < 1:
+                return float('inf')
+            mid = pts[len(pts) // 2]
+            return math.sqrt((mid.x - ref_x)**2 + (mid.y - ref_y)**2)
+        except Exception:
+            return float('inf')
+    raw_lanes.sort(key=_lane_dist)
 
     lanes = np.zeros((cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32)
     lanes_mask = np.zeros(cfg.N_LANES, dtype=np.float32)
+    if tl_status is None:
+        tl_status = {}
 
     for i, lane in enumerate(raw_lanes[:cfg.N_LANES]):
         with warnings.catch_warnings():
@@ -228,9 +278,16 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
         else:
             cat_onehot[3] = 1.0
 
+        # Traffic light status for this lane/connector
+        tl_onehot = np.zeros(4, dtype=np.float32)
+        lane_id = int(lane.id) if hasattr(lane, 'id') else -1
+        if lane_id in tl_status:
+            tl_idx = _TL_STATUS_TO_IDX.get(tl_status[lane_id], 3)
+            tl_onehot[tl_idx] = 1.0
+
         # Encode centerline
         feats_center = _encode_polyline_pts(pts_center, speed_limit, cat_onehot,
-                                            ref_x, ref_y, ref_h)
+                                            ref_x, ref_y, ref_h, tl_onehot)
 
         # Left boundary (fallback: duplicate centerline)
         try:
@@ -238,7 +295,7 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
             if len(left_path) >= 2:
                 pts_left = _resample_polyline(left_path, cfg.N_LANE_POINTS)
                 feats_left = _encode_polyline_pts(pts_left, speed_limit, cat_onehot,
-                                                  ref_x, ref_y, ref_h)
+                                                  ref_x, ref_y, ref_h, tl_onehot)
             else:
                 feats_left = feats_center.copy()
         except Exception:
@@ -250,7 +307,7 @@ def _load_map_lanes(map_api, ego_x: float, ego_y: float, ego_h: float,
             if len(right_path) >= 2:
                 pts_right = _resample_polyline(right_path, cfg.N_LANE_POINTS)
                 feats_right = _encode_polyline_pts(pts_right, speed_limit, cat_onehot,
-                                                   ref_x, ref_y, ref_h)
+                                                   ref_x, ref_y, ref_h, tl_onehot)
             else:
                 feats_right = feats_center.copy()
         except Exception:
@@ -553,11 +610,11 @@ def _load_sample(db_path: str, token: str):
         gt_trajectory[i] = [xe, ye, he]
 
     # ── Agents at current frame (t=0) ─────────────────────────────────────────
-    # Paper Da=10: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
+    # Da=14: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, 4×category_onehot
     _AGENT_CATEGORIES = ['VEHICLE', 'PEDESTRIAN', 'BICYCLE', 'MOTORCYCLE']
 
     def _load_agents_at_token(tok: str, time_step: float = 0.0) -> tuple:
-        """Returns (agents array (N, Da=10), mask (N,)) in initial ego frame."""
+        """Returns (agents array (N, Da=14), mask (N,)) in initial ego frame."""
         try:
             raw = list(get_tracked_objects_for_lidarpc_token_from_db(db_path, tok))
         except Exception:
@@ -575,8 +632,13 @@ def _load_sample(db_path: str, token: str):
             bl = ag.box.length if hasattr(ag, 'box') else 0.0
             bh = ag.box.height if hasattr(ag, 'box') else 0.0
             cat_name = ag.tracked_object_type.name if hasattr(ag, 'tracked_object_type') else 'UNKNOWN'
-            cat_idx = _AGENT_CATEGORIES.index(cat_name) if cat_name in _AGENT_CATEGORIES else len(_AGENT_CATEGORIES)
-            arr[j]  = [xe, ye, he, vx, vy, bw, bl, bh, time_step, cat_idx]
+            cat_idx = _AGENT_CATEGORIES.index(cat_name) if cat_name in _AGENT_CATEGORIES else len(_AGENT_CATEGORIES) - 1
+            cat_onehot = np.zeros(len(_AGENT_CATEGORIES), dtype=np.float32)
+            cat_onehot[cat_idx] = 1.0
+            arr[j] = np.concatenate([
+                [xe, ye, math.sin(he), math.cos(he), vx, vy, bw, bl, bh, time_step],
+                cat_onehot,
+            ])
             mask[j] = 1.0
         return arr, mask
 
@@ -627,12 +689,16 @@ def _load_sample(db_path: str, token: str):
     # ── BEV raster (zeros; real rasterisation deferred) ───────────────────────
     map_raster = np.zeros((cfg.BEV_C, cfg.BEV_H, cfg.BEV_W), dtype=np.float32)
 
+    # ── Traffic light status for this frame ─────────────────────────────────
+    tl_status = _get_traffic_light_status(db_path, token)
+
     # ── Map lane loading ──────────────────────────────────────────────────────
     try:
         map_name = _get_map_name_from_db(db_path)
         map_api = _get_map_api(map_name)
         map_lanes, map_lanes_mask = _load_map_lanes(
-            map_api, ref_x, ref_y, ref_h, ref_x, ref_y, ref_h
+            map_api, ref_x, ref_y, ref_h, ref_x, ref_y, ref_h,
+            tl_status=tl_status
         )
     except Exception:
         map_api = None

@@ -85,6 +85,8 @@ def train(args):
             'mode_label':          data['mode_label'],
             'map_lanes':           data['map_lanes'],
             'map_lanes_mask':      data['map_lanes_mask'],
+            'map_polygons':        data.get('map_polygons', torch.zeros(data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
+            'map_polygons_mask':   data.get('map_polygons_mask', torch.zeros(data['n_samples'], cfg.N_POLYGONS, device=device)),
         }
         n_samples = data['n_samples']
         loader = None
@@ -145,6 +147,8 @@ def train(args):
                     gpu_cache['agents_mask'][start:end],
                     gpu_cache['map_lanes'][start:end],
                     gpu_cache['map_lanes_mask'][start:end],
+                    map_polygons=gpu_cache['map_polygons'][start:end],
+                    map_polygons_mask=gpu_cache['map_polygons_mask'][start:end],
                 )                                          # (chunk, T, N, Da) on GPU
                 chunks.append(out.cpu())                   # move to CPU immediately
                 del out
@@ -189,7 +193,6 @@ def train(args):
         def get_batch(batch_idx, batch=None):
             if pin_gpu:
                 idx = perm[batch_idx * args.batch_size:(batch_idx + 1) * args.batch_size]
-                # Use pre-computed β output (CPU→GPU slice) if available, else GT agents_seq
                 if beta_seq_cpu is not None:
                     agents_seq_batch = beta_seq_cpu[idx.cpu()].to(device)
                 else:
@@ -201,7 +204,9 @@ def train(args):
                         gpu_cache['gt_trajectory'][idx],
                         gpu_cache['mode_label'][idx],
                         gpu_cache['map_lanes'][idx],
-                        gpu_cache['map_lanes_mask'][idx])
+                        gpu_cache['map_lanes_mask'][idx],
+                        gpu_cache['map_polygons'][idx],
+                        gpu_cache['map_polygons_mask'][idx])
             else:
                 return (batch['agents_now'].to(device),
                         batch['agents_history'].to(device),
@@ -210,7 +215,9 @@ def train(args):
                         batch['gt_trajectory'].to(device),
                         batch['mode_label'].to(device),
                         batch['map_lanes'].to(device),
-                        batch['map_lanes_mask'].to(device))
+                        batch['map_lanes_mask'].to(device),
+                        batch['map_polygons'].to(device) if 'map_polygons' in batch else None,
+                        batch['map_polygons_mask'].to(device) if 'map_polygons_mask' in batch else None)
 
         cpu_batches = random.sample(all_batches, len(all_batches)) if (use_cache and not pin_gpu) else (loader if not pin_gpu else [])
         outer = range(n_batches_epoch) if pin_gpu else enumerate(cpu_batches)
@@ -219,18 +226,20 @@ def train(args):
             if pin_gpu:
                 batch_idx = item
                 agents_now, agents_history, agents_mask, agents_seq, \
-                    gt_traj, mode_label, map_lanes, map_lanes_mask = get_batch(batch_idx)
+                    gt_traj, mode_label, map_lanes, map_lanes_mask, \
+                    map_polygons, map_polygons_mask = get_batch(batch_idx)
             else:
                 batch_idx, batch = item
                 agents_now, agents_history, agents_mask, agents_seq, \
-                    gt_traj, mode_label, map_lanes, map_lanes_mask = get_batch(batch_idx, batch)
+                    gt_traj, mode_label, map_lanes, map_lanes_mask, \
+                    map_polygons, map_polygons_mask = get_batch(batch_idx, batch)
 
-            # Forward (Algorithm 1, Stage 2 IL branch) — bf16 for speed
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=device.type == 'cuda'):
                 mode_logits, side_traj, pred_traj = model.forward_train(
                     agents_now, agents_mask, agents_seq, gt_traj, mode_label,
                     map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
                     agents_history=agents_history,
+                    map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                 )
 
                 # Loss (L_IL = L_CE + L_SideTask + L_generator)

@@ -212,11 +212,15 @@ def train(args):
             mode_label      = batch['mode_label'] if pin_gpu else batch['mode_label'].to(device)
             map_lanes       = batch['map_lanes'] if pin_gpu else batch['map_lanes'].to(device)
             map_lanes_mask  = batch['map_lanes_mask'] if pin_gpu else batch['map_lanes_mask'].to(device)
+            map_polygons    = (batch['map_polygons'] if pin_gpu else batch['map_polygons'].to(device)) if 'map_polygons' in batch else None
+            map_polygons_mask = (batch['map_polygons_mask'] if pin_gpu else batch['map_polygons_mask'].to(device)) if 'map_polygons_mask' in batch else None
 
             # Step 1: Simulate agents with frozen transition model
             with torch.no_grad():
                 agent_futures = model.transition_model(
-                    agents_history, agents_mask
+                    agents_history, agents_mask,
+                    map_lanes, map_lanes_mask,
+                    map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                 )                                            # (B, T, N, Da)
 
             # Step 2: Rollout with π_old (no grad)
@@ -228,6 +232,8 @@ def train(args):
                     mode_c=mode_label,
                     map_lanes=map_lanes,
                     map_lanes_mask=map_lanes_mask,
+                    map_polygons=map_polygons,
+                    map_polygons_mask=map_polygons_mask,
                 )
 
             # Step 3: Compute rewards + GAE
@@ -252,6 +258,8 @@ def train(args):
                     map_lanes_mask=map_lanes_mask,
                     stored_actions=traj_old,
                     agents_history=agents_history,
+                    map_polygons=map_polygons,
+                    map_polygons_mask=map_polygons_mask,
                 )
 
             # Step 5: Losses

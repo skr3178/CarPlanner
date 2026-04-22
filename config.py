@@ -33,14 +33,14 @@ LON_BIN_EDGES = [i * MAX_SPEED / N_LON for i in range(N_LON + 1)]
 # Lat bins: lateral offset at T steps in ego frame (y-axis)
 LAT_BIN_EDGES = [-float('inf'), -3.0, -1.0, 1.0, 3.0, float('inf')]  # 5 bins
 
-# ── Feature dimensions (paper: Da=10, Dm=9) ──────────────────────────────────
-D_AGENT = 10          # per-agent pose: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
-D_MAP_POINT = 9       # per-map-point: x, y, sin_h, cos_h, speed_limit, 4×category_onehot
+# ── Feature dimensions ────────────────────────────────────────────────────────
+D_AGENT = 14          # per-agent: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, 4×category_onehot
+D_MAP_POINT = 13      # per-map-point: x, y, sin_h, cos_h, speed_limit, 4×category_onehot, 4×traffic_light_onehot
 
 # Per-feature normalization stds (from training data stats, valid agents only)
-# Dims: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
-AGENT_FEATURE_STD = [34.55, 16.12, 1.84, 1.90, 1.58, 0.76, 2.71, 0.66, 10.0, 1.0]
-D_POLYLINE_POINT = 3 * D_MAP_POINT  # = 27: center + left_boundary + right_boundary per point (paper §2.3: Np × 3Dm)
+# Dims: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, cat(4)
+AGENT_FEATURE_STD = [34.55, 16.12, 1.0, 1.0, 1.90, 1.58, 0.76, 2.71, 0.66, 10.0, 1.0, 1.0, 1.0, 1.0]
+D_POLYLINE_POINT = 3 * D_MAP_POINT  # = 39: center + left_boundary + right_boundary per point (paper §2.3: Np × 3Dm)
 
 # ── Architecture ──────────────────────────────────────────────────────────────
 D_ACTION = 3          # (x, y, yaw) per step
@@ -81,7 +81,7 @@ D_LANE = 256                     # lane encoder output dim (= D, paper §3.1)
 
 # ── Polygon map encoding ──────────────────────────────────────────────────────
 N_POLYGONS = 10                      # max polygons per scene (crosswalks, intersections, stop lines)
-D_POLYGON_POINT = D_MAP_POINT        # per-polygon point: x, y, heading, speed_limit, category (= 9)
+D_POLYGON_POINT = D_MAP_POINT        # per-polygon point: same 13-dim encoding as map points (TL dims = 0 for polygons)
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 CHECKPOINT_DIR = os.path.join(

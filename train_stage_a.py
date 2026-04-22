@@ -83,6 +83,8 @@ def train(args):
             'agents_seq':          data['agents_seq'],
             'map_lanes':           data['map_lanes'],
             'map_lanes_mask':      data['map_lanes_mask'],
+            'map_polygons':        data.get('map_polygons', torch.zeros(data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
+            'map_polygons_mask':   data.get('map_polygons_mask', torch.zeros(data['n_samples'], cfg.N_POLYGONS, device=device)),
         }
         n_samples = data['n_samples']
 
@@ -177,8 +179,11 @@ def train(args):
                 agents_seq = gpu_cache['agents_seq'][idx]
                 map_lanes = gpu_cache['map_lanes'][idx]
                 map_lanes_mask = gpu_cache['map_lanes_mask'][idx]
+                map_polygons = gpu_cache['map_polygons'][idx]
+                map_polygons_mask = gpu_cache['map_polygons_mask'][idx]
 
-                agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask,
+                                    map_polygons=map_polygons, map_polygons_mask=map_polygons_mask)
                 loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
 
                 optimizer.zero_grad()
@@ -209,9 +214,11 @@ def train(args):
                 agents_seq = batch['agents_seq'].to(device)
                 map_lanes = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
                 map_lanes_mask = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
+                map_polygons = batch['map_polygons'].to(device) if 'map_polygons' in batch else None
+                map_polygons_mask = batch['map_polygons_mask'].to(device) if 'map_polygons_mask' in batch else None
 
-                # Forward: predict agent futures from history + map context
-                agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask,
+                                    map_polygons=map_polygons, map_polygons_mask=map_polygons_mask)
 
                 # Loss: masked L1 (Eq 5)
                 loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
@@ -248,8 +255,11 @@ def train(args):
                     agents_seq = gpu_cache['agents_seq'][idx]
                     map_lanes = gpu_cache['map_lanes'][idx]
                     map_lanes_mask = gpu_cache['map_lanes_mask'][idx]
+                    map_polygons = gpu_cache['map_polygons'][idx]
+                    map_polygons_mask = gpu_cache['map_polygons_mask'][idx]
 
-                    agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                    agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask,
+                                        map_polygons=map_polygons, map_polygons_mask=map_polygons_mask)
                     loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
                     val_loss_sum += loss.item()
                     val_batches += 1
@@ -262,8 +272,11 @@ def train(args):
                     agents_seq = batch['agents_seq'].to(device)
                     map_lanes = batch['map_lanes'].to(device) if 'map_lanes' in batch else None
                     map_lanes_mask = batch['map_lanes_mask'].to(device) if 'map_lanes_mask' in batch else None
+                    map_polygons = batch['map_polygons'].to(device) if 'map_polygons' in batch else None
+                    map_polygons_mask = batch['map_polygons_mask'].to(device) if 'map_polygons_mask' in batch else None
 
-                    agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+                    agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask,
+                                        map_polygons=map_polygons, map_polygons_mask=map_polygons_mask)
                     loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
                     val_loss_sum += loss.item()
                     val_batches += 1

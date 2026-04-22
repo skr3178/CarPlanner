@@ -125,6 +125,40 @@ class LaneEncoder(nn.Module):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Polygon encoder  (PointNet over polygon rings — separate weights per paper)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PolygonEncoder(nn.Module):
+    """
+    PointNet-style encoder for polygon map elements (crosswalks, stop lines, intersections).
+    Same structure as LaneEncoder but separate weights per paper's "another PointNet".
+
+    Input:  polygons (B, N_POLYGONS, N_POINTS, D_POLYGON_POINT) + mask (B, N_POLYGONS)
+    Output: per_polygon (B, N_POLYGONS, D_LANE)
+    """
+    def __init__(self, in_dim: int = cfg.D_POLYGON_POINT, d_model: int = cfg.D_LANE):
+        super().__init__()
+        self.point_mlp = nn.Sequential(
+            nn.Linear(in_dim, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, d_model),
+        )
+        self.d_model = d_model
+
+    def forward(self, polygons: torch.Tensor, mask: torch.Tensor = None):
+        B, N_P, N_Pt, D = polygons.shape
+        flat = polygons.view(B * N_P, N_Pt, D)
+        per_point = self.point_mlp(flat)
+        poly_feat = per_point.max(dim=1).values
+        poly_feat = poly_feat.view(B, N_P, self.d_model)
+        if mask is not None:
+            poly_feat = poly_feat * mask.unsqueeze(-1)
+        return poly_feat
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # IVM — Invariant-View Module  (Algorithm 3)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -163,7 +197,9 @@ class IVMBlock(nn.Module):
                 agent_poses: torch.Tensor, map_feats: torch.Tensor = None,
                 map_poses: torch.Tensor = None,
                 route_feats: torch.Tensor = None,
-                route_poses: torch.Tensor = None) -> torch.Tensor:
+                route_poses: torch.Tensor = None,
+                polygon_feats: torch.Tensor = None,
+                polygon_poses: torch.Tensor = None) -> torch.Tensor:
         """
         mode_query:  (B, 1, D)       — current mode state (query)
         agent_feats: (B, H*N or N, D) — PointNet-encoded agents (full history or current)
@@ -209,7 +245,20 @@ class IVMBlock(nn.Module):
         # — discard routes whose closest point is their start point (ego has passed)
         # — retain K_r = N_r/4 forward points per surviving route
         if route_feats is not None:
-            kv = torch.cat([kv, route_feats], dim=1)    # (B, K*H + K_m + N_lat, D)
+            kv = torch.cat([kv, route_feats], dim=1)
+
+        # Polygon features (crosswalks, stop lines, intersections)
+        if polygon_feats is not None:
+            if polygon_poses is not None:
+                N_p = polygon_feats.size(1)
+                K_p = max(1, N_p // 2)
+                if N_p > K_p:
+                    poly_dist = polygon_poses.norm(dim=-1)
+                    _, poly_topk = poly_dist.topk(K_p, dim=1, largest=False)
+                    polygon_feats = polygon_feats.gather(
+                        1, poly_topk.unsqueeze(-1).expand(-1, -1, polygon_feats.size(-1))
+                    )
+            kv = torch.cat([kv, polygon_feats], dim=1)
 
         # Step 4: Transformer decoder (mode as query, agents+map as K/V)
         attn_out, _ = self.cross_attn(mode_query, kv, kv)
@@ -420,8 +469,9 @@ class ModeSelector(nn.Module):
             nn.Linear(D, D), nn.ReLU(inplace=True),
         )
 
-        # Map encoder for K/V — in_dim=27 (3×Dm: center+left+right per point)
+        # Map encoder for K/V
         self.map_encoder = LaneEncoder(in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE)
+        self.polygon_encoder = PolygonEncoder()
 
         # Transformer decoder: mode features as query, scene features as K/V
         self.mode_transformer = nn.MultiheadAttention(
@@ -445,14 +495,18 @@ class ModeSelector(nn.Module):
                 s0_per_agent: torch.Tensor = None,
                 map_lanes: torch.Tensor = None,
                 map_lanes_mask: torch.Tensor = None,
-                mode_c: torch.Tensor = None):
+                mode_c: torch.Tensor = None,
+                map_polygons: torch.Tensor = None,
+                map_polygons_mask: torch.Tensor = None):
         """
         Args:
-            global_feat:    (B, D)
-            s0_per_agent:   (B, N, D) — per-agent features for Transformer K/V
-            map_lanes:      (B, N_LANES, N_PTS, 9) — for lateral mode encoding + K/V
-            map_lanes_mask: (B, N_LANES)
-            mode_c:         (B,) int64 — for side-task conditioning (None at inference)
+            global_feat:      (B, D)
+            s0_per_agent:     (B, N, D) — per-agent features for Transformer K/V
+            map_lanes:        (B, N_LANES, N_PTS, D_POLYLINE_POINT) — for lateral mode encoding + K/V
+            map_lanes_mask:   (B, N_LANES)
+            mode_c:           (B,) int64 — for side-task conditioning (None at inference)
+            map_polygons:     (B, N_POLYGONS, N_PTS, D_POLYGON_POINT) — polygon map elements
+            map_polygons_mask:(B, N_POLYGONS) — polygon validity mask
         Returns:
             logits:    (B, N_MODES)
             side_traj: (B, T_FUTURE, 3)
@@ -496,7 +550,10 @@ class ModeSelector(nn.Module):
         if map_lanes is not None and map_lanes_mask is not None:
             map_feats = self.map_encoder(map_lanes, map_lanes_mask)  # (B, N_L, D)
             kv_parts.append(map_feats)
-        scene_kv = torch.cat(kv_parts, dim=1)                  # (B, 1 + N + N_m, D)
+        if map_polygons is not None and map_polygons_mask is not None:
+            poly_feats = self.polygon_encoder(map_polygons, map_polygons_mask)  # (B, N_P, D)
+            kv_parts.append(poly_feats)
+        scene_kv = torch.cat(kv_parts, dim=1)                  # (B, 1 + N + N_m + N_p, D)
 
         attn_out, _ = self.mode_transformer(
             query=mode_feats, key=scene_kv, value=scene_kv
@@ -559,6 +616,7 @@ class AutoregressivePolicy(nn.Module):
         # Time-aware encoder: 4 agent features + 1 normalised time index
         self.agent_encoder_time = PointNetEncoder(in_dim=cfg.D_AGENT, d_model=D)
         self.lane_encoder  = LaneEncoder(in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE)
+        self.polygon_encoder = PolygonEncoder()
         # Decomposed mode encoder (Section 3.2) — replaces flat nn.Embedding
         self.decomposed_mode = DecomposedModeEncoder()
         # IVM: 2 stacked cross-attention layers (reduced from paper's 3 for GPU memory)
@@ -618,12 +676,14 @@ class AutoregressivePolicy(nn.Module):
                 agents_mask: torch.Tensor, mode_c: torch.Tensor,
                 gt_ego: torch.Tensor = None,
                 map_lanes: torch.Tensor = None,
-                map_lanes_mask: torch.Tensor = None) -> torch.Tensor:
+                map_lanes_mask: torch.Tensor = None,
+                map_polygons: torch.Tensor = None,
+                map_polygons_mask: torch.Tensor = None) -> torch.Tensor:
         """
         T-step autoregressive rollout with IVM (Algorithm 2 + Algorithm 3).
 
-       agents_now:  (B, N, 4)  — agents at t=0 in initial ego frame
-        agents_seq:  (B, T_FUTURE, N, 4) — agent states at t=1..T in initial ego frame
+       agents_now:  (B, N, Da)  — agents at t=0 in initial ego frame
+        agents_seq:  (B, T_FUTURE, N, Da) — agent states at t=1..T in initial ego frame
         """
         B = agents_seq.size(0)
         device = agents_seq.device
@@ -672,33 +732,37 @@ class AutoregressivePolicy(nn.Module):
             time_indices = torch.linspace(-H, 0, H, device=device)  # (H,)
 
             # ── IVM step 1–3: transform buffer to ego-centric frame at t ──
-            # Transform each frame in the history window
-            # Da=10: x, y, heading, vx, vy, box_w, box_l, box_h, time_step, category
+            # Da=14: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, cat_onehot(4)
             Da = cfg.D_AGENT
             buffer_ego = torch.zeros(B, H, cfg.N_AGENTS, Da, device=device,
                                      dtype=agent_buffer.dtype)
             for h_idx in range(H):
-                ag_xy_h = agent_buffer[:, h_idx, :, :2]   # (B, N, 2) — x, y
-                ag_h_h  = agent_buffer[:, h_idx, :, 2]    # (B, N)   — heading
-                ag_vx_h = agent_buffer[:, h_idx, :, 3]    # (B, N)   — vx
-                ag_vy_h = agent_buffer[:, h_idx, :, 4]    # (B, N)   — vy
-                ag_bw_h = agent_buffer[:, h_idx, :, 5]    # (B, N)   — box_w
-                ag_bl_h = agent_buffer[:, h_idx, :, 6]    # (B, N)   — box_l
-                ag_bh_h = agent_buffer[:, h_idx, :, 7]    # (B, N)   — box_h
-                ag_cat_h = agent_buffer[:, h_idx, :, 9]   # (B, N)   — category
+                ag_xy_h  = agent_buffer[:, h_idx, :, :2]    # (B, N, 2) — x, y
+                ag_sin_h = agent_buffer[:, h_idx, :, 2]     # (B, N) — sin(heading)
+                ag_cos_h = agent_buffer[:, h_idx, :, 3]     # (B, N) — cos(heading)
+                ag_h_h   = torch.atan2(ag_sin_h, ag_cos_h)  # (B, N) — reconstruct heading
+                ag_vx_h  = agent_buffer[:, h_idx, :, 4]     # (B, N) — vx
+                ag_vy_h  = agent_buffer[:, h_idx, :, 5]     # (B, N) — vy
+                ag_bw_h  = agent_buffer[:, h_idx, :, 6]     # (B, N) — box_w
+                ag_bl_h  = agent_buffer[:, h_idx, :, 7]     # (B, N) — box_l
+                ag_bh_h  = agent_buffer[:, h_idx, :, 8]     # (B, N) — box_h
+                ag_cat_h = agent_buffer[:, h_idx, :, 10:14]  # (B, N, 4) — category one-hot
                 x_e, y_e, h_e = self._transform_to_ego_frame(
                     ag_xy_h, ag_h_h, ego_x, ego_y, ego_h
                 )
-                # Rotate velocity to ego frame
-                cos_h = torch.cos(-ego_h).unsqueeze(1)     # (B, 1)
+                cos_h = torch.cos(-ego_h).unsqueeze(1)
                 sin_h = torch.sin(-ego_h).unsqueeze(1)
-                vx_e = cos_h * ag_vx_h - sin_h * ag_vy_h  # (B, N)
+                vx_e = cos_h * ag_vx_h - sin_h * ag_vy_h
                 vy_e = sin_h * ag_vx_h + cos_h * ag_vy_h
-                # Replace time_step with normalised time index
-                t_norm = time_indices[h_idx].expand(B, cfg.N_AGENTS)  # (B, N)
-                buffer_ego[:, h_idx] = torch.stack(
-                    [x_e, y_e, h_e, vx_e, vy_e, ag_bw_h, ag_bl_h, ag_bh_h, t_norm, ag_cat_h], dim=-1
-                )  # (B, N, Da)
+                t_norm = time_indices[h_idx].expand(B, cfg.N_AGENTS)
+                buffer_ego[:, h_idx] = torch.cat([
+                    x_e.unsqueeze(-1), y_e.unsqueeze(-1),
+                    torch.sin(h_e).unsqueeze(-1), torch.cos(h_e).unsqueeze(-1),
+                    vx_e.unsqueeze(-1), vy_e.unsqueeze(-1),
+                    ag_bw_h.unsqueeze(-1), ag_bl_h.unsqueeze(-1), ag_bh_h.unsqueeze(-1),
+                    t_norm.unsqueeze(-1),
+                    ag_cat_h,
+                ], dim=-1)  # (B, N, Da=14)
 
             # Flatten history into agent dimension for PointNet
             # (B, H*N, Da) — PointNet sees all H frames as a point cloud
@@ -718,9 +782,6 @@ class AutoregressivePolicy(nn.Module):
             map_feats = None
             lanes_ego = None
             if map_lanes is not None:
-                # map_lanes: (B, N_LANES, N_PTS, 27) — center[9] + left[9] + right[9]
-                # Each 9-dim block: [x, y, sin_h, cos_h, speed_limit, cat_onehot(4)]
-                # Transform x,y,heading for ALL three polylines to ego frame at step t.
                 lanes_t = map_lanes.clone()
                 cos_hl = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
                 sin_hl = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
@@ -728,9 +789,10 @@ class AutoregressivePolicy(nn.Module):
                 ego_y_exp = ego_y.unsqueeze(1).unsqueeze(1)
                 ego_h_exp = ego_h.unsqueeze(1).unsqueeze(1)
 
+                Dm = cfg.D_MAP_POINT
                 parts = []
-                for offset in (0, 9, 18):  # center, left, right
-                    poly = lanes_t[..., offset:offset+9]
+                for offset in (0, Dm, 2 * Dm):  # center, left, right
+                    poly = lanes_t[..., offset:offset+Dm]
                     px, py = poly[..., 0], poly[..., 1]
                     ph = torch.atan2(poly[..., 2], poly[..., 3])
 
@@ -743,42 +805,69 @@ class AutoregressivePolicy(nn.Module):
                     parts.append(torch.cat([
                         x_el.unsqueeze(-1), y_el.unsqueeze(-1),
                         torch.sin(h_el).unsqueeze(-1), torch.cos(h_el).unsqueeze(-1),
-                        poly[..., 4:],  # speed_limit + cat_onehot (unchanged)
+                        poly[..., 4:],
                     ], dim=-1))
 
-                lanes_ego = torch.cat(parts, dim=-1)  # (B, N_L, P, 27)
+                lanes_ego = torch.cat(parts, dim=-1)  # (B, N_L, P, D_POLYLINE_POINT)
                 map_feats = self.lane_encoder(lanes_ego, map_lanes_mask)
 
+            # ── Polygon re-transform per step ─────────────────────────────
+            poly_feats = None
+            poly_poses = None
+            if map_polygons is not None and map_polygons_mask is not None:
+                polys_t = map_polygons.clone()
+                cos_hp = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
+                sin_hp = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
+                ego_xp = ego_x.unsqueeze(1).unsqueeze(1)
+                ego_yp = ego_y.unsqueeze(1).unsqueeze(1)
+                ego_hp = ego_h.unsqueeze(1).unsqueeze(1)
+
+                ppx, ppy = polys_t[..., 0], polys_t[..., 1]
+                pph = torch.atan2(polys_t[..., 2], polys_t[..., 3])
+                dx_p = ppx - ego_xp
+                dy_p = ppy - ego_yp
+                x_ep = cos_hp * dx_p - sin_hp * dy_p
+                y_ep = sin_hp * dx_p + cos_hp * dy_p
+                h_ep = (pph - ego_hp + math.pi) % (2 * math.pi) - math.pi
+
+                polys_ego = torch.cat([
+                    x_ep.unsqueeze(-1), y_ep.unsqueeze(-1),
+                    torch.sin(h_ep).unsqueeze(-1), torch.cos(h_ep).unsqueeze(-1),
+                    polys_t[..., 4:],
+                ], dim=-1)  # (B, N_POLYGONS, N_PTS, D_POLYGON_POINT)
+                poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
+                poly_poses = polys_ego[..., :2].mean(dim=2)  # (B, N_POLYGONS, 2)
+
             # ── IVM Step 2: route filtering (Alg 3) ──────────────────────
-            # Mask out routes whose closest point to ego is their start (ego has passed).
             route_feats_t = None
             if route_polylines is not None:
-                rp_xy = route_polylines[..., :2]                   # (B, N_lat, N_PTS, 2)
+                rp_xy = route_polylines[..., :2]
                 dx_r = rp_xy[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
                 dy_r = rp_xy[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
                 cos_hr = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
                 sin_hr = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
-                rx = cos_hr * dx_r - sin_hr * dy_r                # (B, N_lat, N_PTS)
+                rx = cos_hr * dx_r - sin_hr * dy_r
                 ry = sin_hr * dx_r + cos_hr * dy_r
-                route_dists = torch.sqrt(rx**2 + ry**2)           # (B, N_lat, N_PTS)
-                closest_idx = route_dists.argmin(dim=-1)           # (B, N_lat)
-                # Discard route if closest point is index 0 (ego has passed start)
-                active_mask = (closest_idx > 0).float()            # (B, N_lat)
-                route_feats_t = lat_modes * active_mask.unsqueeze(-1)  # (B, N_lat, D)
+                route_dists = torch.sqrt(rx**2 + ry**2)
+                closest_idx = route_dists.argmin(dim=-1)
+                active_mask = (closest_idx > 0).float()
+                route_feats_t = lat_modes * active_mask.unsqueeze(-1)
 
             # ── IVM Transformer decoder: update mode query ────────────────
             map_poses = None
             if lanes_ego is not None:
-                map_poses = lanes_ego[..., :2].mean(dim=2)         # (B, N_L, 2)
+                map_poses = lanes_ego[..., :2].mean(dim=2)
 
             for ivm in self.ivm_layers:
                 mode_query = ivm(
                     mode_query,
-                    per_agent,                               # (B, H*N, D) — full history
-                    agents_ego_now[..., :2],                 # (B, N, 2) — current pos for K-NN
-                    map_feats,                               # (B, N_LANES, D)
-                    map_poses=map_poses,                     # (B, N_LANES, 2) — for K_m filtering
-                    route_feats=route_feats_t,               # (B, N_lat, D) — step-2 filtered routes
+                    per_agent,
+                    agents_ego_now[..., :2],
+                    map_feats,
+                    map_poses=map_poses,
+                    route_feats=route_feats_t,
+                    polygon_feats=poly_feats,
+                    polygon_poses=poly_poses,
                 )  # (B, 1, D)
 
             # ── Action head → waypoint in CURRENT ego frame ───────────────
@@ -810,7 +899,9 @@ class AutoregressivePolicy(nn.Module):
                    agents_mask: torch.Tensor, mode_c: torch.Tensor,
                    map_lanes: torch.Tensor = None,
                    map_lanes_mask: torch.Tensor = None,
-                   stored_actions: torch.Tensor = None) -> tuple:
+                   stored_actions: torch.Tensor = None,
+                   map_polygons: torch.Tensor = None,
+                   map_polygons_mask: torch.Tensor = None) -> tuple:
         """
         RL forward pass with Gaussian policy and value estimation.
 
@@ -872,13 +963,15 @@ class AutoregressivePolicy(nn.Module):
                                      dtype=agent_buffer.dtype)
             for h_idx in range(H):
                 ag_xy_h  = agent_buffer[:, h_idx, :, :2]
-                ag_h_h   = agent_buffer[:, h_idx, :, 2]
-                ag_vx_h  = agent_buffer[:, h_idx, :, 3]
-                ag_vy_h  = agent_buffer[:, h_idx, :, 4]
-                ag_bw_h  = agent_buffer[:, h_idx, :, 5]
-                ag_bl_h  = agent_buffer[:, h_idx, :, 6]
-                ag_bh_h  = agent_buffer[:, h_idx, :, 7]
-                ag_cat_h = agent_buffer[:, h_idx, :, 9]
+                ag_sin_h = agent_buffer[:, h_idx, :, 2]
+                ag_cos_h = agent_buffer[:, h_idx, :, 3]
+                ag_h_h   = torch.atan2(ag_sin_h, ag_cos_h)
+                ag_vx_h  = agent_buffer[:, h_idx, :, 4]
+                ag_vy_h  = agent_buffer[:, h_idx, :, 5]
+                ag_bw_h  = agent_buffer[:, h_idx, :, 6]
+                ag_bl_h  = agent_buffer[:, h_idx, :, 7]
+                ag_bh_h  = agent_buffer[:, h_idx, :, 8]
+                ag_cat_h = agent_buffer[:, h_idx, :, 10:14]
 
                 x_e, y_e, h_e = self._transform_to_ego_frame(
                     ag_xy_h, ag_h_h, ego_x, ego_y, ego_h
@@ -888,10 +981,14 @@ class AutoregressivePolicy(nn.Module):
                 vx_e = cos_h * ag_vx_h - sin_h * ag_vy_h
                 vy_e = sin_h * ag_vx_h + cos_h * ag_vy_h
                 t_norm = time_indices[h_idx].expand(B, cfg.N_AGENTS)
-                buffer_ego[:, h_idx] = torch.stack(
-                    [x_e, y_e, h_e, vx_e, vy_e, ag_bw_h, ag_bl_h, ag_bh_h,
-                     t_norm, ag_cat_h], dim=-1
-                )
+                buffer_ego[:, h_idx] = torch.cat([
+                    x_e.unsqueeze(-1), y_e.unsqueeze(-1),
+                    torch.sin(h_e).unsqueeze(-1), torch.cos(h_e).unsqueeze(-1),
+                    vx_e.unsqueeze(-1), vy_e.unsqueeze(-1),
+                    ag_bw_h.unsqueeze(-1), ag_bl_h.unsqueeze(-1), ag_bh_h.unsqueeze(-1),
+                    t_norm.unsqueeze(-1),
+                    ag_cat_h,
+                ], dim=-1)
 
             # PointNet encode
             buffer_flat = buffer_ego.view(B, H * cfg.N_AGENTS, Da)
@@ -907,7 +1004,6 @@ class AutoregressivePolicy(nn.Module):
             map_feats = None
             lanes_ego = None
             if map_lanes is not None:
-                # Transform x,y,heading for ALL three polylines (center/left/right)
                 lanes_t = map_lanes.clone()
                 cos_hl = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
                 sin_hl = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
@@ -915,9 +1011,10 @@ class AutoregressivePolicy(nn.Module):
                 ego_y_exp = ego_y.unsqueeze(1).unsqueeze(1)
                 ego_h_exp = ego_h.unsqueeze(1).unsqueeze(1)
 
+                Dm = cfg.D_MAP_POINT
                 parts = []
-                for offset in (0, 9, 18):  # center, left, right
-                    poly = lanes_t[..., offset:offset+9]
+                for offset in (0, Dm, 2 * Dm):
+                    poly = lanes_t[..., offset:offset+Dm]
                     px, py = poly[..., 0], poly[..., 1]
                     ph = torch.atan2(poly[..., 2], poly[..., 3])
 
@@ -933,8 +1030,35 @@ class AutoregressivePolicy(nn.Module):
                         poly[..., 4:],
                     ], dim=-1))
 
-                lanes_ego = torch.cat(parts, dim=-1)  # (B, N_L, P, 27)
+                lanes_ego = torch.cat(parts, dim=-1)
                 map_feats = self.lane_encoder(lanes_ego, map_lanes_mask)
+
+            # Polygon re-transform per step
+            poly_feats = None
+            poly_poses = None
+            if map_polygons is not None and map_polygons_mask is not None:
+                polys_t = map_polygons.clone()
+                cos_hp = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
+                sin_hp = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
+                ego_xp = ego_x.unsqueeze(1).unsqueeze(1)
+                ego_yp = ego_y.unsqueeze(1).unsqueeze(1)
+                ego_hp = ego_h.unsqueeze(1).unsqueeze(1)
+
+                ppx, ppy = polys_t[..., 0], polys_t[..., 1]
+                pph = torch.atan2(polys_t[..., 2], polys_t[..., 3])
+                dx_p = ppx - ego_xp
+                dy_p = ppy - ego_yp
+                x_ep = cos_hp * dx_p - sin_hp * dy_p
+                y_ep = sin_hp * dx_p + cos_hp * dy_p
+                h_ep = (pph - ego_hp + math.pi) % (2 * math.pi) - math.pi
+
+                polys_ego = torch.cat([
+                    x_ep.unsqueeze(-1), y_ep.unsqueeze(-1),
+                    torch.sin(h_ep).unsqueeze(-1), torch.cos(h_ep).unsqueeze(-1),
+                    polys_t[..., 4:],
+                ], dim=-1)
+                poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
+                poly_poses = polys_ego[..., :2].mean(dim=2)
 
             # IVM Step 2: route filtering
             route_feats_t = None
@@ -946,9 +1070,9 @@ class AutoregressivePolicy(nn.Module):
                 sin_hr = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
                 rx = cos_hr * dx_r - sin_hr * dy_r
                 ry = sin_hr * dx_r + cos_hr * dy_r
-                closest_idx = torch.sqrt(rx**2 + ry**2).argmin(dim=-1)  # (B, N_lat)
+                closest_idx = torch.sqrt(rx**2 + ry**2).argmin(dim=-1)
                 active_mask = (closest_idx > 0).float()
-                route_feats_t = lat_modes * active_mask.unsqueeze(-1)  # (B, N_lat, D)
+                route_feats_t = lat_modes * active_mask.unsqueeze(-1)
 
             map_poses = None
             if lanes_ego is not None:
@@ -958,6 +1082,8 @@ class AutoregressivePolicy(nn.Module):
                     mode_query, per_agent, agents_ego_now[..., :2], map_feats,
                     map_poses=map_poses,
                     route_feats=route_feats_t,
+                    polygon_feats=poly_feats,
+                    polygon_poses=poly_poses,
                 )
 
             # ── Gaussian policy head ──────────────────────────────────────
@@ -1053,10 +1179,11 @@ class TransitionModel(nn.Module):
         # 1. Agent encoder: shared MLP over Da-dim poses, max-pool over H per agent
         self.agent_encoder = PointNetEncoder(in_dim=cfg.D_AGENT, d_model=D)
 
-        # 2. Map encoder — PointNet over lane polylines — in_dim=27 (3×Dm: center+left+right)
+        # 2. Map encoder — PointNet over lane polylines — in_dim=D_POLYLINE_POINT (3×Dm)
         self.map_encoder = LaneEncoder(in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE)
+        self.polygon_encoder = PolygonEncoder()
 
-        # 3. Self-attention Transformer encoder (fuses agents + map)
+        # 3. Self-attention Transformer encoder (fuses agents + map + polygons)
         self.transformer_layer = nn.TransformerEncoderLayer(
             d_model=D, nhead=4, dim_feedforward=D * 4,
             dropout=0.1, activation='relu', batch_first=True,
@@ -1074,7 +1201,9 @@ class TransitionModel(nn.Module):
     def forward(self, agents_history: torch.Tensor,
                 agents_mask: torch.Tensor,
                 map_lanes: torch.Tensor = None,
-                map_lanes_mask: torch.Tensor = None) -> torch.Tensor:
+                map_lanes_mask: torch.Tensor = None,
+                map_polygons: torch.Tensor = None,
+                map_polygons_mask: torch.Tensor = None) -> torch.Tensor:
         # 1. Per-agent PointNet over H historical poses (Section 3.1)
         # agents_history: (B, H, N, Da) — H poses per agent
         B, H, N, Da = agents_history.shape
@@ -1099,25 +1228,33 @@ class TransitionModel(nn.Module):
         if map_lanes is not None and map_lanes_mask is not None:
             map_feats = self.map_encoder(map_lanes, map_lanes_mask)  # (B, N_L, D)
         else:
-            # No map: empty map features
             map_feats = torch.zeros(B, 0, D, device=agents_history.device)
 
-        # 3. Self-attention Transformer over agents + map
-        combined = torch.cat([per_agent, map_feats], dim=1)  # (B, N + N_m, D)
-
-        # Build padding mask: agents_mask + map_mask
-        N_m = map_feats.size(1)
-        if N_m > 0 and map_lanes_mask is not None:
-            combined_mask = torch.cat([agents_mask, map_lanes_mask], dim=1)  # (B, N + N_m)
-            # TransformerEncoder expects True = ignore
-            padding_mask = (combined_mask < 0.5)
+        # Encode polygons (if available)
+        if map_polygons is not None and map_polygons_mask is not None:
+            poly_feats = self.polygon_encoder(map_polygons, map_polygons_mask)
         else:
-            padding_mask = (agents_mask < 0.5)
-            if N_m > 0:
-                padding_map = torch.ones(B, N_m, dtype=torch.bool, device=agents_history.device)
-                padding_mask = torch.cat([padding_mask, padding_map], dim=1)
+            poly_feats = torch.zeros(B, 0, D, device=agents_history.device)
 
-        fused = self.transformer(combined, src_key_padding_mask=padding_mask)  # (B, N + N_m, D)
+        # 3. Self-attention Transformer over agents + map + polygons
+        combined = torch.cat([per_agent, map_feats, poly_feats], dim=1)
+
+        # Build padding mask
+        N_m = map_feats.size(1)
+        N_p = poly_feats.size(1)
+        mask_parts = [agents_mask]
+        if N_m > 0 and map_lanes_mask is not None:
+            mask_parts.append(map_lanes_mask)
+        elif N_m > 0:
+            mask_parts.append(torch.zeros(B, N_m, device=agents_history.device))
+        if N_p > 0 and map_polygons_mask is not None:
+            mask_parts.append(map_polygons_mask)
+        elif N_p > 0:
+            mask_parts.append(torch.zeros(B, N_p, device=agents_history.device))
+        combined_mask = torch.cat(mask_parts, dim=1)
+        padding_mask = (combined_mask < 0.5)
+
+        fused = self.transformer(combined, src_key_padding_mask=padding_mask)
 
         # Extract per-agent features (first N positions)
         per_agent_fused = fused[:, :N, :]                   # (B, N, D)
@@ -1300,50 +1437,31 @@ class CarPlanner(nn.Module):
                       mode_label: torch.Tensor,
                       map_lanes: torch.Tensor = None,
                       map_lanes_mask: torch.Tensor = None,
-                      agents_history: torch.Tensor = None):
+                      agents_history: torch.Tensor = None,
+                      map_polygons: torch.Tensor = None,
+                      map_polygons_mask: torch.Tensor = None):
         """
         IL training pass (Algorithm 1, Stage 2 IL branch).
-
-        When the transition model β is loaded (Stage A checkpoint), agent futures
-        are generated by β(s_0) per Algorithm 1 line 14, not from GT.
-        This aligns IL and RL training on the same agent simulation pipeline.
-
-        Inputs:
-          agents_now:     (B, N, Da)           — agents at t=0 in ego frame (for s0 encoder)
-          agents_mask:    (B, N)
-          agents_seq:     (B, T_FUTURE, N, Da) — GT agent states (fallback if β not loaded)
-          gt_traj:        (B, T_FUTURE, 3)     — GT ego trajectory in ego frame
-          mode_label:     (B,)  int64          — positive mode c* (pre-assigned)
-          map_lanes:      (B, N_LANES, N_PTS, 27) — lane polylines in ego frame
-          map_lanes_mask: (B, N_LANES)         — validity mask for lanes
-          agents_history: (B, H, N, Da)        — H historical poses per agent (for transition model)
-
-        Returns:
-          mode_logits: (B, N_MODES)
-          side_traj:   (B, T_FUTURE, 3)
-          pred_traj:   (B, T_FUTURE, 3)
         """
-        # Agent futures: use β(s_0) if loaded (Algorithm 1 line 14),
-        # otherwise fall back to GT agent states from the batch.
         if self._transition_loaded:
             with torch.no_grad():
                 hist = agents_history if agents_history is not None else agents_now.unsqueeze(1)
                 agents_seq = self.transition_model(
-                    hist, agents_mask, map_lanes, map_lanes_mask
-                )  # (B, T, N, Da)
-        # Encode s_0 agents for mode selector
-        s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)  # (B, N, D), (B, D)
+                    hist, agents_mask, map_lanes, map_lanes_mask,
+                    map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+                )
+        s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
 
-        # Mode selector  (Eq 6 + Eq 7) — side task conditioned on c* (Alg 1 line 20)
         mode_logits, side_traj = self.mode_selector(
             s0_global,
             s0_per_agent=s0_per_agent,
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
             mode_c=mode_label,
+            map_polygons=map_polygons,
+            map_polygons_mask=map_polygons_mask,
         )
 
-        # Mode dropout (Table 4: improves both IL and RL)
         c = mode_label.clone()
         if cfg.MODE_DROPOUT and self.training:
             drop_mask = torch.rand(c.size(0), device=c.device) < cfg.MODE_DROPOUT_P
@@ -1351,27 +1469,23 @@ class CarPlanner(nn.Module):
                 0, cfg.N_MODES, (int(drop_mask.sum()),), device=c.device
             )
 
-        # Ego-history dropout (Table 4: ON for IL best, OFF for RL best)
-        # Applied to agents_now before encoding inside the policy if enabled
-        # (implemented as zeroing the passed agents_now for the policy)
         agents_now_policy = agents_now
         if cfg.EGO_HISTORY_DROPOUT and self.training:
             drop_mask_b = (torch.rand(agents_now.size(0), 1, 1, device=agents_now.device)
                            > cfg.MODE_DROPOUT_P).float()
             agents_now_policy = agents_now * drop_mask_b
 
-        # Autoregressive policy with IVM (T steps, teacher-forcing on ego frame)
-        # Backbone sharing (Table 4): when enabled, policy.agent_encoder_time
-        # is the same object as self.s0_encoder (wired in __init__)
         pred_traj = self.policy(
             agents_now=agents_now_policy,
             agents_seq=agents_seq,
             agents_mask=agents_mask,
             mode_c=c,
-            gt_ego=gt_traj,          # teacher-forcing for IVM frame transforms
+            gt_ego=gt_traj,
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
-        )                            # (B, T_FUTURE, 3)
+            map_polygons=map_polygons,
+            map_polygons_mask=map_polygons_mask,
+        )
 
         return mode_logits, side_traj, pred_traj
 
@@ -1383,33 +1497,24 @@ class CarPlanner(nn.Module):
                          map_lanes: torch.Tensor = None,
                          map_lanes_mask: torch.Tensor = None,
                          stored_actions: torch.Tensor = None,
-                         agents_history: torch.Tensor = None) -> tuple:
+                         agents_history: torch.Tensor = None,
+                         map_polygons: torch.Tensor = None,
+                         map_polygons_mask: torch.Tensor = None) -> tuple:
         """
         RL training forward pass (Stage C).
-
-        Combines mode selector (IL) + policy (RL with Gaussian head).
-
-        Returns:
-            mode_logits: (B, N_MODES)
-            side_traj:   (B, T_FUTURE, 3)
-            trajectory:  (B, T_FUTURE, 3)
-            log_probs:   (B, T_FUTURE)
-            values:      (B, T_FUTURE)
-            entropies:   (B, T_FUTURE)
         """
-        # Encode s_0 agents for mode selector
         s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
 
-        # Mode selector (Eq 6 + Eq 7)
         mode_logits, side_traj = self.mode_selector(
             s0_global,
             s0_per_agent=s0_per_agent,
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
             mode_c=mode_label,
+            map_polygons=map_polygons,
+            map_polygons_mask=map_polygons_mask,
         )
 
-        # Mode dropout (applied for RL too)
         c = mode_label.clone()
         if cfg.MODE_DROPOUT and self.training:
             drop_mask = torch.rand(c.size(0), device=c.device) < cfg.MODE_DROPOUT_P
@@ -1417,8 +1522,6 @@ class CarPlanner(nn.Module):
                 0, cfg.N_MODES, (int(drop_mask.sum()),), device=c.device
             )
 
-        # No ego-history dropout for RL (paper Table 4: OFF for RL best)
-        # Policy RL forward
         trajectory, log_probs, values, entropies = self.policy.forward_rl(
             agents_now=agents_now,
             agents_seq=agents_seq,
@@ -1427,6 +1530,8 @@ class CarPlanner(nn.Module):
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
             stored_actions=stored_actions,
+            map_polygons=map_polygons,
+            map_polygons_mask=map_polygons_mask,
         )
 
         return mode_logits, side_traj, trajectory, log_probs, values, entropies
@@ -1437,48 +1542,32 @@ class CarPlanner(nn.Module):
     def forward_inference(self, agents_now: torch.Tensor, agents_mask: torch.Tensor,
                           map_lanes: torch.Tensor = None,
                           map_lanes_mask: torch.Tensor = None,
-                          agents_history: torch.Tensor = None):
+                          agents_history: torch.Tensor = None,
+                          map_polygons: torch.Tensor = None,
+                          map_polygons_mask: torch.Tensor = None):
         """
-        Full inference pass (Algorithm 2):
-          1. Encode s_0
-          2. Mode selector → scores for all N_MODES modes
-          3. Transition model → agent futures
-          4. For each of N_MODES modes: run autoregressive policy with IVM
-          5. Rule selector → best trajectory
-
-        Inputs:
-          agents_now:  (B, N, 4)             — agents at t=0 in ego frame
-          agents_mask: (B, N)
-          map_lanes:   (B, N_LANES, N_PTS, 3) — lane centerlines in ego frame
-          map_lanes_mask: (B, N_LANES)       — validity mask for lanes
-
-        Returns:
-          mode_logits:   (B, N_MODES)
-          all_trajs:     (B, N_MODES, T_FUTURE, 3)
-          best_traj:     (B, T_FUTURE, 3)
-          best_idx:      (B,)
+        Full inference pass (Algorithm 2).
         """
         self.eval()
         B = agents_now.size(0)
 
-        # Step 1: encode s_0
         s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
 
-        # Step 2: mode scores
         mode_logits, _ = self.mode_selector(
             s0_global,
             s0_per_agent=s0_per_agent,
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
+            map_polygons=map_polygons,
+            map_polygons_mask=map_polygons_mask,
         )
 
-        # Step 3: transition model → agent futures for all steps
         hist = agents_history if agents_history is not None else agents_now.unsqueeze(1)
         agent_futures = self.transition_model(
-            hist, agents_mask, map_lanes, map_lanes_mask
-        )                                                # (B, T, N, Da)
+            hist, agents_mask, map_lanes, map_lanes_mask,
+            map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+        )
 
-        # Step 4: generate one trajectory per mode
         all_trajs = []
         for m in range(cfg.N_MODES):
             c = torch.full((B,), m, dtype=torch.long, device=agents_now.device)
@@ -1487,15 +1576,16 @@ class CarPlanner(nn.Module):
                 agents_seq=agent_futures,
                 agents_mask=agents_mask,
                 mode_c=c,
-                gt_ego=None,         # no teacher-forcing at inference
+                gt_ego=None,
                 map_lanes=map_lanes,
                 map_lanes_mask=map_lanes_mask,
-            )                        # (B, T, 3)
+                map_polygons=map_polygons,
+                map_polygons_mask=map_polygons_mask,
+            )
             all_trajs.append(traj.unsqueeze(1))
 
-        all_trajs = torch.cat(all_trajs, dim=1)          # (B, N_MODES, T, 3)
+        all_trajs = torch.cat(all_trajs, dim=1)
 
-        # Step 5: rule selector (4 criteria: collision, drivable area, comfort, progress)
         best_traj, best_idx = self.rule_selector(
             mode_logits, all_trajs,
             agents_now=agents_now, agents_mask=agents_mask,
@@ -1508,13 +1598,18 @@ class CarPlanner(nn.Module):
 
     def forward_transition(self, agents_history: torch.Tensor, agents_mask: torch.Tensor,
                            map_lanes: torch.Tensor = None,
-                           map_lanes_mask: torch.Tensor = None):
+                           map_lanes_mask: torch.Tensor = None,
+                           map_polygons: torch.Tensor = None,
+                           map_polygons_mask: torch.Tensor = None):
         """
         Forward pass for transition model pre-training.
         agents_history: (B, H, N, Da) — H historical poses per agent
         Returns predicted agent futures: (B, T_FUTURE, N, Da)
         """
-        return self.transition_model(agents_history, agents_mask, map_lanes, map_lanes_mask)
+        return self.transition_model(
+            agents_history, agents_mask, map_lanes, map_lanes_mask,
+            map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+        )
 
     def load_transition_model(self, ckpt_path: str, freeze: bool = True):
         """
@@ -1554,17 +1649,20 @@ if __name__ == '__main__':
     T, N, D = cfg.T_FUTURE, cfg.N_AGENTS, cfg.D_HIDDEN
     agents_now  = torch.randn(B, N, cfg.D_AGENT, device=device)
     agents_mask = torch.ones(B, N, device=device)
-    agents_seq  = torch.randn(B, T, N, cfg.D_AGENT, device=device)   # GT agent futures
+    agents_seq  = torch.randn(B, T, N, cfg.D_AGENT, device=device)
     gt_traj     = torch.randn(B, T, 3, device=device)
     mode_label  = torch.randint(0, cfg.N_MODES, (B,), device=device)
-    map_lanes   = torch.randn(B, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_MAP_POINT, device=device)
+    map_lanes   = torch.randn(B, cfg.N_LANES, cfg.N_LANE_POINTS, cfg.D_POLYLINE_POINT, device=device)
     map_lanes_mask = torch.ones(B, cfg.N_LANES, device=device)
+    map_polygons = torch.randn(B, cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)
+    map_polygons_mask = torch.ones(B, cfg.N_POLYGONS, device=device)
 
     # ── Training forward ───────────────────────────────────────────────────
     model.train()
     logits, side, pred = model.forward_train(
         agents_now, agents_mask, agents_seq, gt_traj, mode_label,
-        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
+        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+        map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
     )
     assert logits.shape == (B, cfg.N_MODES),     f"logits {logits.shape}"
     assert side.shape   == (B, T, 3),            f"side {side.shape}"
@@ -1582,7 +1680,8 @@ if __name__ == '__main__':
     # ── Inference forward ──────────────────────────────────────────────────
     inf_logits, all_trajs, best_traj, best_idx = model.forward_inference(
         agents_now, agents_mask,
-        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask
+        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+        map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
     )
     assert inf_logits.shape == (B, cfg.N_MODES),             f"inf_logits"
     assert all_trajs.shape  == (B, cfg.N_MODES, T, 3),       f"all_trajs"
@@ -1592,7 +1691,12 @@ if __name__ == '__main__':
           f"best_traj={tuple(best_traj.shape)}")
 
     # ── Transition model forward ───────────────────────────────────────────
-    agent_fut = model.forward_transition(agents_now, agents_mask)
+    agents_history = torch.randn(B, cfg.T_HIST, N, cfg.D_AGENT, device=device)
+    agent_fut = model.forward_transition(
+        agents_history, agents_mask,
+        map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+        map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+    )
     assert agent_fut.shape == (B, T, N, cfg.D_AGENT),        f"agent_fut {agent_fut.shape}"
     print(f"✓ transition model:      agent_fut={tuple(agent_fut.shape)}")
 

@@ -39,7 +39,8 @@ def merge(args):
     print(f"\n[Merge] Merging {len(caches)} caches ({total_samples} total samples)...")
 
     keys = ['agents_history', 'agents_mask', 'agents_seq', 'agents_now',
-            'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask']
+            'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
+            'map_polygons', 'map_polygons_mask']
 
     merged = {}
     for k in keys:
