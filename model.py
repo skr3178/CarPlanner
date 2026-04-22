@@ -94,11 +94,11 @@ class LaneEncoder(nn.Module):
         super().__init__()
         # Per-point MLP: (x, y, h) → D_LANE
         self.point_mlp = nn.Sequential(
-            nn.Linear(in_dim, 32),
+            nn.Linear(in_dim, 64),
             nn.ReLU(inplace=True),
-            nn.Linear(32, 64),
+            nn.Linear(64, 128),
             nn.ReLU(inplace=True),
-            nn.Linear(64, d_model),
+            nn.Linear(128, d_model),
         )
         self.d_model = d_model
 
@@ -141,7 +141,7 @@ class IVMBlock(nn.Module):
 
     Query: mode_query  (B, 1, D)       — fixed mode index, updated by attention
     K/V:   agent_feats (B, K, D)       — K-NN selected agents at step t
-           map_feats   (B, N_LANES, D)  — encoded lane centerlines (optional)
+           map_feats   (B, N_LANES, D) — encoded lane centerlines (optional)
     Output: updated mode_query (B, 1, D)
     """
     def __init__(self, d_model: int = cfg.D_HIDDEN, n_heads: int = 8,
@@ -158,8 +158,6 @@ class IVMBlock(nn.Module):
             nn.Linear(d_model * 4, d_model),
         )
         self.norm2 = nn.LayerNorm(d_model)
-        # Project lane features from D_LANE to D_HIDDEN for concatenation
-        self.lane_proj = nn.Linear(cfg.D_LANE, d_model)
 
     def forward(self, mode_query: torch.Tensor, agent_feats: torch.Tensor,
                 agent_poses: torch.Tensor, map_feats: torch.Tensor = None,
@@ -170,7 +168,7 @@ class IVMBlock(nn.Module):
         mode_query:  (B, 1, D)       — current mode state (query)
         agent_feats: (B, H*N or N, D) — PointNet-encoded agents (full history or current)
         agent_poses: (B, N, 2)       — current-step (x, y) positions for K-NN distance
-        map_feats:   (B, N_m, D_LANE) — LaneEncoder output (optional)
+        map_feats:   (B, N_m, D) — LaneEncoder output (optional)
         map_poses:   (B, N_m, 2)     — map element positions for K_m K-NN (optional)
         route_feats: (B, N_lat, D)   — route polyline features for route filtering (optional)
         route_poses: (B, N_lat, N_r, 2) — route point positions for step-2 filtering (optional)
@@ -205,8 +203,7 @@ class IVMBlock(nn.Module):
                     map_feats = map_feats.gather(
                         1, map_topk.unsqueeze(-1).expand(-1, -1, map_feats.size(-1))
                     )
-            map_proj = self.lane_proj(map_feats)         # (B, N_m or K_m, D)
-            kv = torch.cat([kv, map_proj], dim=1)
+            kv = torch.cat([kv, map_feats], dim=1)
 
         # Step 2: Route segment filtering (architecture §3.4.1 Step 2)
         # — discard routes whose closest point is their start point (ego has passed)
@@ -306,7 +303,6 @@ class DecomposedModeEncoder(nn.Module):
         self.route_pointnet = LaneEncoder(
             in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE
         )
-        self.route_proj = nn.Linear(cfg.D_LANE, D)
 
         # Combined: linear projection 2D → D
         self.combine = nn.Linear(2 * D, D)
@@ -331,10 +327,8 @@ class DecomposedModeEncoder(nn.Module):
         Returns:
             lat_modes: (B, N_lat, D) — scene-dependent lateral mode features
         """
-        # LaneEncoder: (B, N_lat, N_PTS, 9) → (B, N_lat, D_LANE)
-        lat_feats = self.route_pointnet(route_polylines, route_mask)
-        # Project to D_HIDDEN: (B, N_lat, D)
-        return self.route_proj(lat_feats)
+        # LaneEncoder: (B, N_lat, N_PTS, 9) → (B, N_lat, D)
+        return self.route_pointnet(route_polylines, route_mask)
 
     def construct_mode_tensor(self, lon_modes: torch.Tensor,
                               lat_modes: torch.Tensor) -> torch.Tensor:
@@ -428,7 +422,6 @@ class ModeSelector(nn.Module):
 
         # Map encoder for K/V — in_dim=27 (3×Dm: center+left+right per point)
         self.map_encoder = LaneEncoder(in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE)
-        self.map_proj = nn.Linear(cfg.D_LANE, D)
 
         # Transformer decoder: mode features as query, scene features as K/V
         self.mode_transformer = nn.MultiheadAttention(
@@ -501,8 +494,7 @@ class ModeSelector(nn.Module):
         if s0_per_agent is not None:
             kv_parts.append(s0_per_agent)                      # (B, N, D) — per-agent
         if map_lanes is not None and map_lanes_mask is not None:
-            map_feats = self.map_encoder(map_lanes, map_lanes_mask)  # (B, N_L, D_LANE)
-            map_feats = self.map_proj(map_feats)               # (B, N_L, D)
+            map_feats = self.map_encoder(map_lanes, map_lanes_mask)  # (B, N_L, D)
             kv_parts.append(map_feats)
         scene_kv = torch.cat(kv_parts, dim=1)                  # (B, 1 + N + N_m, D)
 
@@ -784,7 +776,7 @@ class AutoregressivePolicy(nn.Module):
                     mode_query,
                     per_agent,                               # (B, H*N, D) — full history
                     agents_ego_now[..., :2],                 # (B, N, 2) — current pos for K-NN
-                    map_feats,                               # (B, N_LANES, D_LANE)
+                    map_feats,                               # (B, N_LANES, D)
                     map_poses=map_poses,                     # (B, N_LANES, 2) — for K_m filtering
                     route_feats=route_feats_t,               # (B, N_lat, D) — step-2 filtered routes
                 )  # (B, 1, D)
@@ -1063,7 +1055,6 @@ class TransitionModel(nn.Module):
 
         # 2. Map encoder — PointNet over lane polylines — in_dim=27 (3×Dm: center+left+right)
         self.map_encoder = LaneEncoder(in_dim=cfg.D_POLYLINE_POINT, d_model=cfg.D_LANE)
-        self.map_proj = nn.Linear(cfg.D_LANE, D)
 
         # 3. Self-attention Transformer encoder (fuses agents + map)
         self.transformer_layer = nn.TransformerEncoderLayer(
@@ -1106,8 +1097,7 @@ class TransitionModel(nn.Module):
 
         # 2. Encode map (if available)
         if map_lanes is not None and map_lanes_mask is not None:
-            map_feats = self.map_encoder(map_lanes, map_lanes_mask)  # (B, N_L, D_LANE)
-            map_feats = self.map_proj(map_feats)             # (B, N_L, D)
+            map_feats = self.map_encoder(map_lanes, map_lanes_mask)  # (B, N_L, D)
         else:
             # No map: empty map features
             map_feats = torch.zeros(B, 0, D, device=agents_history.device)

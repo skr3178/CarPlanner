@@ -77,7 +77,7 @@ GAE_LAMBDA = 0.9
 MAP_QUERY_RADIUS = 50.0          # meters — radius to query nearby lanes
 N_LANES = 20                     # max lanes to encode (padded/truncated)
 N_LANE_POINTS = 10               # points per lane polyline (resampled)
-D_LANE = 64                      # lane encoder output dim
+D_LANE = 256                     # lane encoder output dim (= D, paper §3.1)
 
 # ── Polygon map encoding ──────────────────────────────────────────────────────
 N_POLYGONS = 10                      # max polygons per scene (crosswalks, intersections, stop lines)

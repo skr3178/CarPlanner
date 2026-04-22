@@ -1,0 +1,5 @@
+- Include additional dataset information such as acceleration etc to the dataset
+- The paper mentions Static point dimension Dm 9 and Agent pose dimension Da 10. We have more information than that in our dataset. 
+- Reextract the cache with the additional dimensions
+- For now lets just keep the maps-polylines and polygons added
+- 
