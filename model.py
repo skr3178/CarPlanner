@@ -1184,12 +1184,13 @@ class TransitionModel(nn.Module):
         self.polygon_encoder = PolygonEncoder()
 
         # 3. Self-attention Transformer encoder (fuses agents + map + polygons)
+        # Paper Table 5: 3 layers, 8 attention heads, dropout 0.1
         self.transformer_layer = nn.TransformerEncoderLayer(
-            d_model=D, nhead=4, dim_feedforward=D * 4,
+            d_model=D, nhead=8, dim_feedforward=D * 4,
             dropout=0.1, activation='relu', batch_first=True,
         )
         self.transformer = nn.TransformerEncoder(
-            self.transformer_layer, num_layers=2
+            self.transformer_layer, num_layers=3
         )
 
         # 4. Per-agent decoder: [per-agent feat; global feat] → T × D_a (DELTA from s_0)
