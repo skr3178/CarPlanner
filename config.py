@@ -67,13 +67,29 @@ EPOCHS = 50
 LR_PATIENCE = 5       # ReduceLROnPlateau — bigger model + batch256 needs more exploration time
 LR_FACTOR = 0.3
 
-# ablation flags (IL best config: all True; RL best: dropout=True, side_task=True, rest=False)
-# NOTE: switch to RL-best config when running Stage C
+# ── Ablation flags (Table 4) ─────────────────────────────────────────────────
+# Defaults = IL-best.  Call set_stage('c') before model creation for RL-best.
+STAGE = 'b'
 MODE_DROPOUT = True
 SELECTOR_SIDE_TASK = True
-EGO_HISTORY_DROPOUT = True    # IL best: True (Table 4)
-BACKBONE_SHARING = True        # IL best: True (Table 4)
-MODE_DROPOUT_P = 0.1  # probability of zeroing mode embedding during training
+EGO_HISTORY_DROPOUT = True     # IL best: True,  RL best: False
+BACKBONE_SHARING = True        # IL best: True,  RL best: False
+MODE_DROPOUT_P = 0.1
+
+
+def set_stage(stage: str):
+    """Set ablation flags for the given training stage."""
+    import config as _self
+    stage = stage.lower()
+    _self.STAGE = stage
+    if stage in ('a', 'b'):
+        _self.EGO_HISTORY_DROPOUT = True
+        _self.BACKBONE_SHARING = True
+    elif stage == 'c':
+        _self.EGO_HISTORY_DROPOUT = False
+        _self.BACKBONE_SHARING = False
+    else:
+        raise ValueError(f"Unknown stage: {stage!r}  (expected 'a', 'b', or 'c')")
 
 # ── RL coefficients (Eq 8-10, unused in IL-only baseline) ────────────────────
 LAMBDA_POLICY = 100.0

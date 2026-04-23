@@ -75,7 +75,7 @@ def main():
     env = os.environ.copy()
     env['CARPLANNER_CHECKPOINT'] = checkpoint_abs
 
-    maps_root = os.path.join(PROJECT_ROOT, 'paper/dataset/maps')
+    maps_root = os.path.join(PROJECT_ROOT, 'paper/dataset/maps/nuplan-maps-v1.0')
     env.setdefault('NUPLAN_MAPS_ROOT', maps_root)
     env.setdefault('NUPLAN_DATA_ROOT', os.path.join(PROJECT_ROOT, 'paper/dataset'))
 
@@ -85,18 +85,34 @@ def main():
 
     db_path = '/home/skr/nuplan_cities/val/data/cache/val'
 
+    # Process pool: multiple scenarios run in parallel (CPU-bound work overlaps)
+    # Each worker loads its own model copy; with 50MB model + ~200MB activations
+    # per worker, 8 workers needs ~2GB GPU — well within our 12GB budget.
+    if args.threads > 1:
+        worker_override = 'worker=single_machine_thread_pool'
+        worker_threads_override = f'worker.max_workers={args.threads}'
+        worker_process_override = 'worker.use_process_pool=true'
+    else:
+        worker_override = 'worker=sequential'
+        worker_threads_override = None
+        worker_process_override = None
+
     overrides = [
         f'+simulation={args.challenge}',
         'scenario_builder=nuplan_challenge',
         f'scenario_builder.db_files={db_path}',
         f'scenario_filter={args.split}',
         'planner=carplanner',
-        f'planner.stage={args.stage}',
-        f'worker=sequential',
+        f'planner.carplanner.stage={args.stage}',
+        worker_override,
         f'output_dir={output_dir}',
         'verbose=true',
         'run_metric=true',
     ]
+    if worker_threads_override:
+        overrides.append(worker_threads_override)
+    if worker_process_override:
+        overrides.append(worker_process_override)
 
     cmd = [
         sys.executable,

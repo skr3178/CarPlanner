@@ -497,7 +497,7 @@ class CarPlannerPlanner(AbstractPlanner):
             return torch.from_numpy(arr).unsqueeze(0).to(self._device)
 
         with torch.no_grad():
-            _, _, best_traj, _ = self._model.forward_inference(
+            _, _, best_traj, _ = self._model.forward_inference_fast(
                 agents_now=_t(agents_now),
                 agents_mask=_t(agents_mask),
                 map_lanes=_t(map_lanes),

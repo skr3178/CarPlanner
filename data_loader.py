@@ -643,9 +643,17 @@ def _extract_routes(map_api, ref_x: float, ref_y: float, ref_h: float,
 
     point = Point2D(ref_x, ref_y)
 
-    ego_lane = map_api.get_one_map_object(point, SemanticMapLayer.LANE)
+    try:
+        ego_lane = map_api.get_one_map_object(point, SemanticMapLayer.LANE)
+    except AssertionError:
+        candidates = map_api.get_all_map_objects(point, SemanticMapLayer.LANE)
+        ego_lane = candidates[0] if candidates else None
     if ego_lane is None:
-        ego_lane = map_api.get_one_map_object(point, SemanticMapLayer.LANE_CONNECTOR)
+        try:
+            ego_lane = map_api.get_one_map_object(point, SemanticMapLayer.LANE_CONNECTOR)
+        except AssertionError:
+            candidates = map_api.get_all_map_objects(point, SemanticMapLayer.LANE_CONNECTOR)
+            ego_lane = candidates[0] if candidates else None
     if ego_lane is None:
         lat_idx = _bin_lateral_offset(gt_trajectory[-1, 1]) if gt_trajectory is not None else 0
         return route_polylines, route_mask, lat_idx

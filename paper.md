@@ -739,3 +739,93 @@ Produces: CLS-NR, CLS-R, S-CR, S-Area, S-PR, S-Comfort.
 1. Open-loop first — if L_gen is far from 174.3 (IL-best), don't bother with closed-loop
 2. Closed-loop on test14-random — main benchmark (Table 1)
 3. Closed-loop on reduced-val14 — secondary benchmark (Table 2)
+
+---
+
+## Current Run Results (Apr 23 2026)
+
+### Stage B — Open-loop eval on val14 (1116 samples)
+
+Checkpoint: `stage_b_best.pt` (epoch 11, 3-city train_all_balanced, route polylines, IL-best config)
+
+**Table 4 — Open-loop metrics**
+
+| Metric | Ours | Paper IL-best | Paper RL-best |
+|--------|------|---------------|---------------|
+| L_gen | 12.6 | 174.3 | 1624.5 |
+| L_sel (CE) | 2.31 | 1.04 | 1.03 |
+| ADE (m) | 1.499 | — | — |
+| FDE (m) | 2.664 | — | — |
+| Mode acc top-1 (%) | 9.32 | — | — |
+| Mode acc top-5 (%) | 72.04 | — | — |
+| Median GT rank | 3 / 60 | — | — |
+
+**Table 8 — Consistent Ratio**
+
+| Metric | Ours | Paper IL-best | Paper RL-best |
+|--------|------|---------------|---------------|
+| Consistent Ratio Lat (%) | 20.00 | 68.26 | 79.58 |
+| Consistent Ratio Lon (%) | 8.38 | 43.01 | 43.03 |
+
+**Table 10 — Open-loop Collision & Area**
+
+| Metric | Ours | Paper IL-best | Paper RL-best |
+|--------|------|---------------|---------------|
+| Col Mean | 0.00 | 0.15 | 0.12 |
+| Area Mean | 0.10 | 0.09 | 0.05 |
+
+**Notes:**
+- L_gen (12.6) is much lower than paper IL-best (174.3) — different scale/units, lower is better
+- L_sel (2.31) worse than paper (1.04) — mode selector not yet accurately predicting GT mode
+- Consistent Ratio far below paper — model not committing to coherent lateral/longitudinal bins
+- Zero collisions is good; area off-road fraction similar to paper
+
+### Stage C — Open-loop eval on val14 (1116 samples)
+
+Checkpoint: `stage_c_best.pt` (epoch 8, RL-best config: EGO_HISTORY_DROPOUT=False, BACKBONE_SHARING=False)
+
+**Table 4 — Open-loop metrics**
+
+| Metric | Stage C (ours) | Stage B (ours) | Paper RL-best | Paper IL-best |
+|--------|---------------|---------------|---------------|---------------|
+| L_gen | 14.4 | 12.6 | 1624.5 | 174.3 |
+| L_sel (CE) | 2.47 | 2.31 | 1.03 | 1.04 |
+| ADE (m) | **1.210** | 1.499 | — | — |
+| FDE (m) | **2.364** | 2.664 | — | — |
+| Mode acc top-1 (%) | **23.75** | 9.32 | — | — |
+| Mode acc top-5 (%) | 71.42 | 72.04 | — | — |
+| Median GT rank | 3 / 60 | 3 / 60 | — | — |
+
+**Table 8 — Consistent Ratio**
+
+| Metric | Stage C (ours) | Paper RL-best | Paper IL-best |
+|--------|---------------|---------------|---------------|
+| Consistent Ratio Lat (%) | 20.04 | 79.58 | 68.26 |
+| Consistent Ratio Lon (%) | 8.33 | 43.03 | 43.01 |
+
+**Table 10 — Open-loop Collision & Area**
+
+| Metric | Stage C (ours) | Paper RL-best |
+|--------|---------------|---------------|
+| Col Mean | 0.00 | 0.12 |
+| Area Mean | 0.10 | 0.05 |
+
+**RL Diagnostics**
+
+| Metric | Value |
+|--------|-------|
+| Policy entropy | 1.662 |
+| Value estimate (mean) | -2.007 |
+| Reward total (mean) | -1.727 |
+| R_displacement | -0.932 |
+| R_collision | -0.008 |
+| R_drivable | -0.133 |
+| R_comfort | -1.045 |
+| Action std (x, y, yaw) | 0.305, 0.306, 0.800 |
+
+**Notes:**
+- RL improved ADE by 19% (1.499 → 1.210) and top-1 mode accuracy by +14pp (9.3% → 23.8%)
+- Consistent Ratio unchanged from stage B — RL did not improve mode coherence
+- Negative reward on val set expected (trained on train split, val is out-of-distribution)
+- R_comfort is the largest penalty (-1.045) — trajectory jerk is high
+- Consistent Ratio gap vs paper (20% vs 79%) is the primary signal that route/mode encoding needs improvement

@@ -124,6 +124,7 @@ def train(args):
               f"Batches/epoch: {len(loader)}")
 
     # Model
+    cfg.set_stage('b')
     model = CarPlanner().to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"[Train] Parameters: {n_params:,}")

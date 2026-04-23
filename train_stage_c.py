@@ -135,6 +135,7 @@ def train(args):
               f"Batches/epoch: {len(loader)}")
 
     # ── Model ───────────────────────────────────────────────────────────────
+    cfg.set_stage('c')
     model = CarPlanner().to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"[Stage C] Parameters: {n_params:,}")
@@ -189,9 +190,34 @@ def train(args):
         start_epoch = ckpt_c['epoch'] + 1
         print(f"[Stage C] Resumed from epoch {start_epoch}")
 
-    os.makedirs(cfg.CHECKPOINT_DIR, exist_ok=True)
+    # ── Val14 cache ──────────────────────────────────────────────────────────
+    val_cache_path = os.path.join(cfg.CHECKPOINT_DIR, "stage_cache_val14.pt")
+    if os.path.isfile(val_cache_path):
+        val_loader = make_cached_dataloader(
+            val_cache_path, batch_size=args.batch_size, shuffle=False, num_workers=0,
+        )
+        val_batches = list(val_loader)
+        if pin_gpu:
+            val_batches = [
+                {k: v.to(device) if isinstance(v, torch.Tensor) else v
+                 for k, v in b.items()}
+                for b in val_batches
+            ]
+        print(f"[Stage C] Val14 loaded: {len(val_loader.dataset)} samples, "
+              f"{len(val_batches)} batches")
+    else:
+        val_batches = None
+        print(f"[Stage C] No val14 cache found at {val_cache_path}, skipping validation")
 
-    best_loss = float('inf')
+    # ── Checkpoint dir ─────────────────────────────────────────────────────
+    from datetime import datetime
+    ckpt_dir = os.path.join(
+        cfg.CHECKPOINT_DIR,
+        f"stage_c_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
+    os.makedirs(ckpt_dir, exist_ok=True)
+
+    best_val_loss = float('inf')
     update_interval = 8  # Paper Table 5: I=8
     step_counter = 0
 
@@ -214,6 +240,8 @@ def train(args):
             map_lanes_mask  = batch['map_lanes_mask'] if pin_gpu else batch['map_lanes_mask'].to(device)
             map_polygons    = (batch['map_polygons'] if pin_gpu else batch['map_polygons'].to(device)) if 'map_polygons' in batch else None
             map_polygons_mask = (batch['map_polygons_mask'] if pin_gpu else batch['map_polygons_mask'].to(device)) if 'map_polygons_mask' in batch else None
+            route_polylines = (batch['route_polylines'] if pin_gpu else batch['route_polylines'].to(device)) if 'route_polylines' in batch else None
+            route_mask      = (batch['route_mask'] if pin_gpu else batch['route_mask'].to(device)) if 'route_mask' in batch else None
 
             # Step 1: Simulate agents with frozen transition model
             with torch.no_grad():
@@ -234,6 +262,8 @@ def train(args):
                     map_lanes_mask=map_lanes_mask,
                     map_polygons=map_polygons,
                     map_polygons_mask=map_polygons_mask,
+                    route_polylines=route_polylines,
+                    route_mask=route_mask,
                 )
 
             # Step 3: Compute rewards + GAE
@@ -260,6 +290,8 @@ def train(args):
                     agents_history=agents_history,
                     map_polygons=map_polygons,
                     map_polygons_mask=map_polygons_mask,
+                    route_polylines=route_polylines,
+                    route_mask=route_mask,
                 )
 
             # Step 5: Losses
@@ -288,9 +320,10 @@ def train(args):
                 epoch_losses[k] += locals()[k].item() if k != 'L_total' else L_total.item()
 
             # Logging
-            if (batch_idx + 1) % max(1, len(loader) // 5) == 0:
+            n_batches = len(all_batches) if use_cache else len(loader)
+            if (batch_idx + 1) % max(1, n_batches // 5) == 0:
                 print(f"  Epoch {epoch+1}/{args.epochs}  "
-                      f"[{batch_idx+1}/{len(loader)}]  "
+                      f"[{batch_idx+1}/{n_batches}]  "
                       f"L_total={L_total.item():.4f}  "
                       f"L_policy={L_policy.item():.4f}  "
                       f"L_value={L_value.item():.4f}")
@@ -307,36 +340,112 @@ def train(args):
         n = len(all_batches) if use_cache else len(loader)
         avg = {k: v / n for k, v in epoch_losses.items()}
         elapsed = time.time() - t0
+
+        # ── Validation ─────────────────────────────────────────────────────
+        val_avg = {}
+        if val_batches is not None:
+            model.eval()
+            val_losses = {k: 0. for k in epoch_losses}
+            with torch.no_grad():
+                for vb in val_batches:
+                    v_agents_now     = vb['agents_now'] if pin_gpu else vb['agents_now'].to(device)
+                    v_agents_history = vb['agents_history'] if pin_gpu else vb['agents_history'].to(device)
+                    v_agents_mask    = vb['agents_history_mask'] if pin_gpu else vb['agents_history_mask'].to(device)
+                    v_gt_traj        = vb['gt_trajectory'] if pin_gpu else vb['gt_trajectory'].to(device)
+                    v_mode_label     = vb['mode_label'] if pin_gpu else vb['mode_label'].to(device)
+                    v_map_lanes      = vb['map_lanes'] if pin_gpu else vb['map_lanes'].to(device)
+                    v_map_lanes_mask = vb['map_lanes_mask'] if pin_gpu else vb['map_lanes_mask'].to(device)
+                    v_map_polygons   = (vb['map_polygons'] if pin_gpu else vb['map_polygons'].to(device)) if 'map_polygons' in vb else None
+                    v_map_poly_mask  = (vb['map_polygons_mask'] if pin_gpu else vb['map_polygons_mask'].to(device)) if 'map_polygons_mask' in vb else None
+                    v_route_poly     = (vb['route_polylines'] if pin_gpu else vb['route_polylines'].to(device)) if 'route_polylines' in vb else None
+                    v_route_mask     = (vb['route_mask'] if pin_gpu else vb['route_mask'].to(device)) if 'route_mask' in vb else None
+
+                    v_agent_futures = model.transition_model(
+                        v_agents_history, v_agents_mask,
+                        v_map_lanes, v_map_lanes_mask,
+                        map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
+                    )
+
+                    v_traj, v_lp, v_vals, _ = model.policy.forward_rl(
+                        agents_now=v_agents_now, agents_seq=v_agent_futures,
+                        agents_mask=v_agents_mask, mode_c=v_mode_label,
+                        map_lanes=v_map_lanes, map_lanes_mask=v_map_lanes_mask,
+                        map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
+                        route_polylines=v_route_poly, route_mask=v_route_mask,
+                    )
+
+                    v_rewards = compute_rewards(
+                        ego_traj=v_traj, gt_traj=v_gt_traj,
+                        agent_futures=v_agent_futures, agents_mask=v_agents_mask,
+                        map_lanes=v_map_lanes, map_lanes_mask=v_map_lanes_mask,
+                    )
+                    v_adv, v_ret = compute_gae(v_rewards, v_vals)
+                    v_adv = normalize_advantages(v_adv)
+
+                    v_ml, v_st, v_tn, v_lpn, v_vn, v_ent = model.forward_rl_train(
+                        agents_now=v_agents_now, agents_mask=v_agents_mask,
+                        agents_seq=v_agent_futures, gt_traj=v_gt_traj,
+                        mode_label=v_mode_label,
+                        map_lanes=v_map_lanes, map_lanes_mask=v_map_lanes_mask,
+                        stored_actions=v_traj, agents_history=v_agents_history,
+                        map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
+                        route_polylines=v_route_poly, route_mask=v_route_mask,
+                    )
+
+                    vL_policy   = compute_ppo_loss(v_lpn, v_lp, v_adv)
+                    vL_value    = compute_value_loss(v_vn, v_ret)
+                    vL_entropy  = compute_entropy_loss(v_ent)
+                    vL_gen      = compute_gen_loss(v_tn, v_gt_traj)
+                    vL_selector, _ = compute_selector_loss(v_ml, v_st, v_gt_traj, v_mode_label)
+                    vL_total = (cfg.LAMBDA_POLICY * vL_policy
+                                + cfg.LAMBDA_VALUE * vL_value
+                                + cfg.LAMBDA_ENTROPY * vL_entropy
+                                + vL_gen + vL_selector)
+
+                    val_losses['L_policy']   += vL_policy.item()
+                    val_losses['L_value']    += vL_value.item()
+                    val_losses['L_entropy']  += vL_entropy.item()
+                    val_losses['L_gen']      += vL_gen.item()
+                    val_losses['L_selector'] += vL_selector.item()
+                    val_losses['L_total']    += vL_total.item()
+
+            val_avg = {k: v / len(val_batches) for k, v in val_losses.items()}
+            model.train()
+
+        val_str = f"  val={val_avg['L_total']:.4f}" if val_avg else ""
         print(f"Epoch {epoch+1}/{args.epochs}  "
-              f"L_total={avg['L_total']:.4f}  "
+              f"train={avg['L_total']:.4f}  "
               f"L_policy={avg['L_policy']:.4f}  "
               f"L_value={avg['L_value']:.4f}  "
               f"L_entropy={avg['L_entropy']:.4f}  "
               f"L_gen={avg['L_gen']:.4f}  "
-              f"L_selector={avg['L_selector']:.4f}  "
-              f"({elapsed:.1f}s)")
+              f"L_selector={avg['L_selector']:.4f}"
+              f"{val_str}  ({elapsed:.1f}s)")
 
-        scheduler.step(avg['L_total'])
+        track_loss = val_avg.get('L_total', avg['L_total'])
+        scheduler.step(track_loss)
 
         # Save checkpoint
-        is_best = avg['L_total'] < best_loss
-        best_loss = min(avg['L_total'], best_loss)
+        is_best = track_loss < best_val_loss
+        best_val_loss = min(track_loss, best_val_loss)
 
         ckpt = {
             'epoch': epoch,
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'policy_old': policy_old.state_dict(),
-            'loss': avg,
+            'train_loss': avg,
+            'val_loss': val_avg,
         }
-        ckpt_path = os.path.join(cfg.CHECKPOINT_DIR, f"stage_c_epoch_{epoch+1:03d}.pt")
+        ckpt_path = os.path.join(ckpt_dir, f"stage_c_epoch_{epoch+1:03d}.pt")
         torch.save(ckpt, ckpt_path)
         if is_best:
-            best_path = os.path.join(cfg.CHECKPOINT_DIR, "stage_c_best.pt")
+            best_path = os.path.join(ckpt_dir, "stage_c_best.pt")
             torch.save(ckpt, best_path)
+            torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_c_best.pt"))
             print(f"  * New best saved: {best_path}")
 
-    print(f"\n[Stage C] Done. Best L_total={best_loss:.4f}")
+    print(f"\n[Stage C] Done. Best val L_total={best_val_loss:.4f}")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
@@ -344,7 +453,8 @@ def train(args):
 def parse_args():
     p = argparse.ArgumentParser(description="CarPlanner RL fine-tuning (Stage C)")
     p.add_argument('--split', default='mini',
-                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore', 'train_all'])
+                   choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore',
+                            'train_all', 'train_all_balanced'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)
