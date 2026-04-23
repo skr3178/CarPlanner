@@ -595,4 +595,101 @@ Short answer
 
 Architecturally, the mode-selector side of Section 3.3.2 is now paper-faithful. The lateral modes are connected, graph-searched routes,   
 passed through the same PointNet + decomposition the code already had. What's left is operational — re-extract caches, retrain, and verify
-metrics actually improve.  
+metrics actually improve.
+
+
+## Evaluation Pipeline
+
+Two completely separate evaluation pipelines exist.
+
+### Pipeline 1: Open-loop evaluation (fast, minutes)
+
+Single forward pass per sample — no simulation loop, no replanning. Uses pre-extracted
+.pt caches with GT trajectories and mode labels already baked in.
+
+**What it measures:** L_gen (generator loss), L_sel (mode selector CE loss), ADE, FDE, mode accuracy.
+These correspond to the open-loop columns in Table 4.
+
+**Which dataset:** Val14 only (1,116 samples in `stage_cache_val14.pt`).
+Val14 is the standard validation split (1,118 scenarios, 100 per type × 14 types, from PDM).
+
+**Scripts:**
+```bash
+# Open-loop eval on Val14 — matches Table 4 open-loop columns (L_gen, L_sel)
+python eval_sanity.py --checkpoint checkpoints/stage_b_best.pt \
+    --cache checkpoints/stage_cache_val14.pt --n_eval 1116
+
+# Quick sanity on mini split
+python evaluate.py --checkpoint checkpoints/stage_b_best.pt --cache --split mini
+```
+
+**Run this FIRST.** If L_gen is far from the paper's 174.3 (IL-best), there's no point
+running the expensive closed-loop simulation.
+
+### Pipeline 2: Official closed-loop evaluation (slow, hours)
+
+nuPlan's full simulation framework. At each 0.1s step, the simulator calls
+`CarPlannerPlanner.compute_planner_trajectory()`, the LQR controller tracks the output,
+and the official metric engine scores the full 15s rollout.
+
+**What it measures:** CLS-NR, S-CR (collision rate), S-Area (drivable area compliance),
+S-PR (progress), S-Comfort, S-TTC (time to collision), speed limit compliance,
+driving direction compliance. These are the closed-loop columns in Tables 1, 2, and 4.
+
+**Which datasets (per paper Section 4.1 "Benchmarks and metrics"):**
+- Test14-Random: 261 scenarios (20 per type × 14 types, from PlanTF)
+- Reduced-Val14: 318 scenarios (from PDM)
+
+**This reads raw DB files at runtime** — it does NOT use our pre-extracted .pt caches.
+The simulator needs to step through time, update agent positions (log-replay or IDM),
+and let the planner react to the evolving scene. Pre-extraction can't capture this
+because the ego trajectory changes every run depending on the planner's decisions.
+
+**Script:**
+```bash
+PYTHONPATH=. python paper/dataset/nuplan-devkit/nuplan/planning/script/run_simulation.py \
+    planner=carplanner \
+    +simulation=closed_loop_nonreactive_agents \
+    scenario_filter=test14_random \
+    scenario_builder.db_files=/home/skr/nuplan_cities/val/data/cache/val \
+    scenario_builder.map_root=paper/dataset/nuplan-extracted/nuplan-maps-v1.0
+```
+
+**Planner wrapper:** `carplanner_planner.py` (project root) — subclass of AbstractPlanner.
+**Hydra config:** `tuplan_garage/.../planner/carplanner.yaml`.
+
+### What about the pre-extracted scenario caches?
+
+| Cache file                        | Format              | Used by                    | Purpose                          |
+|-----------------------------------|---------------------|----------------------------|----------------------------------|
+| `stage_cache_train_*.pt`          | Training tensors    | train_stage_a/b/c.py       | Training data (essential)        |
+| `stage_cache_val14.pt`            | Training tensors    | eval_sanity.py, evaluate.py| **Open-loop eval** (has GT traj + mode labels) |
+| `stage_cache_mini.pt`             | Training tensors    | eval_sanity.py, evaluate.py| Quick open-loop sanity check     |
+| `test14_random_cache.pt` (258 sc) | Scenario tensors    | eval_closedloop_gpu.py     | Fast approximate closed-loop (dev only, NOT paper metrics) |
+| `val14_cache.pt` (1118 sc)        | Scenario tensors    | eval_closedloop_gpu.py     | Fast approximate closed-loop (dev only) |
+| `reduced_val14_cache.pt` (318 sc) | Scenario tensors    | eval_closedloop_gpu.py     | Fast approximate closed-loop (dev only) |
+| `test14_hard_cache.pt`            | Scenario tensors    | eval_closedloop_gpu.py     | **EMPTY — extraction failed**, skipping for now |
+
+The scenario caches (test14_random_cache.pt, etc.) were built for `eval_closedloop_gpu.py` —
+a fast but approximate GPU-native eval. They are useful for quick development iteration
+but do NOT produce official paper metrics. Official metrics come only from Pipeline 2.
+
+### Evaluation order
+
+1. **Open-loop on Val14** (Pipeline 1) — minutes. Validates model produces reasonable
+   trajectories and mode predictions before investing in closed-loop.
+2. **Closed-loop via nuPlan simulator** (Pipeline 2) — hours. Produces the official
+   CLS-NR, S-CR, S-Area, S-PR, S-Comfort that match paper Tables 1/2/4.
+
+### Table 4 ablation config (IL-best vs RL-best)
+
+| Ablation flag        | Table 4 IL-best | Table 4 RL-best | Current config.py |
+|----------------------|-----------------|-----------------|-------------------|
+| MODE_DROPOUT         | True            | True            | True              |
+| SELECTOR_SIDE_TASK   | True            | True            | True              |
+| EGO_HISTORY_DROPOUT  | True            | False           | **False** (RL)    |
+| BACKBONE_SHARING     | True            | False           | **False** (RL)    |
+
+Current config matches RL-best. To run IL-best ablation, flip both to True.
+Switching doesn't break anything — tested: same state dict keys, forward pass OK,
+param count drops by ~42K due to shared backbone.  

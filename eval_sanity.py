@@ -17,6 +17,7 @@ import os
 import sys
 import argparse
 import torch
+import torch.nn.functional as F
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -26,6 +27,11 @@ from matplotlib.patches import Rectangle, FancyArrow
 import config as cfg
 from data_loader import PreextractedDataset
 from model import CarPlanner
+
+
+def _mode_to_bins(m):
+    """mode_label = lon_idx * N_LAT + lat_idx  (see data_loader.py)."""
+    return int(m) // cfg.N_LAT, int(m) % cfg.N_LAT
 
 
 # Paper benchmarks — see paper/tables.md
@@ -189,7 +195,12 @@ def main(args):
     # Cache plot samples so we don't re-run inference for them during eval loop
     plot_cache = {}
 
-    stats = {'ade': [], 'fde': [], 'l_gen_step': [], 'l_gen_sample': [], 'mode_correct': []}
+    stats = {
+        'ade': [], 'fde': [], 'l_gen_step': [], 'l_gen_sample': [],
+        'mode_correct': [], 'top5_correct': [],
+        'gt_prob': [], 'entropy': [], 'top1_prob': [], 'gt_rank': [],
+    }
+    score_rows = []  # per-sample detail for optional print
 
     with torch.no_grad():
         for k, idx in enumerate(sorted(eval_set)):
@@ -209,12 +220,49 @@ def main(args):
             mode_label = batch['mode_label'].item()
             chosen_mode = best_idx.item()
 
+            # ── Mode selector scores ──
+            logits_1d = mode_logits[0]                             # (M,)
+            probs_1d = F.softmax(logits_1d, dim=-1)                # (M,)
+            top_k = min(args.top_k_scores, cfg.N_MODES)
+            top_probs, top_idx = torch.topk(probs_1d, top_k)
+            top_probs = top_probs.cpu().numpy()
+            top_idx = top_idx.cpu().numpy()
+            gt_prob = float(probs_1d[mode_label])
+            top1_prob = float(probs_1d.max())
+            # entropy in nats
+            ent = float(-(probs_1d * (probs_1d.clamp_min(1e-12)).log()).sum())
+            # rank of GT mode (1-indexed)
+            order = torch.argsort(probs_1d, descending=True)
+            gt_rank = int((order == mode_label).nonzero(as_tuple=True)[0].item()) + 1
+            in_top5 = gt_rank <= 5
+
             ade, fde, l_gen_step, l_gen_sample = _compute_sample_metrics(pred, gt)
             stats['ade'].append(ade)
             stats['fde'].append(fde)
             stats['l_gen_step'].append(l_gen_step)
             stats['l_gen_sample'].append(l_gen_sample)
             stats['mode_correct'].append(chosen_mode == mode_label)
+            stats['top5_correct'].append(in_top5)
+            stats['gt_prob'].append(gt_prob)
+            stats['entropy'].append(ent)
+            stats['top1_prob'].append(top1_prob)
+            stats['gt_rank'].append(gt_rank)
+
+            # Save score details for the plotted samples (and first N if --print_scores)
+            if (idx in plot_indices) or (args.print_scores and len(score_rows) < args.print_scores):
+                score_rows.append({
+                    'idx': int(idx),
+                    'gt': mode_label,
+                    'gt_bins': _mode_to_bins(mode_label),
+                    'chosen': chosen_mode,
+                    'chosen_bins': _mode_to_bins(chosen_mode),
+                    'gt_prob': gt_prob,
+                    'gt_rank': gt_rank,
+                    'entropy': ent,
+                    'top_idx': top_idx.tolist(),
+                    'top_probs': top_probs.tolist(),
+                    'ade': ade, 'fde': fde,
+                })
 
             if idx in plot_indices:
                 plot_cache[idx] = dict(
@@ -253,6 +301,12 @@ def main(args):
     lgen_step_mean = float(np.mean(stats['l_gen_step']))
     lgen_sample_mean = float(np.mean(stats['l_gen_sample']))
     mode_acc = float(np.mean(stats['mode_correct']))
+    top5_acc = float(np.mean(stats['top5_correct']))
+    gt_prob_mean = float(np.mean(stats['gt_prob']))
+    top1_prob_mean = float(np.mean(stats['top1_prob']))
+    entropy_mean = float(np.mean(stats['entropy']))
+    median_gt_rank = int(np.median(stats['gt_rank']))
+    uniform_entropy = float(np.log(cfg.N_MODES))  # for reference
 
     paper_il = PAPER_BENCHMARKS['IL']
     paper_rl = PAPER_BENCHMARKS['IL+RL']
@@ -271,6 +325,9 @@ def main(args):
         ["L_gen per-step (train units)",      f"{lgen_step_mean:.3f}",    "— (not tabulated)",               "— (not tabulated)"],
         ["L_gen per-sample (paper units)",    f"{lgen_sample_mean:.2f}",  f"{paper_il['L_gen_open_loop']:.1f} (best cfg)",  f"{paper_rl['L_gen_open_loop']:.1f} (best cfg)"],
         ["Mode accuracy (top-1)",             f"{mode_acc*100:.2f}%",     f"L_sel={paper_il['L_sel_open_loop']:.2f}",        f"L_sel={paper_rl['L_sel_open_loop']:.2f}"],
+        ["Mode accuracy (top-5)",             f"{top5_acc*100:.2f}%",     "— (not reported)",                "— (not reported)"],
+        ["GT mode prob (mean)",               f"{gt_prob_mean:.4f}",      f"(chance≈{1/cfg.N_MODES:.4f})",   f"(chance≈{1/cfg.N_MODES:.4f})"],
+        ["Mean entropy / uniform",            f"{entropy_mean:.2f} / {uniform_entropy:.2f} nats", "— (not reported)", "— (not reported)"],
         ["CLS-NR (closed-loop, separate eval)","see scripts/eval_closedloop_gpu", f"{paper_il['CLS_NR_Test14_Random']:.2f} / {paper_il['CLS_NR_Test14_Hard']:.2f} (Rnd/Hard)",  f"{paper_rl['CLS_NR_Test14_Random']:.2f} / {paper_rl['CLS_NR_Test14_Hard']:.2f} (Rnd/Hard)"],
     ]
     tbl = header_ax.table(cellText=table_rows, loc='lower center', cellLoc='center',
@@ -296,9 +353,35 @@ def main(args):
     print(f"  FDE:                 {fde_mean:.3f} m")
     print(f"  L_gen (per-step):    {lgen_step_mean:.3f}")
     print(f"  L_gen (per-sample):  {lgen_sample_mean:.2f}   vs paper: IL={paper_il['L_gen_open_loop']}, RL={paper_rl['L_gen_open_loop']}")
-    print(f"  Mode accuracy:       {mode_acc*100:.2f}%")
+    print(f"  Mode accuracy:       top-1 {mode_acc*100:.2f}%   top-5 {top5_acc*100:.2f}%   (chance 1/{cfg.N_MODES}={100/cfg.N_MODES:.2f}%)")
+    print(f"  GT mode prob (mean): {gt_prob_mean:.4f}   top-1 prob (mean): {top1_prob_mean:.4f}")
+    print(f"  Median GT rank:      {median_gt_rank} / {cfg.N_MODES}")
+    print(f"  Mean entropy:        {entropy_mean:.3f} nats   (uniform = {uniform_entropy:.3f})")
     print(f"  [Closed-loop CLS-NR requires scripts/eval_closedloop_gpu.py]")
     print(f"{'='*66}")
+
+    # ── Per-sample mode-score table ──
+    if score_rows:
+        print(f"\n  Mode scores (top-{args.top_k_scores}) for {len(score_rows)} samples")
+        print(f"  {'-'*100}")
+        for r in score_rows:
+            gt_lon, gt_lat = r['gt_bins']
+            ch_lon, ch_lat = r['chosen_bins']
+            mark = '✓' if r['chosen'] == r['gt'] else '✗'
+            print(
+                f"  #{r['idx']:<5d} "
+                f"GT={r['gt']:>2d}(lon{gt_lon:>2d},lat{gt_lat})  "
+                f"Pred={r['chosen']:>2d}(lon{ch_lon:>2d},lat{ch_lat}) {mark}  "
+                f"GT_prob={r['gt_prob']:.4f}  GT_rank={r['gt_rank']:>2d}/{cfg.N_MODES}  "
+                f"H={r['entropy']:.2f}  ADE={r['ade']:.2f}m  FDE={r['fde']:.2f}m"
+            )
+            # Top-K list: "mode(lon,lat)=prob"
+            topk_str = '   '.join(
+                f"{m:>2d}(l{_mode_to_bins(m)[0]:>2d},{_mode_to_bins(m)[1]})={p:.3f}"
+                for m, p in zip(r['top_idx'], r['top_probs'])
+            )
+            print(f"         top: {topk_str}")
+        print(f"  {'-'*100}")
 
 
 def parse_args():
@@ -308,6 +391,10 @@ def parse_args():
     p.add_argument('--n_samples', type=int, default=6, help='Scenes to plot')
     p.add_argument('--n_eval', type=int, default=200, help='Samples for aggregate metrics')
     p.add_argument('--top_k_plot', type=int, default=5, help='Alt modes to render faintly')
+    p.add_argument('--top_k_scores', type=int, default=10,
+                   help='Top-K mode scores to print per sample')
+    p.add_argument('--print_scores', type=int, default=0,
+                   help='Print mode scores for the first N eval samples (plotted samples are always included)')
     p.add_argument('--output', default='eval_sanity.png')
     p.add_argument('--stage', default=None, choices=[None, 'IL', 'IL+RL'],
                    help='Override stage label (else inferred from filename)')
