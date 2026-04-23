@@ -1100,7 +1100,7 @@ class NuPlanCarPlannerDataset(Dataset):
 
     def __init__(self, split: str, max_per_file: int = None):
         """
-        split: 'mini' | 'train_boston' | 'train_pittsburgh' | 'train_singapore' | 'val14'
+        split: 'mini' | 'train_boston' | 'train_pittsburgh' | 'train_singapore' | 'val14' | 'test14_random' | 'reduced_val14'
         max_per_file: cap on tokens loaded per .db file (None = all)
         """
         allowed_tokens = None  # set → filter index to these scenario tokens only
@@ -1129,6 +1129,22 @@ class NuPlanCarPlannerDataset(Dataset):
                 y = yaml.safe_load(f)
             allowed_tokens = set(str(t) for t in y.get('scenario_tokens', []))
             print(f"[DataLoader] val14: loaded {len(allowed_tokens)} tokens from {cfg.VAL14_YAML}")
+        elif split == 'test14_random':
+            db_dir = cfg.VAL_DIR
+            max_per_file = max_per_file or 10**9
+            import yaml
+            with open(cfg.TEST14_RANDOM_YAML, 'r') as f:
+                y = yaml.safe_load(f)
+            allowed_tokens = set(str(t) for t in y.get('scenario_tokens', []))
+            print(f"[DataLoader] test14_random: loaded {len(allowed_tokens)} tokens from {cfg.TEST14_RANDOM_YAML}")
+        elif split == 'reduced_val14':
+            db_dir = cfg.VAL_DIR
+            max_per_file = max_per_file or 10**9
+            import yaml
+            with open(cfg.REDUCED_VAL14_YAML, 'r') as f:
+                y = yaml.safe_load(f)
+            allowed_tokens = set(str(t) for t in y.get('scenario_tokens', []))
+            print(f"[DataLoader] reduced_val14: loaded {len(allowed_tokens)} tokens from {cfg.REDUCED_VAL14_YAML}")
         else:
             raise ValueError(f"Unknown split: {split}")
 

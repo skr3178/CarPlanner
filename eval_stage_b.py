@@ -16,7 +16,8 @@ Tables 1, 2, 4, 7, 9, 10, 11), run:
 
 Usage:
     python eval_stage_b.py --checkpoint checkpoints/stage_b_best.pt
-    python eval_stage_b.py --checkpoint checkpoints/stage_b_best.pt --cache checkpoints/stage_cache_val14.pt
+    python eval_stage_b.py --checkpoint checkpoints/stage_b_best.pt --split test14_random
+    python eval_stage_b.py --checkpoint checkpoints/stage_b_best.pt --split reduced_val14
 """
 
 import os
@@ -358,14 +359,27 @@ def evaluate(args):
     print("=" * W)
 
 
+SPLIT_TO_CACHE = {
+    'val14':          'checkpoints/stage_cache_val14.pt',
+    'test14_random':  'checkpoints/stage_cache_test14_random.pt',
+    'reduced_val14':  'checkpoints/stage_cache_reduced_val14.pt',
+}
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="CarPlanner Stage B (IL) evaluation")
     p.add_argument('--checkpoint', required=True, help='Path to Stage B checkpoint')
-    p.add_argument('--cache', default='checkpoints/stage_cache_val14.pt',
-                   help='Evaluation cache (default: val14)')
+    p.add_argument('--split', default='val14',
+                   choices=list(SPLIT_TO_CACHE.keys()),
+                   help='Benchmark split (default: val14)')
+    p.add_argument('--cache', default=None,
+                   help='Override cache path (default: auto from --split)')
     p.add_argument('--n_eval', type=int, default=0,
                    help='Max samples to evaluate (0 = all)')
-    return p.parse_args()
+    args = p.parse_args()
+    if args.cache is None:
+        args.cache = SPLIT_TO_CACHE[args.split]
+    return args
 
 
 if __name__ == '__main__':
