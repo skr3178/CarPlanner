@@ -1232,6 +1232,9 @@ class PreextractedDataset(Dataset):
             n, cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT))
         self.map_polygons_mask = data.get('map_polygons_mask', torch.zeros(
             n, cfg.N_POLYGONS))
+        self.route_polylines = data.get('route_polylines', torch.zeros(
+            n, cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT))
+        self.route_mask = data.get('route_mask', torch.zeros(n, cfg.N_LAT))
         self.n = n
         print(f"[PreextractedDataset] {self.n} samples loaded in {elapsed:.1f}s")
 
@@ -1248,6 +1251,8 @@ class PreextractedDataset(Dataset):
             'map_lanes_mask':      self.map_lanes_mask[idx],
             'map_polygons':        self.map_polygons[idx],
             'map_polygons_mask':   self.map_polygons_mask[idx],
+            'route_polylines':     self.route_polylines[idx],
+            'route_mask':          self.route_mask[idx],
         }
         if self.gt_trajectory is not None:
             item['gt_trajectory'] = self.gt_trajectory[idx]

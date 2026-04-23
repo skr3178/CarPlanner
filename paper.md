@@ -690,6 +690,52 @@ but do NOT produce official paper metrics. Official metrics come only from Pipel
 | EGO_HISTORY_DROPOUT  | True            | False           | **False** (RL)    |
 | BACKBONE_SHARING     | True            | False           | **False** (RL)    |
 
-Current config matches RL-best. To run IL-best ablation, flip both to True.
+Current config set to IL-best (both True) for Stage B training.
 Switching doesn't break anything — tested: same state dict keys, forward pass OK,
-param count drops by ~42K due to shared backbone.  
+param count drops by ~42K due to shared backbone.
+
+## Stage B Evaluation Pipeline
+
+### Open-loop eval (fast, ~2 min)
+
+Computes metrics from paper Tables 4 (OL columns), 8, and 10 (OL columns):
+
+```bash
+python eval_stage_b.py --checkpoint checkpoints/stage_b_best.pt
+```
+
+| Metric | Table | Source |
+|--------|-------|--------|
+| L_gen (generator loss) | Table 4 OL | sum \|pred - gt\| over dims & time |
+| L_sel (selector CE) | Table 4 OL | -log P(gt_mode) |
+| ADE, FDE | — | displacement errors |
+| Mode accuracy (top-1, top-5) | — | mode selector accuracy |
+| Consistent Ratio Lat/Lon | Table 8 | fraction of trajectories in assigned mode bin |
+| Col mean/min/max | Table 10 OL | proximity to agents across all candidates |
+| Area mean/min/max | Table 10 OL | off-drivable-area fraction across all candidates |
+
+For BEV visualization, use `eval_sanity.py` instead:
+```bash
+python eval_sanity.py --checkpoint checkpoints/stage_b_best.pt \
+    --cache checkpoints/stage_cache_val14.pt --n_eval 1116
+```
+
+### Closed-loop eval (slow, hours)
+
+Computes metrics from Tables 1, 2, 4 (CL columns), 7, 9, 11 via nuPlan simulator:
+
+```bash
+# Test14-Random (261 scenarios, paper Table 1)
+python scripts/eval_nuplan.py --checkpoint checkpoints/stage_b_best.pt --split test14-random
+
+# Reduced-Val14 (318 scenarios, paper Table 2)
+python scripts/eval_nuplan.py --checkpoint checkpoints/stage_b_best.pt --split val14
+```
+
+Produces: CLS-NR, CLS-R, S-CR, S-Area, S-PR, S-Comfort.
+
+### Eval order
+
+1. Open-loop first — if L_gen is far from 174.3 (IL-best), don't bother with closed-loop
+2. Closed-loop on test14-random — main benchmark (Table 1)
+3. Closed-loop on reduced-val14 — secondary benchmark (Table 2)

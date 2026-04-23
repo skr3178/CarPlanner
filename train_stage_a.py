@@ -73,9 +73,11 @@ def train(args):
     use_cache = os.path.isfile(cache_path)
     pin_gpu = args.pin_gpu and device.type == 'cuda'
 
+    val_cache_path = os.path.join(cfg.CHECKPOINT_DIR, "stage_cache_val14.pt")
+
     if use_cache and pin_gpu:
         # GPU-pinned path: load entire cache to GPU once, zero transfers after
-        print(f"[Stage A] Loading cache to GPU (pin_gpu): {cache_path}")
+        print(f"[Stage A] Loading train cache to GPU (pin_gpu): {cache_path}")
         t0 = time.time()
         data = torch.load(cache_path, map_location=device)
         gpu_cache = {
@@ -87,37 +89,65 @@ def train(args):
             'map_polygons':        data.get('map_polygons', torch.zeros(data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
             'map_polygons_mask':   data.get('map_polygons_mask', torch.zeros(data['n_samples'], cfg.N_POLYGONS, device=device)),
         }
-        n_samples = data['n_samples']
+        n_train_samples = data['n_samples']
+        train_idx = torch.arange(n_train_samples, device=device)
 
-        # Train/val split (90/10)
-        n_val = max(1, int(n_samples * 0.1))
-        n_train = n_samples - n_val
-        perm = torch.randperm(n_samples, device=device)
-        train_idx, val_idx = perm[:n_train], perm[n_train:]
-        gpu_cache['train_idx'] = train_idx
-        gpu_cache['val_idx'] = val_idx
-        print(f"[Stage A] GPU cache: {n_samples} samples loaded in "
-              f"{time.time()-t0:.1f}s, ~{torch.cuda.memory_allocated()/1e9:.1f}GB GPU used")
-        print(f"[Stage A] Split: {n_train} train, {n_val} val")
+        # Val14 held-out validation set (paper Section 4.1: 1,118 scenarios)
+        if os.path.isfile(val_cache_path):
+            print(f"[Stage A] Loading val14 cache to GPU: {val_cache_path}")
+            val_data = torch.load(val_cache_path, map_location=device)
+            val_cache = {
+                'agents_history':    val_data['agents_history'],
+                'agents_mask':       val_data['agents_mask'],
+                'agents_seq':        val_data['agents_seq'],
+                'map_lanes':         val_data['map_lanes'],
+                'map_lanes_mask':    val_data['map_lanes_mask'],
+                'map_polygons':      val_data.get('map_polygons', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
+                'map_polygons_mask': val_data.get('map_polygons_mask', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, device=device)),
+            }
+            n_val_samples = val_data['n_samples']
+            del val_data
+        else:
+            print(f"[Stage A] WARNING: val14 cache not found at {val_cache_path}, falling back to 90/10 split")
+            n_val = max(1, int(n_train_samples * 0.1))
+            n_train_samples = n_train_samples - n_val
+            perm = torch.randperm(n_train_samples + n_val, device=device)
+            train_idx = perm[:n_train_samples]
+            val_cache = {k: gpu_cache[k][perm[n_train_samples:]] for k in gpu_cache}
+            n_val_samples = n_val
+
+        del data
+        print(f"[Stage A] GPU cache loaded in {time.time()-t0:.1f}s, "
+              f"~{torch.cuda.memory_allocated()/1e9:.1f}GB GPU used")
+        print(f"[Stage A] Train: {n_train_samples}, Val (val14): {n_val_samples}")
         loader = None
         all_batches = None
-        n_train_samples = n_train
-        n_val_samples = n_val
     elif use_cache:
         print(f"[Stage A] Loading pre-extracted cache: {cache_path}")
         loader = make_cached_dataloader(
             cache_path,
             batch_size=args.batch_size,
             shuffle=True,
-            num_workers=0,            # data already in memory, no workers needed
+            num_workers=0,
         )
-        # For shuffling cached batches across epochs
         all_batches = list(loader)
-        # Train/val split (90/10) on batches
-        n_val_batches = max(1, int(len(all_batches) * 0.1))
-        n_train_batches = len(all_batches) - n_val_batches
-        print(f"[Stage A] Cache loaded: {len(loader.dataset)} samples, "
-              f"{len(all_batches)} batches (train={n_train_batches}, val={n_val_batches})")
+        if os.path.isfile(val_cache_path):
+            val_loader = make_cached_dataloader(
+                val_cache_path,
+                batch_size=args.batch_size,
+                shuffle=False,
+                num_workers=0,
+            )
+            val_all_batches = list(val_loader)
+            print(f"[Stage A] Cache loaded: {len(loader.dataset)} train, "
+                  f"{len(val_loader.dataset)} val (val14), "
+                  f"{len(all_batches)} train batches, {len(val_all_batches)} val batches")
+        else:
+            n_val_batches = max(1, int(len(all_batches) * 0.1))
+            n_train_batches = len(all_batches) - n_val_batches
+            val_all_batches = None
+            print(f"[Stage A] Cache loaded: {len(loader.dataset)} samples, "
+                  f"{len(all_batches)} batches (train={n_train_batches}, val={n_val_batches})")
     else:
         print(f"[Stage A] WARNING: No cache found at {cache_path}")
         print(f"[Stage A] Falling back to slow DataLoader (SQLite per sample).")
@@ -130,6 +160,7 @@ def train(args):
             max_per_file=args.max_per_file,
         )
         all_batches = None
+        val_all_batches = None
         print(f"[Stage A] Dataset size: {len(loader.dataset)}, "
               f"Batches/epoch: {len(loader)}")
 
@@ -171,7 +202,6 @@ def train(args):
 
         # GPU-pinned fast path: direct tensor indexing, zero transfers
         if pin_gpu:
-            # Shuffle train indices only
             train_perm = torch.randperm(n_train_samples, device=device)
             n_batches_epoch = (n_train_samples + args.batch_size - 1) // args.batch_size
 
@@ -206,9 +236,7 @@ def train(args):
         # Non-pinned path: shuffle cached batches, or use DataLoader
         else:
             if use_cache:
-                # Split into train/val batches
-                shuffled = random.sample(all_batches, len(all_batches))
-                epoch_batches = shuffled[:n_train_batches]
+                epoch_batches = random.sample(all_batches, len(all_batches))
             else:
                 epoch_batches = loader
 
@@ -250,27 +278,27 @@ def train(args):
         val_batches = 0
 
         if pin_gpu:
-            n_val_batches = (n_val_samples + args.batch_size - 1) // args.batch_size
+            n_val_batches_epoch = (n_val_samples + args.batch_size - 1) // args.batch_size
             with torch.no_grad():
-                for b in range(n_val_batches):
-                    idx = val_idx[b * args.batch_size : (b + 1) * args.batch_size]
-                    agents_history = gpu_cache['agents_history'][idx]
-                    agents_mask = gpu_cache['agents_mask'][idx]
-                    agents_seq = gpu_cache['agents_seq'][idx]
-                    map_lanes = gpu_cache['map_lanes'][idx]
-                    map_lanes_mask = gpu_cache['map_lanes_mask'][idx]
-                    map_polygons = gpu_cache['map_polygons'][idx]
-                    map_polygons_mask = gpu_cache['map_polygons_mask'][idx]
+                for b in range(n_val_batches_epoch):
+                    s = b * args.batch_size
+                    e = min(s + args.batch_size, n_val_samples)
+                    agents_history = val_cache['agents_history'][s:e]
+                    agents_mask = val_cache['agents_mask'][s:e]
+                    agents_seq = val_cache['agents_seq'][s:e]
+                    map_lanes = val_cache['map_lanes'][s:e]
+                    map_lanes_mask = val_cache['map_lanes_mask'][s:e]
+                    map_polygons = val_cache['map_polygons'][s:e]
+                    map_polygons_mask = val_cache['map_polygons_mask'][s:e]
 
                     agents_pred = model(agents_history, agents_mask, map_lanes, map_lanes_mask,
                                         map_polygons=map_polygons, map_polygons_mask=map_polygons_mask)
                     loss = compute_transition_loss(agents_pred, agents_seq, agents_mask)
                     val_loss_sum += loss.item()
                     val_batches += 1
-        elif use_cache:
-            val_batches_data = shuffled[n_train_batches:]
+        elif use_cache and val_all_batches is not None:
             with torch.no_grad():
-                for batch in val_batches_data:
+                for batch in val_all_batches:
                     agents_history = batch['agents_history'].to(device)
                     agents_mask = batch['agents_history_mask'].to(device)
                     agents_seq = batch['agents_seq'].to(device)

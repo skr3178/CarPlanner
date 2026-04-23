@@ -70,6 +70,7 @@ def train(args):
     cache_path = os.path.join(
         cfg.CHECKPOINT_DIR, f"stage_cache_{args.split}.pt"
     )
+    val_cache_path = os.path.join(cfg.CHECKPOINT_DIR, "stage_cache_val14.pt")
     use_cache = os.path.isfile(cache_path)
     pin_gpu = args.pin_gpu and device.type == 'cuda'
 
@@ -132,6 +133,41 @@ def train(args):
         model.load_transition_model(args.transition_ckpt, freeze=True)
         print(f"[Train] Loaded frozen transition model from: {args.transition_ckpt}")
 
+    # Validation: use dedicated val14 cache (paper Section 4.1)
+    val_gpu_cache = None
+    n_val_samples = 0
+    if pin_gpu:
+        n_train = n_samples
+        train_idx = torch.arange(n_train, device=device)
+        if os.path.isfile(val_cache_path):
+            print(f"[Train] Loading val14 cache to GPU: {val_cache_path}")
+            val_data = torch.load(val_cache_path, map_location=device)
+            val_gpu_cache = {
+                'agents_now':          val_data['agents_now'],
+                'agents_history':      val_data['agents_history'],
+                'agents_mask':         val_data['agents_mask'],
+                'agents_seq':          val_data['agents_seq'],
+                'gt_trajectory':       val_data['gt_trajectory'],
+                'mode_label':          val_data['mode_label'],
+                'map_lanes':           val_data['map_lanes'],
+                'map_lanes_mask':      val_data['map_lanes_mask'],
+                'map_polygons':        val_data.get('map_polygons', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
+                'map_polygons_mask':   val_data.get('map_polygons_mask', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, device=device)),
+                'route_polylines':     val_data.get('route_polylines', torch.zeros(val_data['n_samples'], cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT, device=device)),
+                'route_mask':          val_data.get('route_mask', torch.zeros(val_data['n_samples'], cfg.N_LAT, device=device)),
+            }
+            n_val_samples = val_data['n_samples']
+            del val_data
+            print(f"[Train] Train: {n_train}, Val (val14): {n_val_samples}")
+        else:
+            print(f"[Train] WARNING: val14 cache not found at {val_cache_path}, falling back to 90/10 split")
+            n_val = max(1, int(n_samples * 0.1))
+            n_train = n_samples - n_val
+            split_perm = torch.randperm(n_samples, device=device)
+            train_idx = split_perm[:n_train]
+            val_idx = split_perm[n_train:]
+            print(f"[Train] Split: {n_train} train, {n_val} val")
+
     # Pre-compute β outputs for all samples once, store on CPU RAM (1.67 GB).
     # β is frozen + inputs are fixed → output is identical every epoch.
     # Per-batch: slice CPU tensor → transfer ~200KB to GPU → no redundant recomputes.
@@ -162,6 +198,34 @@ def train(args):
         print(f"[Train] β pre-computation done in {time.time()-t0:.1f}s  "
               f"({size_gb:.2f} GB on CPU RAM)")
 
+    # Pre-compute β for val14 cache too
+    val_beta_seq_cpu = None
+    if args.transition_ckpt and pin_gpu and val_gpu_cache is not None:
+        print(f"[Train] Pre-computing β outputs for {n_val_samples} val samples...")
+        model.eval()
+        model._transition_loaded = True
+        chunks = []
+        precomp_bs = 512
+        with torch.no_grad():
+            for start in range(0, n_val_samples, precomp_bs):
+                end = min(start + precomp_bs, n_val_samples)
+                out = model.transition_model(
+                    val_gpu_cache['agents_history'][start:end],
+                    val_gpu_cache['agents_mask'][start:end],
+                    val_gpu_cache['map_lanes'][start:end],
+                    val_gpu_cache['map_lanes_mask'][start:end],
+                    map_polygons=val_gpu_cache['map_polygons'][start:end],
+                    map_polygons_mask=val_gpu_cache['map_polygons_mask'][start:end],
+                )
+                chunks.append(out.cpu())
+                del out
+        val_beta_seq_cpu = torch.cat(chunks, dim=0)
+        model._transition_loaded = False
+        model.train()
+        print(f"[Train] Val β pre-computation done ({val_beta_seq_cpu.shape})")
+    elif beta_seq_cpu is None:
+        val_beta_seq_cpu = None
+
     # Optimizer & scheduler (Section 4.1)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY
@@ -184,15 +248,6 @@ def train(args):
     run_dir = os.path.join(cfg.CHECKPOINT_DIR, f"stage_b_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
     print(f"[Train] Checkpoints → {run_dir}")
-
-    # Train/val split (90/10)
-    if pin_gpu:
-        n_val = max(1, int(n_samples * 0.1))
-        n_train = n_samples - n_val
-        split_perm = torch.randperm(n_samples, device=device)
-        train_idx = split_perm[:n_train]
-        val_idx = split_perm[n_train:]
-        print(f"[Train] Split: {n_train} train, {n_val} val")
 
     best_val_loss = float('inf')
 
@@ -299,7 +354,44 @@ def train(args):
         val_losses = {'L_CE': 0., 'L_side': 0., 'L_gen': 0., 'L_total': 0.}
         val_batches = 0
 
-        if pin_gpu:
+        if pin_gpu and val_gpu_cache is not None:
+            n_val_batches = (n_val_samples + args.batch_size - 1) // args.batch_size
+            with torch.no_grad():
+                for b in range(n_val_batches):
+                    s = b * args.batch_size
+                    e = min(s + args.batch_size, n_val_samples)
+                    agents_now = val_gpu_cache['agents_now'][s:e]
+                    agents_history = val_gpu_cache['agents_history'][s:e]
+                    agents_mask = val_gpu_cache['agents_mask'][s:e]
+                    agents_seq = val_gpu_cache['agents_seq'][s:e]
+                    gt_traj = val_gpu_cache['gt_trajectory'][s:e]
+                    mode_label = val_gpu_cache['mode_label'][s:e]
+                    map_lanes = val_gpu_cache['map_lanes'][s:e]
+                    map_lanes_mask = val_gpu_cache['map_lanes_mask'][s:e]
+                    map_polygons = val_gpu_cache['map_polygons'][s:e]
+                    map_polygons_mask = val_gpu_cache['map_polygons_mask'][s:e]
+                    route_polylines = val_gpu_cache['route_polylines'][s:e]
+                    route_mask_batch = val_gpu_cache['route_mask'][s:e]
+
+                    if beta_seq_cpu is not None:
+                        agents_seq = val_beta_seq_cpu[s:e].to(device) if val_beta_seq_cpu is not None else agents_seq
+
+                    with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+                        mode_logits, side_traj, pred_traj = model.forward_train(
+                            agents_now, agents_mask, agents_seq, gt_traj, mode_label,
+                            map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+                            agents_history=agents_history,
+                            map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+                            route_polylines=route_polylines, route_mask=route_mask_batch,
+                        )
+                        _, loss_dict = compute_il_loss(
+                            mode_logits, side_traj, pred_traj, gt_traj, mode_label
+                        )
+                    for k in val_losses:
+                        val_losses[k] += loss_dict[k]
+                    val_batches += 1
+        elif pin_gpu:
+            # Fallback 90/10 path (no val14 cache)
             n_val_batches = max(1, n_val // args.batch_size)
             with torch.no_grad():
                 for b in range(n_val_batches):

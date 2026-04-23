@@ -15,10 +15,13 @@ VAL_DIR = "/home/skr/nuplan_cities/val/data/cache/val"
 MAPS_DIR = os.path.join(BASE_DIR, "nuplan-maps-v1.0")
 
 # PDM val14 split: 1,118 scenario tokens from tuplan_garage/val14_split.yaml
-VAL14_YAML = os.path.join(
+_SPLIT_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    "tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter/val14_split.yaml",
+    "tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter",
 )
+VAL14_YAML = os.path.join(_SPLIT_DIR, "val14_split.yaml")
+TEST14_RANDOM_YAML = os.path.join(_SPLIT_DIR, "test14_random_split.yaml")
+REDUCED_VAL14_YAML = os.path.join(_SPLIT_DIR, "reduced_val14_split.yaml")
 
 # ── Data dimensions ───────────────────────────────────────────────────────────
 T_HIST = 10           # history frames (~1s at 10Hz)
@@ -68,8 +71,8 @@ LR_FACTOR = 0.3
 # NOTE: switch to RL-best config when running Stage C
 MODE_DROPOUT = True
 SELECTOR_SIDE_TASK = True
-EGO_HISTORY_DROPOUT = False   # RL best: False (Table 4)
-BACKBONE_SHARING = False       # RL best: False (Table 4)
+EGO_HISTORY_DROPOUT = True    # IL best: True (Table 4)
+BACKBONE_SHARING = True        # IL best: True (Table 4)
 MODE_DROPOUT_P = 0.1  # probability of zeroing mode embedding during training
 
 # ── RL coefficients (Eq 8-10, unused in IL-only baseline) ────────────────────

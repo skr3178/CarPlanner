@@ -56,6 +56,7 @@ if PROJECT_ROOT not in sys.path:
 
 import config as cfg
 from model import CarPlanner
+from data_loader import _extract_routes
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -482,6 +483,15 @@ class CarPlannerPlanner(AbstractPlanner):
             self._map_api, ref_x, ref_y, ref_h,
         )
 
+        # ── Routes (Section 3.3.2) ───────────────────────────────────────
+        tl_dict = {}
+        if current_input.traffic_light_data:
+            for tl in current_input.traffic_light_data:
+                tl_dict[tl.lane_connector_id] = tl.status.name.lower()
+        route_polylines, route_mask, _ = _extract_routes(
+            self._map_api, ref_x, ref_y, ref_h, tl_status=tl_dict,
+        )
+
         # ── To tensors (batch=1) ──────────────────────────────────────────
         def _t(arr):
             return torch.from_numpy(arr).unsqueeze(0).to(self._device)
@@ -495,6 +505,8 @@ class CarPlannerPlanner(AbstractPlanner):
                 agents_history=_t(agents_history),
                 map_polygons=_t(map_polygons),
                 map_polygons_mask=_t(map_polygons_mask),
+                route_polylines=_t(route_polylines),
+                route_mask=_t(route_mask),
             )
 
         # best_traj: (1, T_FUTURE, 3) in ego frame

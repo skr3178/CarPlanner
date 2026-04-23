@@ -62,7 +62,8 @@ def extract(args):
 
     keys = ['agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
             'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
-            'map_polygons', 'map_polygons_mask']
+            'map_polygons', 'map_polygons_mask',
+            'route_polylines', 'route_mask']
     buffers = {k: [] for k in keys}
 
     valid_count = 0
@@ -134,9 +135,12 @@ def extract(args):
     print(f"  map_lanes_mask:   {tuple(data['map_lanes_mask'].shape)}")
     print(f"  map_polygons:     {tuple(data['map_polygons'].shape)}")
     print(f"  map_polygons_mask:{tuple(data['map_polygons_mask'].shape)}")
+    print(f"  route_polylines:  {tuple(data['route_polylines'].shape)}")
+    print(f"  route_mask:       {tuple(data['route_mask'].shape)}")
     print(f"  Avg valid agents:   {data['agents_mask'].sum(1).mean():.1f}")
     print(f"  Avg valid lanes:    {data['map_lanes_mask'].sum(1).mean():.1f}")
     print(f"  Avg valid polygons: {data['map_polygons_mask'].sum(1).mean():.1f}")
+    print(f"  Avg valid routes:   {data['route_mask'].sum(1).mean():.1f}")
     print(f"  agents_history range: [{data['agents_history'].min():.2f}, {data['agents_history'].max():.2f}]")
     print(f"  gt_trajectory range:  [{data['gt_trajectory'].min():.2f}, {data['gt_trajectory'].max():.2f}]")
     print(f"  mode_label range:     [{data['mode_label'].min()}, {data['mode_label'].max()}]")
@@ -153,8 +157,8 @@ def parse_args():
     p.add_argument('--split', default='mini',
                    choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore', 'val14'])
     p.add_argument('--max_per_file', type=int, default=None)
-    p.add_argument('--num_workers', type=int, default=8,
-                   help='Parallel CPU workers for DB reads (default: 8)')
+    p.add_argument('--num_workers', type=int, default=24,
+                   help='Parallel CPU workers for DB reads (default: 24)')
     p.add_argument('--batch_size', type=int, default=64,
                    help='Batch size per worker (default: 64)')
     return p.parse_args()
