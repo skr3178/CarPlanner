@@ -162,65 +162,41 @@ class PolygonEncoder(nn.Module):
 # IVM — Invariant-View Module  (Algorithm 3)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class IVMBlock(nn.Module):
+class IVM(nn.Module):
     """
-    Invariant-View Module (Algorithm 3, Section 3.3.3).
+    Invariant-View Module (§3.3.3) — parameter-less preprocessing.
 
-    Steps per autoregressive timestep t:
-      1. K-nearest agent selection  (K = N // 2)
-      2. Ego-centric coordinate transform already applied upstream
-      3. Time normalisation already applied upstream
-      4. Transformer decoder: mode c as query, (agent + map) feats as K/V
-      5. Output updated mode query (carries temporal state across steps)
+    Per autoregressive timestep t (after upstream coord transform + time norm):
+      1. KNN agent selection (K = N // 2)
+      2. KNN map element selection (K_m = N_m // 2)
+      3. KNN polygon selection (K_p = N_p // 2)
+      4. Concatenate filtered agents + map + routes + polygons into K/V tensor
 
-    Query: mode_query  (B, 1, D)       — fixed mode index, updated by attention
-    K/V:   agent_feats (B, K, D)       — K-NN selected agents at step t
-           map_feats   (B, N_LANES, D) — encoded lane centerlines (optional)
-    Output: updated mode_query (B, 1, D)
+    Route trim (K_r = N_r/4) is applied upstream before encoding.
+    Coord transform and time normalization are applied upstream in the AR loop.
     """
-    def __init__(self, d_model: int = cfg.D_HIDDEN, n_heads: int = 8,
-                 k_nn: int = cfg.N_AGENTS // 2):
+    def __init__(self, k_nn: int = cfg.N_AGENTS // 2):
         super().__init__()
         self.k_nn = k_nn
-        self.cross_attn = nn.MultiheadAttention(
-            d_model, n_heads, batch_first=True, dropout=0.1
-        )
-        self.norm1 = nn.LayerNorm(d_model)
-        self.ffn = nn.Sequential(
-            nn.Linear(d_model, d_model * 4),
-            nn.ReLU(inplace=True),
-            nn.Linear(d_model * 4, d_model),
-        )
-        self.norm2 = nn.LayerNorm(d_model)
 
-    def forward(self, mode_query: torch.Tensor, agent_feats: torch.Tensor,
-                agent_poses: torch.Tensor, map_feats: torch.Tensor = None,
-                map_poses: torch.Tensor = None,
+    def forward(self, agent_feats: torch.Tensor, agent_poses: torch.Tensor,
+                map_feats: torch.Tensor = None, map_poses: torch.Tensor = None,
                 route_feats: torch.Tensor = None,
-                route_poses: torch.Tensor = None,
                 polygon_feats: torch.Tensor = None,
                 polygon_poses: torch.Tensor = None) -> torch.Tensor:
         """
-        mode_query:  (B, 1, D)       — current mode state (query)
-        agent_feats: (B, H*N or N, D) — PointNet-encoded agents (full history or current)
-        agent_poses: (B, N, 2)       — current-step (x, y) positions for K-NN distance
-        map_feats:   (B, N_m, D) — LaneEncoder output (optional)
-        map_poses:   (B, N_m, 2)     — map element positions for K_m K-NN (optional)
-        route_feats: (B, N_lat, D)   — route polyline features for route filtering (optional)
-        route_poses: (B, N_lat, N_r, 2) — route point positions for step-2 filtering (optional)
-        Returns:     (B, 1, D)       — updated mode query
+        Returns kv: (B, K_total, D) — filtered and concatenated context for decoder.
         """
         B, HN, D = agent_feats.shape
         N = agent_poses.size(1)
 
-        # Step 1: K-nearest agent selection from CURRENT step positions (Alg 3, line 1)
-        H = HN // N  # history length
+        H = HN // N
         if N > self.k_nn:
-            dist = agent_poses.norm(dim=-1)              # (B, N) — distance to ego origin
+            dist = agent_poses.norm(dim=-1)              # (B, N)
             _, topk = dist.topk(self.k_nn, dim=1, largest=False)  # (B, K)
             kv_list = []
             for h in range(H):
-                idx = topk + h * N  # offset into flattened H*N
+                idx = topk + h * N
                 kv_list.append(agent_feats.gather(
                     1, idx.unsqueeze(-1).expand(-1, -1, D)
                 ))
@@ -228,26 +204,21 @@ class IVMBlock(nn.Module):
         else:
             kv = agent_feats                             # (B, H*N, D)
 
-        # K_m: keep only nearest N_m/2 map elements (architecture §3.4.1 Step 1)
         if map_feats is not None:
             if map_poses is not None:
                 N_m = map_feats.size(1)
                 K_m = max(1, N_m // 2)
                 if N_m > K_m:
-                    map_dist = map_poses.norm(dim=-1)     # (B, N_m)
+                    map_dist = map_poses.norm(dim=-1)
                     _, map_topk = map_dist.topk(K_m, dim=1, largest=False)
                     map_feats = map_feats.gather(
                         1, map_topk.unsqueeze(-1).expand(-1, -1, map_feats.size(-1))
                     )
             kv = torch.cat([kv, map_feats], dim=1)
 
-        # Step 2: Route segment filtering (architecture §3.4.1 Step 2)
-        # — discard routes whose closest point is their start point (ego has passed)
-        # — retain K_r = N_r/4 forward points per surviving route
         if route_feats is not None:
             kv = torch.cat([kv, route_feats], dim=1)
 
-        # Polygon features (crosswalks, stop lines, intersections)
         if polygon_feats is not None:
             if polygon_poses is not None:
                 N_p = polygon_feats.size(1)
@@ -260,12 +231,37 @@ class IVMBlock(nn.Module):
                     )
             kv = torch.cat([kv, polygon_feats], dim=1)
 
-        # Step 4: Transformer decoder (mode as query, agents+map as K/V)
+        return kv                                        # (B, K_total, D)
+
+
+class PolicyDecoderLayer(nn.Module):
+    """
+    Transformer decoder layer (Table 5: 3 layers).
+    Cross-attention: mode query attends to IVM-filtered context (agents + map + routes).
+    """
+    def __init__(self, d_model: int = cfg.D_HIDDEN, n_heads: int = 8):
+        super().__init__()
+        self.cross_attn = nn.MultiheadAttention(
+            d_model, n_heads, batch_first=True, dropout=0.1
+        )
+        self.norm1 = nn.LayerNorm(d_model)
+        self.ffn = nn.Sequential(
+            nn.Linear(d_model, d_model * 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(d_model * 4, d_model),
+        )
+        self.norm2 = nn.LayerNorm(d_model)
+
+    def forward(self, mode_query: torch.Tensor, kv: torch.Tensor) -> torch.Tensor:
+        """
+        mode_query: (B, 1, D)       — current mode state
+        kv:         (B, K_total, D)  — IVM-filtered context
+        Returns:    (B, 1, D)       — updated mode query
+        """
         attn_out, _ = self.cross_attn(mode_query, kv, kv)
         mode_query = self.norm1(mode_query + attn_out)
         mode_query = self.norm2(mode_query + self.ffn(mode_query))
-
-        return mode_query                                # (B, 1, D)
+        return mode_query
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -620,10 +616,12 @@ class AutoregressivePolicy(nn.Module):
         self.polygon_encoder = PolygonEncoder()
         # Decomposed mode encoder (Section 3.2) — replaces flat nn.Embedding
         self.decomposed_mode = DecomposedModeEncoder()
-        # IVM: 2 stacked cross-attention layers (reduced from paper's 3 for GPU memory)
-        self.ivm_layers = nn.ModuleList([
-            IVMBlock(d_model=D, n_heads=8, k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
-            for _ in range(2)
+        # IVM: parameter-less KNN filtering (§3.3.3)
+        self.ivm = IVM(k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
+        # Transformer decoder: 3 layers (Table 5)
+        self.decoder_layers = nn.ModuleList([
+            PolicyDecoderLayer(d_model=D, n_heads=8)
+            for _ in range(3)
         ])
         # Action head: Gaussian policy — shared between Stage B (IL) and Stage C (RL).
         # Stage B applies L1 on the mean output; Stage C uses mean + std for PPO.
@@ -831,7 +829,7 @@ class AutoregressivePolicy(nn.Module):
                 poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
                 poly_poses = polys_ego[..., :2].mean(dim=2)  # (B, N_POLYGONS, 2)
 
-            # ── IVM Step 2: route trim — keep K_r forward points from closest ──
+            # ── Route trim (K_r = N_r/4 forward points from closest) ────────
             route_feats_t = None
             if route_polylines is not None:
                 rp_xy = route_polylines[..., :2]                # (B, N_lat, N_r, 2)
@@ -861,22 +859,20 @@ class AutoregressivePolicy(nn.Module):
                     trimmed, route_mask
                 ) * active_mask.unsqueeze(-1)                   # (B, N_lat, D)
 
-            # ── IVM Transformer decoder: update mode query ────────────────
+            # ── IVM KNN filter → decoder K/V ─────────────────────────────
             map_poses = None
             if lanes_ego is not None:
                 map_poses = lanes_ego[..., :2].mean(dim=2)
 
-            for ivm in self.ivm_layers:
-                mode_query = ivm(
-                    mode_query,
-                    per_agent,
-                    agents_ego_now[..., :2],
-                    map_feats,
-                    map_poses=map_poses,
-                    route_feats=route_feats_t,
-                    polygon_feats=poly_feats,
-                    polygon_poses=poly_poses,
-                )  # (B, 1, D)
+            kv = self.ivm(
+                per_agent, agents_ego_now[..., :2],
+                map_feats, map_poses=map_poses,
+                route_feats=route_feats_t,
+                polygon_feats=poly_feats, polygon_poses=poly_poses,
+            )  # (B, K_total, D)
+
+            for layer in self.decoder_layers:
+                mode_query = layer(mode_query, kv)         # (B, 1, D)
 
             # ── Action head → waypoint in CURRENT ego frame ───────────────
             a_local = self.action_mean_head(mode_query.squeeze(1))  # (B, 3)
@@ -1066,7 +1062,7 @@ class AutoregressivePolicy(nn.Module):
                 poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
                 poly_poses = polys_ego[..., :2].mean(dim=2)
 
-            # IVM Step 2: route trim — keep K_r forward points from closest
+            # Route trim (K_r = N_r/4 forward points from closest)
             route_feats_t = None
             if route_polylines is not None:
                 rp_xy = route_polylines[..., :2]
@@ -1098,14 +1094,15 @@ class AutoregressivePolicy(nn.Module):
             map_poses = None
             if lanes_ego is not None:
                 map_poses = lanes_ego[..., :2].mean(dim=2)
-            for ivm in self.ivm_layers:
-                mode_query = ivm(
-                    mode_query, per_agent, agents_ego_now[..., :2], map_feats,
-                    map_poses=map_poses,
-                    route_feats=route_feats_t,
-                    polygon_feats=poly_feats,
-                    polygon_poses=poly_poses,
-                )
+
+            kv = self.ivm(
+                per_agent, agents_ego_now[..., :2],
+                map_feats, map_poses=map_poses,
+                route_feats=route_feats_t,
+                polygon_feats=poly_feats, polygon_poses=poly_poses,
+            )
+            for layer in self.decoder_layers:
+                mode_query = layer(mode_query, kv)
 
             # ── Gaussian policy head ──────────────────────────────────────
             action_mean = self.action_mean_head(mode_query.squeeze(1))  # (B, 3)
