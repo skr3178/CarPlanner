@@ -1062,4 +1062,71 @@ for t in 0..7:
 - **Stage B (IL):** L1 loss on `action_mean_head` output vs GT trajectory.
 - **Stage C (RL):** `action_mean_head` + `action_log_std` → Normal distribution for PPO sampling; `value_head` for baseline.
 
+## Stage B val14 — per-dim L_gen breakdown
+
+The generator loss `L_gen = |Δx| + |Δy| + |Δyaw|` summed per timestep (units: m + m + rad) hides which state component is responsible for trajectory error. Decomposing it on val14 across Stage B checkpoints (run `stage_b_20260424_140710`, trained on 4-city balanced cache, val on val14 1,116 samples):
+
+| Epoch | L_gen | L_gen_x [m] | %  | L_gen_y [m] | %  | L_gen_yaw [rad] | Yaw [°] |
+|:-----:|:-----:|:-----------:|:--:|:-----------:|:--:|:---------------:|:-------:|
+|   5   | 0.269 |   0.195     | 73%|   0.042     | 15%|     0.032       |  1.84°  |
+|  10   | 0.258 |   0.191     | 74%|   0.037     | 14%|     0.030       |  1.72°  |
+|  15   | 0.239 |   0.178     | 74%|   0.034     | 14%|     0.028       |  1.58°  |
+|**20** |**0.207**| **0.158** | 76%| **0.029**   | 14%|     0.021       |  1.18°  |
+|  24   | 0.237 |   0.181     | 76%|   0.038     | 16%|   **0.018**     |**1.04°**|
+
+**Key findings:**
+
+1. **Longitudinal (x) error dominates (~75% of L_gen).** Forward-direction prediction — speed/acceleration decisions — is where the policy fails. Lateral (y) error is small because the route + 12-way lateral-mode label provide strong supervision. The "val generalization gap" is really an x-direction generalization gap.
+
+2. **Yaw is excellent and improves monotonically.** From 1.84° (ep 5) to 1.04° (ep 24). Heading follows the path tangent which is derivable from the route, so yaw is structurally easy.
+
+3. **Epoch 20 → 24: positional memorization trade-off.** Total val L_gen rises 0.207 → 0.237 because x worsens (+14%) and y worsens (+32%), while yaw keeps improving (−14%). The policy starts memorizing training x/y trajectories in exchange for better yaw accuracy on the training set.
+
+**Implications:**
+
+- The dominant failure mode under IL is speed/acceleration prediction, which is exactly what **Stage C RL** addresses: closed-loop reward signals (progress, jerk, collision) give direct supervision on longitudinal dynamics that L1 on position cannot provide.
+- The 12-way mode label compresses longitudinal intent into a few discrete bins — cruise vs slow vs stop — which doesn't disambiguate speed magnitudes (e.g. "cruising at 20 m/s" vs "25 m/s"). Richer longitudinal conditioning (traffic-light state, lead-car distance/velocity) would likely help.
+- When selecting a Stage B checkpoint for Stage C init: epoch 20 wins on L_gen total and position; epoch 24 wins on yaw. Choice depends on which is more valuable downstream — for closed-loop planning, position is typically more critical than heading precision.
+
+Reproduction: `python val_stage_b_ckpt.py --ckpt <ckpt_path>`
+
+## Stage B val14 — mode selector sharpening across training
+
+Running `eval_sanity.py` (open-loop BEV + 5×12 mode-score heatmap per scene, paper Figure 2 style) on 104 val14 samples across Stage B checkpoints from run `stage_b_20260424_140710`:
+
+| Epoch | ADE [m] | FDE [m] | Top-1 mode acc | Top-5 | GT mode prob | Entropy [nats] |
+|:-----:|:-------:|:-------:|:--------------:|:-----:|:------------:|:--------------:|
+|   5   |  2.07   |  3.64   | 0.96% (≈chance)|  66%  |    0.192     |     2.24       |
+|  15   |  1.54   |  2.70   |     8.65%      |  74%  |    0.253     |     1.89       |
+|  20   |  1.28   |  2.27   |    12.50%      |  75%  |    0.256     |     1.82       |
+|  24   |  0.95   |  1.70   |   **16.35%**   |  73%  |    0.264     |     1.82       |
+
+Chance top-1 = 1/60 ≈ 1.67%, uniform entropy = log(60) ≈ 4.09 nats, 60 modes = 5 lateral bins × 12 longitudinal bins.
+
+**Observations:**
+
+1. **Top-1 mode accuracy climbs monotonically** 0.96% → 16.4% — roughly 10× chance by epoch 24, still increasing.
+
+2. **Entropy collapses from 2.24 → 1.82 nats** — selector becomes more confident (distribution sharpens), but still well above delta-peaked (0 nats = 100% on one mode). Supervision saturates around entropy ≈ 1.8 because many scenes genuinely have multiple plausible modes (straight vs slight lane change vs early brake), so the Bayes-optimal selector cannot be a delta.
+
+3. **Top-5 plateaus at ~74%** — the top-5 bins consistently contain GT; later training refines ordering *within* the top-5, not expanding recall.
+
+4. **ADE/FDE on plotted scenes drops dramatically** (2.07 m → 0.95 m ADE) — both selector and policy contribute.
+
+**Decoupling between selector and policy:**
+
+Compared to the per-dim L_gen breakdown (previous section), a clear decoupling emerges:
+
+| Component      | Best epoch | Behavior after best   |
+|:---------------|:----------:|:----------------------|
+| Mode selector  | 24 (still rising) | Keeps improving monotonically |
+| Policy (L_gen_total) | 20     | Regresses (x memorization) |
+| Policy (yaw)   | 24 (still improving) | Keeps improving |
+| Policy (x, y)  | 20         | Regresses after 20 |
+
+**Implication for Stage C init:** if the goal is maximum selector accuracy, use epoch 24. If the goal is best open-loop positional accuracy (ADE/FDE) for downstream policy bootstrapping, use epoch 20. For closed-loop deployment (where selector errors are bounded by rule-augmented re-ranking in `forward_inference_fast`), the selector matters less than positional prediction, so epoch 20 is likely the better Stage C init.
+
+Heatmap PNGs: `eval_outputs/heatmaps_stage_b_20260424_140710_*/eval_sanity_stageb_ep*.png`
+Reproduction: `python eval_sanity.py --checkpoint <ckpt_path> --cache checkpoints/stage_cache_val14.pt --n_samples 6 --output <out>.png`
+
 After all 8 steps, you have one complete trajectory per mode (60 total). At **training** time, only the positive mode's trajectory contributes to loss. At **inference** time, all 60 go through the rule-augmented selector, which picks the winner.

@@ -235,7 +235,7 @@ def main(args):
             sample = dataset[idx]
             batch = {kk: v.unsqueeze(0).to(device) for kk, v in sample.items()}
 
-            mode_logits, all_trajs, best_traj, best_idx = model.forward_inference(
+            mode_logits, all_trajs, best_traj, best_idx = model.forward_inference_fast(
                 agents_now=batch['agents_now'],
                 agents_mask=batch['agents_history_mask'],
                 map_lanes=batch['map_lanes'],

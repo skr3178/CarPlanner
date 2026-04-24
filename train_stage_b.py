@@ -134,33 +134,36 @@ def train(args):
         model.load_transition_model(args.transition_ckpt, freeze=True)
         print(f"[Train] Loaded frozen transition model from: {args.transition_ckpt}")
 
-    # Validation: use dedicated val14 cache (paper Section 4.1)
+    # Validation: load val14 cache to GPU unconditionally (small, ~73 MB for 1,116 samples)
     val_gpu_cache = None
     n_val_samples = 0
+    n_val = 0
+    val_idx = None
+    if os.path.isfile(val_cache_path):
+        print(f"[Train] Loading val14 cache to GPU: {val_cache_path}")
+        val_data = torch.load(val_cache_path, map_location=device)
+        val_gpu_cache = {
+            'agents_now':          val_data['agents_now'],
+            'agents_history':      val_data['agents_history'],
+            'agents_mask':         val_data['agents_mask'],
+            'agents_seq':          val_data['agents_seq'],
+            'gt_trajectory':       val_data['gt_trajectory'],
+            'mode_label':          val_data['mode_label'],
+            'map_lanes':           val_data['map_lanes'],
+            'map_lanes_mask':      val_data['map_lanes_mask'],
+            'map_polygons':        val_data.get('map_polygons', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
+            'map_polygons_mask':   val_data.get('map_polygons_mask', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, device=device)),
+            'route_polylines':     val_data.get('route_polylines', torch.zeros(val_data['n_samples'], cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT, device=device)),
+            'route_mask':          val_data.get('route_mask', torch.zeros(val_data['n_samples'], cfg.N_LAT, device=device)),
+        }
+        n_val_samples = val_data['n_samples']
+        del val_data
+        print(f"[Train] Val (val14): {n_val_samples} samples on GPU")
+
     if pin_gpu:
         n_train = n_samples
         train_idx = torch.arange(n_train, device=device)
-        if os.path.isfile(val_cache_path):
-            print(f"[Train] Loading val14 cache to GPU: {val_cache_path}")
-            val_data = torch.load(val_cache_path, map_location=device)
-            val_gpu_cache = {
-                'agents_now':          val_data['agents_now'],
-                'agents_history':      val_data['agents_history'],
-                'agents_mask':         val_data['agents_mask'],
-                'agents_seq':          val_data['agents_seq'],
-                'gt_trajectory':       val_data['gt_trajectory'],
-                'mode_label':          val_data['mode_label'],
-                'map_lanes':           val_data['map_lanes'],
-                'map_lanes_mask':      val_data['map_lanes_mask'],
-                'map_polygons':        val_data.get('map_polygons', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
-                'map_polygons_mask':   val_data.get('map_polygons_mask', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, device=device)),
-                'route_polylines':     val_data.get('route_polylines', torch.zeros(val_data['n_samples'], cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT, device=device)),
-                'route_mask':          val_data.get('route_mask', torch.zeros(val_data['n_samples'], cfg.N_LAT, device=device)),
-            }
-            n_val_samples = val_data['n_samples']
-            del val_data
-            print(f"[Train] Train: {n_train}, Val (val14): {n_val_samples}")
-        else:
+        if val_gpu_cache is None:
             print(f"[Train] WARNING: val14 cache not found at {val_cache_path}, falling back to 90/10 split")
             n_val = max(1, int(n_samples * 0.1))
             n_train = n_samples - n_val
@@ -199,9 +202,9 @@ def train(args):
         print(f"[Train] β pre-computation done in {time.time()-t0:.1f}s  "
               f"({size_gb:.2f} GB on CPU RAM)")
 
-    # Pre-compute β for val14 cache too
+    # Pre-compute β for val14 cache too (only when train β was pre-computed, i.e. pin_gpu path)
     val_beta_seq_cpu = None
-    if args.transition_ckpt and pin_gpu and val_gpu_cache is not None:
+    if beta_seq_cpu is not None and val_gpu_cache is not None:
         print(f"[Train] Pre-computing β outputs for {n_val_samples} val samples...")
         model.eval()
         model._transition_loaded = True
@@ -356,7 +359,7 @@ def train(args):
         val_losses = {'L_CE': 0., 'L_side': 0., 'L_gen': 0., 'L_total': 0.}
         val_batches = 0
 
-        if pin_gpu and val_gpu_cache is not None:
+        if val_gpu_cache is not None:
             n_val_batches = (n_val_samples + args.batch_size - 1) // args.batch_size
             with torch.no_grad():
                 for b in range(n_val_batches):

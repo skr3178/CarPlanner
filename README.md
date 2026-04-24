@@ -1245,11 +1245,12 @@ The nuPlan devkit environment must be fully set up (the simulation requires the 
 
 ### Claude session references
 
-```bash
-claude --resume c9c246ec-6d4a-48b2-9aa6-bae8fc225246
-claude --resume 4fbb0ac8-946b-428b-9ad8-38316cbe1c55
+4.6
 
-# claude-glm
-claude-glm --resume 602e77c9-4ad3-42cf-865f-f2aeb75d6c9f
-claude --resume "stage-c-rl-finetuning"
+claude --resume 7f5b9093-ce43-40e0-b907-b85c9227060e
+
+CLaude opus 4.7
+
+claude --resume 69aa50af-f212-4b58-ab31-8b8fc2246b62
+
 ```

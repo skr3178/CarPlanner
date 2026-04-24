@@ -1568,66 +1568,9 @@ class CarPlanner(nn.Module):
     # ── Inference forward ─────────────────────────────────────────────────────
 
     @torch.no_grad()
-    def forward_inference(self, agents_now: torch.Tensor, agents_mask: torch.Tensor,
-                          map_lanes: torch.Tensor = None,
-                          map_lanes_mask: torch.Tensor = None,
-                          agents_history: torch.Tensor = None,
-                          map_polygons: torch.Tensor = None,
-                          map_polygons_mask: torch.Tensor = None,
-                          route_polylines: torch.Tensor = None,
-                          route_mask: torch.Tensor = None):
-        """
-        Full inference pass (Algorithm 2).
-        """
-        self.eval()
-        B = agents_now.size(0)
-
-        s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
-
-        mode_logits, _ = self.mode_selector(
-            s0_global,
-            s0_per_agent=s0_per_agent,
-            map_lanes=map_lanes,
-            map_lanes_mask=map_lanes_mask,
-            map_polygons=map_polygons,
-            map_polygons_mask=map_polygons_mask,
-            route_polylines=route_polylines,
-            route_mask=route_mask,
-        )
-
-        hist = agents_history if agents_history is not None else agents_now.unsqueeze(1)
-        agent_futures = self.transition_model(
-            hist, agents_mask, map_lanes, map_lanes_mask,
-            map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
-        )
-
-        all_trajs = []
-        for m in range(cfg.N_MODES):
-            c = torch.full((B,), m, dtype=torch.long, device=agents_now.device)
-            traj = self.policy(
-                agents_now=agents_now,
-                agents_seq=agent_futures,
-                agents_mask=agents_mask,
-                mode_c=c,
-                gt_ego=None,
-                map_lanes=map_lanes,
-                map_lanes_mask=map_lanes_mask,
-                map_polygons=map_polygons,
-                map_polygons_mask=map_polygons_mask,
-                route_polylines=route_polylines,
-                route_mask=route_mask,
-            )
-            all_trajs.append(traj.unsqueeze(1))
-
-        all_trajs = torch.cat(all_trajs, dim=1)
-
-        best_traj, best_idx = self.rule_selector(
-            mode_logits, all_trajs,
-            agents_now=agents_now, agents_mask=agents_mask,
-            map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
-        )
-
-        return mode_logits, all_trajs, best_traj, best_idx
+    def forward_inference(self, **kwargs):
+        """Delegates to forward_inference_fast (batched 60-mode, ~60x faster)."""
+        return self.forward_inference_fast(**kwargs)
 
     def forward_inference_fast(self, agents_now: torch.Tensor, agents_mask: torch.Tensor,
                                map_lanes: torch.Tensor = None,
