@@ -623,7 +623,7 @@ class AutoregressivePolicy(nn.Module):
         # IVM: 2 stacked cross-attention layers (reduced from paper's 3 for GPU memory)
         self.ivm_layers = nn.ModuleList([
             IVMBlock(d_model=D, n_heads=8, k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
-            for _ in range(2)
+            for _ in range(3)
         ])
         # Action head: updated mode query → (x, y, yaw)
         # Gaussian policy head (replaces deterministic action_head for RL)
