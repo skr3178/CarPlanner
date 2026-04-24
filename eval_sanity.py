@@ -51,6 +51,27 @@ PAPER_BENCHMARKS = {
 }
 
 
+def _draw_mode_heatmap(ax, mode_logits, chosen_mode, mode_label):
+    """Draw the 5(lat) x 12(lon) mode score heatmap as in paper Figure 2."""
+    probs = F.softmax(mode_logits, dim=-1).cpu().numpy()      # (60,)
+    grid = probs.reshape(cfg.N_LON, cfg.N_LAT).T               # (lat=5, lon=12)
+    im = ax.imshow(grid, cmap='YlOrBr', aspect='auto', interpolation='nearest',
+                   vmin=0, vmax=max(grid.max(), 0.05))
+    gt_lon, gt_lat = int(mode_label) // cfg.N_LAT, int(mode_label) % cfg.N_LAT
+    ch_lon, ch_lat = int(chosen_mode) // cfg.N_LAT, int(chosen_mode) % cfg.N_LAT
+    ax.plot(gt_lon, gt_lat, 's', markeredgecolor='lime', markerfacecolor='none',
+            markersize=10, markeredgewidth=2, label='GT')
+    ax.plot(ch_lon, ch_lat, 'o', markeredgecolor='red', markerfacecolor='none',
+            markersize=10, markeredgewidth=2, label='Pred')
+    ax.set_xlabel('lon (speed)', fontsize=7)
+    ax.set_ylabel('lat (route)', fontsize=7)
+    ax.set_xticks(range(0, cfg.N_LON, 2))
+    ax.set_yticks(range(cfg.N_LAT))
+    ax.tick_params(labelsize=6)
+    ax.set_title('Mode Scores', fontsize=8)
+    ax.legend(fontsize=6, loc='upper right')
+
+
 def _draw_scene(ax, sample, pred, all_trajs, gt, mode_logits, chosen_mode, mode_label,
                 ade, fde, sample_idx, top_k_plot=3, pad=5.0, min_window=12.0):
     """Draw a single BEV sanity panel."""
@@ -178,19 +199,26 @@ def main(args):
     for i in plot_indices:
         eval_set.add(int(i))
 
-    # Figure layout: N_rows x N_cols grid + header row for metrics
-    ncols = 3
-    nrows = (n_plot + ncols - 1) // ncols
-    panel_size = 4.5
-    fig_w = panel_size * ncols
-    fig_h = panel_size * nrows + 2.5   # extra space for metric header
+    # Figure layout: each scene gets a BEV panel (wide) + heatmap (narrow)
+    scenes_per_row = 2
+    nrows = (n_plot + scenes_per_row - 1) // scenes_per_row
+    fig_w = 16
+    fig_h = 5 * nrows + 2.5
 
     fig = plt.figure(figsize=(fig_w, fig_h))
-    gs = fig.add_gridspec(nrows + 1, ncols, height_ratios=[0.55] + [1] * nrows,
-                          hspace=0.45, wspace=0.25)
+    # Each scene pair: [BEV_wide, heatmap_narrow, BEV_wide, heatmap_narrow]
+    gs = fig.add_gridspec(nrows + 1, scenes_per_row * 2,
+                          width_ratios=[3, 1] * scenes_per_row,
+                          height_ratios=[0.55] + [1] * nrows,
+                          hspace=0.50, wspace=0.35)
     header_ax = fig.add_subplot(gs[0, :])
     header_ax.axis('off')
-    panel_axes = [fig.add_subplot(gs[r + 1, c]) for r in range(nrows) for c in range(ncols)]
+    panel_axes = []
+    heatmap_axes = []
+    for r in range(nrows):
+        for s in range(scenes_per_row):
+            panel_axes.append(fig.add_subplot(gs[r + 1, s * 2]))
+            heatmap_axes.append(fig.add_subplot(gs[r + 1, s * 2 + 1]))
 
     # Cache plot samples so we don't re-run inference for them during eval loop
     plot_cache = {}
@@ -290,10 +318,15 @@ def main(args):
             d['ade'], d['fde'], int(idx),
             top_k_plot=args.top_k_plot,
         )
+        _draw_mode_heatmap(
+            heatmap_axes[plot_i], d['mode_logits'],
+            d['chosen_mode'], d['mode_label'],
+        )
 
     # Hide unused panels
     for j in range(len(plot_indices), len(panel_axes)):
         panel_axes[j].axis('off')
+        heatmap_axes[j].axis('off')
 
     # Single legend on first panel
     if plot_indices.size:
