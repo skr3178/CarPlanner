@@ -734,6 +734,25 @@ python scripts/eval_nuplan.py --checkpoint checkpoints/stage_b_best.pt --split v
 
 Produces: CLS-NR, CLS-R, S-CR, S-Area, S-PR, S-Comfort.
 
+### Closed-loop timing (GPU, sequential, RTX 3060 12GB)
+
+Map caching + `forward_inference_fast` (batched 60-mode GPU inference):
+- **~12s/scenario** (~41ms/step median, 80 steps/scenario)
+- test14-random (258 scenarios): **~52 min per stage**
+- **Both Stage B + C: ~1h 44min total**
+
+```bash
+# Stage C closed-loop on test14-random
+python scripts/eval_nuplan.py \
+    --checkpoint checkpoints/stage_c_best.pt \
+    --stage c --split test14-random --threads 1
+
+# Stage B closed-loop on test14-random
+python scripts/eval_nuplan.py \
+    --checkpoint checkpoints/stage_b_best.pt \
+    --stage b --split test14-random --threads 1
+```
+
 ### Eval order
 
 1. Open-loop first — if L_gen is far from 174.3 (IL-best), don't bother with closed-loop

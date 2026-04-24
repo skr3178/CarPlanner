@@ -435,6 +435,11 @@ class CarPlannerPlanner(AbstractPlanner):
         self._map_api: Optional[AbstractMap] = None
         self._iteration = 0
 
+        # Map cache: keyed by (round(x, 0), round(y, 0)) — re-query only when
+        # ego moves >1 m from the last cached position.
+        self._map_cache: dict = {}
+        self._map_cache_pos: Optional[tuple] = None
+
     def _ensure_model(self):
         if self._model is not None:
             return
@@ -452,6 +457,8 @@ class CarPlannerPlanner(AbstractPlanner):
     def initialize(self, initialization: PlannerInitialization) -> None:
         self._map_api = initialization.map_api
         self._iteration = 0
+        self._map_cache = {}
+        self._map_cache_pos = None
         self._ensure_model()
 
     def compute_planner_trajectory(
@@ -472,25 +479,43 @@ class CarPlannerPlanner(AbstractPlanner):
             ego_state, observation, ego_states_hist, observations_hist,
         )
 
-        # ── Map lanes ─────────────────────────────────────────────────────
-        map_lanes, map_lanes_mask = _extract_map_lanes(
-            self._map_api, ref_x, ref_y, ref_h,
-            traffic_light_data=current_input.traffic_light_data,
+        # ── Map features with position cache ─────────────────────────────
+        # Re-query map only when ego moves >1 m; map topology is stable
+        # within that radius and queries dominate per-step latency.
+        _pos = (ref_x, ref_y)
+        _cache_miss = (
+            self._map_cache_pos is None or
+            math.hypot(ref_x - self._map_cache_pos[0],
+                       ref_y - self._map_cache_pos[1]) > 1.0
         )
-
-        # ── Map polygons ──────────────────────────────────────────────────
-        map_polygons, map_polygons_mask = _extract_map_polygons(
-            self._map_api, ref_x, ref_y, ref_h,
-        )
-
-        # ── Routes (Section 3.3.2) ───────────────────────────────────────
-        tl_dict = {}
-        if current_input.traffic_light_data:
-            for tl in current_input.traffic_light_data:
-                tl_dict[tl.lane_connector_id] = tl.status.name.lower()
-        route_polylines, route_mask, _ = _extract_routes(
-            self._map_api, ref_x, ref_y, ref_h, tl_status=tl_dict,
-        )
+        if _cache_miss:
+            tl_dict = {}
+            if current_input.traffic_light_data:
+                for tl in current_input.traffic_light_data:
+                    tl_dict[tl.lane_connector_id] = tl.status.name.lower()
+            map_lanes, map_lanes_mask = _extract_map_lanes(
+                self._map_api, ref_x, ref_y, ref_h,
+                traffic_light_data=current_input.traffic_light_data,
+            )
+            map_polygons, map_polygons_mask = _extract_map_polygons(
+                self._map_api, ref_x, ref_y, ref_h,
+            )
+            route_polylines, route_mask, _ = _extract_routes(
+                self._map_api, ref_x, ref_y, ref_h, tl_status=tl_dict,
+            )
+            self._map_cache = dict(
+                map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+                map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
+                route_polylines=route_polylines, route_mask=route_mask,
+            )
+            self._map_cache_pos = _pos
+        else:
+            map_lanes      = self._map_cache['map_lanes']
+            map_lanes_mask = self._map_cache['map_lanes_mask']
+            map_polygons      = self._map_cache['map_polygons']
+            map_polygons_mask = self._map_cache['map_polygons_mask']
+            route_polylines = self._map_cache['route_polylines']
+            route_mask      = self._map_cache['route_mask']
 
         # ── To tensors (batch=1) ──────────────────────────────────────────
         def _t(arr):

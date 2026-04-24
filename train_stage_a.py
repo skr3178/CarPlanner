@@ -192,6 +192,7 @@ def train(args):
     print(f"[Stage A] Checkpoints → {run_dir}")
 
     best_val_loss = float('inf')
+    best_train_loss = float('inf')
 
     for epoch in range(start_epoch, args.epochs):
         # ── Training ──────────────────────────────────────────────────────────
@@ -327,26 +328,37 @@ def train(args):
         # LR scheduler based on VALIDATION loss
         scheduler.step(avg_val_loss)
 
-        # Save checkpoint based on VALIDATION loss
-        is_best = avg_val_loss < best_val_loss
-        best_val_loss = min(avg_val_loss, best_val_loss)
-
+        # Save checkpoint (include both losses for reference)
         ckpt = {
             'epoch': epoch,
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
+            'train_loss': avg_train_loss,
+            'val_loss': avg_val_loss,
             'loss': avg_val_loss,
         }
         ckpt_path = os.path.join(run_dir, f"stage_a_epoch_{epoch+1:03d}.pt")
         torch.save(ckpt, ckpt_path)
-        if is_best:
+
+        # Best val checkpoint
+        is_best_val = avg_val_loss < best_val_loss
+        best_val_loss = min(avg_val_loss, best_val_loss)
+        if is_best_val:
             best_path = os.path.join(run_dir, "stage_a_best.pt")
             torch.save(ckpt, best_path)
-            # Also copy to top-level for easy access by Stage B
             torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_a_best.pt"))
-            print(f"  * New best (val) saved: {best_path}")
+            print(f"  * New best (val)   L_tm={avg_val_loss:.4f} → {best_path}")
 
-    print(f"\n[Stage A] Done. Best val L_tm={best_val_loss:.4f}")
+        # Best train checkpoint
+        is_best_train = avg_train_loss < best_train_loss
+        best_train_loss = min(avg_train_loss, best_train_loss)
+        if is_best_train:
+            best_train_path = os.path.join(run_dir, "stage_a_best_train.pt")
+            torch.save(ckpt, best_train_path)
+            torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_a_best_train.pt"))
+            print(f"  * New best (train) L_tm={avg_train_loss:.4f} → {best_train_path}")
+
+    print(f"\n[Stage A] Done. Best val L_tm={best_val_loss:.4f}  Best train L_tm={best_train_loss:.4f}")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
