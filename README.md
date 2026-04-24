@@ -1251,6 +1251,6 @@ claude --resume 7f5b9093-ce43-40e0-b907-b85c9227060e
 
 CLaude opus 4.7
 
-claude --resume 69aa50af-f212-4b58-ab31-8b8fc2246b62
+claude --resume "per-dimension-loss-breakdown"
 
 ```

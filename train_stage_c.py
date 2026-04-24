@@ -1,14 +1,16 @@
 """
 CarPlanner — RL fine-tuning (Stage C).
 
-Loss: L_RL = 100*L_policy + 3*L_value - 0.001*L_entropy + L_gen + L_selector
-  L_policy   = PPO clip loss (Eq 8)
-  L_value    = MSE value loss (Eq 9)
-  L_entropy  = Mean entropy (Eq 10)
-  L_gen      = L1 generator loss (Eq 11)
-  L_selector = L_CE + L_side (same as Stage B)
+Loss (Algorithm 1, lines 23-27, 34):
+  L_generator = λ_policy*L_policy + λ_value*L_value - λ_entropy*L_entropy
+  L = L_selector + L_generator
 
-Optimizer: AdamW, lr=1e-4.  PPO with I=10 update interval.
+  L_policy   = PPO clip loss (Eq 8), λ_policy=100
+  L_value    = MSE value loss (Eq 9), λ_value=3
+  L_entropy  = entropy bonus (Eq 10), λ_entropy=0.001
+  L_selector = CrossEntropy + SideTask (same as Stage B, line 21)
+
+Optimizer: AdamW, lr=1e-4.  PPO with I=8 update interval (Table 5).
 
 Usage:
     python train_stage_c.py --split mini \
@@ -54,11 +56,6 @@ def compute_value_loss(values_new, returns):
 def compute_entropy_loss(entropies):
     """Negative mean entropy (Eq 10) — subtracted in total loss → maximises entropy."""
     return -entropies.mean()
-
-
-def compute_gen_loss(pred_traj, gt_traj):
-    """Generator L1 loss (Eq 11)."""
-    return (pred_traj - gt_traj).abs().sum(dim=-1).mean()
 
 
 def compute_selector_loss(mode_logits, side_traj, gt_traj, mode_label):
@@ -213,7 +210,7 @@ def train(args):
         model.train()
         epoch_losses = {
             'L_policy': 0., 'L_value': 0., 'L_entropy': 0.,
-            'L_gen': 0., 'L_selector': 0., 'L_total': 0.,
+            'L_selector': 0., 'L_total': 0.,
         }
         t0 = time.time()
 
@@ -281,20 +278,18 @@ def train(args):
                     route_mask=route_mask,
                 )
 
-            # Step 5: Losses
+            # Step 5: Losses (Algorithm 1 lines 21, 27, 34)
             L_policy   = compute_ppo_loss(log_probs_new, log_probs_old, advantages)
             L_value    = compute_value_loss(values_new, returns)
             L_entropy  = compute_entropy_loss(entropy)
-            L_gen      = compute_gen_loss(traj_new, gt_traj)
             L_selector, _ = compute_selector_loss(
                 mode_logits, side_traj, gt_traj, mode_label
             )
 
-            L_total = (cfg.LAMBDA_POLICY * L_policy
-                       + cfg.LAMBDA_VALUE * L_value
-                       + cfg.LAMBDA_ENTROPY * L_entropy
-                       + L_gen
-                       + L_selector)
+            L_generator = (cfg.LAMBDA_POLICY * L_policy
+                           + cfg.LAMBDA_VALUE * L_value
+                           + cfg.LAMBDA_ENTROPY * L_entropy)
+            L_total = L_selector + L_generator
 
             # Backward
             optimizer.zero_grad()
@@ -315,7 +310,7 @@ def train(args):
                       f"L_policy={L_policy.item():.4f}  "
                       f"L_value={L_value.item():.4f}")
 
-            # Step 6: Update π_old every I=10 steps
+            # Step 6: Update π_old every I=8 steps (Alg 1 line 38-39, Table 5)
             step_counter += 1
             if step_counter % update_interval == 0:
                 policy_old = copy.deepcopy(model.policy)
@@ -382,17 +377,15 @@ def train(args):
                     vL_policy   = compute_ppo_loss(v_lpn, v_lp, v_adv)
                     vL_value    = compute_value_loss(v_vn, v_ret)
                     vL_entropy  = compute_entropy_loss(v_ent)
-                    vL_gen      = compute_gen_loss(v_tn, v_gt_traj)
                     vL_selector, _ = compute_selector_loss(v_ml, v_st, v_gt_traj, v_mode_label)
-                    vL_total = (cfg.LAMBDA_POLICY * vL_policy
-                                + cfg.LAMBDA_VALUE * vL_value
-                                + cfg.LAMBDA_ENTROPY * vL_entropy
-                                + vL_gen + vL_selector)
+                    vL_generator = (cfg.LAMBDA_POLICY * vL_policy
+                                    + cfg.LAMBDA_VALUE * vL_value
+                                    + cfg.LAMBDA_ENTROPY * vL_entropy)
+                    vL_total = vL_selector + vL_generator
 
                     val_losses['L_policy']   += vL_policy.item()
                     val_losses['L_value']    += vL_value.item()
                     val_losses['L_entropy']  += vL_entropy.item()
-                    val_losses['L_gen']      += vL_gen.item()
                     val_losses['L_selector'] += vL_selector.item()
                     val_losses['L_total']    += vL_total.item()
 
@@ -405,7 +398,6 @@ def train(args):
               f"L_policy={avg['L_policy']:.4f}  "
               f"L_value={avg['L_value']:.4f}  "
               f"L_entropy={avg['L_entropy']:.4f}  "
-              f"L_gen={avg['L_gen']:.4f}  "
               f"L_selector={avg['L_selector']:.4f}"
               f"{val_str}  ({elapsed:.1f}s)")
 
@@ -441,7 +433,8 @@ def parse_args():
     p = argparse.ArgumentParser(description="CarPlanner RL fine-tuning (Stage C)")
     p.add_argument('--split', default='mini',
                    choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore',
-                            'train_all', 'train_all_balanced'])
+                            'train_all', 'train_all_balanced', 'train_4city_balanced',
+                            'train_vegas_balanced'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS)

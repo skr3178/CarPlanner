@@ -1,11 +1,10 @@
 """
 Reward functions for Stage C RL fine-tuning.
 
-4-component per-step reward:
+3-component per-step reward (paper §3.4):
   R_displacement: -L2(ego, gt)           — proximity to ground truth
   R_collision:    -indicator(d < 2m)     — collision penalty
   R_drivable:     -indicator(d > 3m)     — off-road penalty
-  R_comfort:      -jerk_magnitude        — smoothness penalty
 
 Plus GAE computation and advantage normalization for PPO.
 """
@@ -60,10 +59,7 @@ def compute_rewards(ego_traj: torch.Tensor,
             ego_traj[..., :2], map_lanes, map_lanes_mask
         )
 
-    # Component 4: Comfort reward (negative jerk magnitude)
-    R_comfort = _compute_jerk_penalty(ego_traj)            # (B, T)
-
-    return R_displacement + R_collision + R_drivable + R_comfort
+    return R_displacement + R_collision + R_drivable
 
 
 def _compute_drivable_penalty(ego_xy: torch.Tensor,
@@ -96,26 +92,6 @@ def _compute_drivable_penalty(ego_xy: torch.Tensor,
     min_lane_dist, _ = dist_to_lanes.min(dim=-1)           # (B, T)
 
     return -(min_lane_dist > 3.0).float()
-
-
-def _compute_jerk_penalty(ego_traj: torch.Tensor) -> torch.Tensor:
-    """
-    Jerk penalty (3rd derivative of position via finite differences).
-
-    Args:
-        ego_traj: (B, T, 3)
-
-    Returns:
-        penalty: (B, T) — negative jerk magnitude (padded with zeros)
-    """
-    xy = ego_traj[..., :2]                                 # (B, T, 2)
-    vel  = xy[:, 1:] - xy[:, :-1]                          # (B, T-1, 2)
-    acc  = vel[:, 1:] - vel[:, :-1]                         # (B, T-2, 2)
-    jerk = acc[:, 1:] - acc[:, :-1]                         # (B, T-3, 2)
-
-    # Pad to original length
-    jerk_padded = F.pad(jerk, (0, 0, 0, ego_traj.size(1) - jerk.size(1), 0, 0))
-    return -torch.norm(jerk_padded, dim=-1)                # (B, T)
 
 
 def compute_gae(rewards: torch.Tensor,
