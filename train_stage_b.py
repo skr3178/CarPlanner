@@ -251,6 +251,7 @@ def train(args):
     print(f"[Train] Checkpoints → {run_dir}")
 
     best_val_loss = float('inf')
+    best_train_loss = float('inf')
 
     for epoch in range(start_epoch, args.epochs):
         model.train()
@@ -431,10 +432,7 @@ def train(args):
 
         scheduler.step(avg_val['L_total'])
 
-        # Save checkpoint based on val loss
-        is_best = avg_val['L_total'] < best_val_loss
-        best_val_loss = min(avg_val['L_total'], best_val_loss)
-
+        # Save checkpoint
         ckpt = {
             'epoch': epoch,
             'model': model.state_dict(),
@@ -444,13 +442,26 @@ def train(args):
         }
         ckpt_path = os.path.join(run_dir, f"stage_b_epoch_{epoch+1:03d}.pt")
         torch.save(ckpt, ckpt_path)
-        if is_best:
+
+        # Best val checkpoint
+        is_best_val = avg_val['L_total'] < best_val_loss
+        best_val_loss = min(avg_val['L_total'], best_val_loss)
+        if is_best_val:
             best_path = os.path.join(run_dir, "stage_b_best.pt")
             torch.save(ckpt, best_path)
             torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_b_best.pt"))
-            print(f"  * New best (val) saved: {best_path}")
+            print(f"  * New best (val)   L_total={avg_val['L_total']:.4f} → {best_path}")
 
-    print(f"\n[Train] Done. Best val L_total={best_val_loss:.4f}")
+        # Best train checkpoint
+        is_best_train = avg_train['L_total'] < best_train_loss
+        best_train_loss = min(avg_train['L_total'], best_train_loss)
+        if is_best_train:
+            best_train_path = os.path.join(run_dir, "stage_b_best_train.pt")
+            torch.save(ckpt, best_train_path)
+            torch.save(ckpt, os.path.join(cfg.CHECKPOINT_DIR, "stage_b_best_train.pt"))
+            print(f"  * New best (train) L_total={avg_train['L_total']:.4f} → {best_train_path}")
+
+    print(f"\n[Train] Done. Best val L_total={best_val_loss:.4f}  Best train L_total={best_train_loss:.4f}")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────

@@ -1007,4 +1007,59 @@ For each of the 8 future steps (t = 0 to 7):
 4. **Value head** produces V(s_t, c) for PPO training.
 5. Advance to t+1, repeat.
 
+---
+
+## Implementation Architecture: IVM + Autoregressive Policy
+
+### IVM — Invariant-View Module (parameter-less)
+
+Preprocessing applied **once per autoregressive timestep**, before the decoder. No learnable weights.
+
+| Step | Operation | Details |
+|------|-----------|---------|
+| Coord transform | Rotate all agents/map/polygons into ego-at-t frame | Applied upstream in AR loop |
+| Time normalization | Integer indices `[-(H-1), ..., -1, 0]` appended to agent features | H=10 history frames |
+| Route trim | Find closest point on each route, keep forward K_r = N_r/4 points, re-encode via `route_pointnet` | Before KNN stage |
+| KNN agents | Keep K = N/2 nearest agents (by ego-frame distance), across all H history frames | `IVM.forward()` |
+| KNN map | Keep K_m = N_m/2 nearest lane elements | `IVM.forward()` |
+| KNN polygons | Keep K_p = N_p/2 nearest polygons (crosswalks, stop lines) | `IVM.forward()` |
+| Concatenate | Stack filtered agents + map + routes + polygons → single K/V tensor `(B, K_total, D)` | `IVM.forward()` |
+
+### Autoregressive Policy (learnable)
+
+**Encoders:**
+- `agent_encoder_time` — PointNet, in_dim=14 (D_AGENT) → D=256
+- `lane_encoder` — LaneEncoder, in_dim=7 → D=128 (D_LANE)
+- `polygon_encoder` — PolygonEncoder
+- `decomposed_mode` — DecomposedModeEncoder (lon PointNet + lat/route PointNet)
+
+**Decoder:**
+- `decoder_layers` — 3 x PolicyDecoderLayer (Table 5)
+  - Each: MultiheadAttention(D=256, 8 heads, dropout=0.1) + LayerNorm + FFN(256→1024→256) + LayerNorm
+
+**Action heads:**
+- `action_mean_head` — Linear(256→256) → ReLU → Linear(256→3) → (dx, dy, dyaw)
+- `action_log_std` — Parameter(3,), learnable per-dim std
+- `value_head` — Linear(256→128) → ReLU → Linear(128→1) (Stage C only)
+
+### Per-timestep flow (T=8 steps)
+
+```
+for t in 0..7:
+  1. Update agent buffer (sliding window H=10)
+  2. IVM preprocessing:
+     - coord transform agents/map/polygons → ego-at-t frame
+     - time normalize: integer indices [-9, ..., 0]
+     - route trim: K_r = N_r/4 forward points, re-encode
+  3. Encode: agent_encoder_time → per_agent, lane_encoder → map_feats
+  4. IVM KNN filter → kv (B, K_total, 256)
+  5. Decoder: mode_query passes through 3 x PolicyDecoderLayer(query, kv)
+  6. Action: a_t = action_mean_head(mode_query) → (dx, dy, dyaw)
+  7. Transform a_t back to initial ego frame, update ego pose
+  8. Transition model predicts next agent states → loop
+```
+
+- **Stage B (IL):** L1 loss on `action_mean_head` output vs GT trajectory.
+- **Stage C (RL):** `action_mean_head` + `action_log_std` → Normal distribution for PPO sampling; `value_head` for baseline.
+
 After all 8 steps, you have one complete trajectory per mode (60 total). At **training** time, only the positive mode's trajectory contributes to loss. At **inference** time, all 60 go through the rule-augmented selector, which picks the winner.

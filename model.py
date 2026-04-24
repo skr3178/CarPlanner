@@ -167,13 +167,12 @@ class IVM(nn.Module):
     Invariant-View Module (§3.3.3) — parameter-less preprocessing.
 
     Per autoregressive timestep t (after upstream coord transform + time norm):
-      1. KNN agent selection (K = N // 2)
-      2. KNN map element selection (K_m = N_m // 2)
-      3. KNN polygon selection (K_p = N_p // 2)
+      1. KNN agent selection: K = N/2 agents by current-frame distance, one token per agent
+      2. KNN map element selection: K_m = N_m/2 nearest lanes
+      3. KNN polygon selection: K_p = N_p/2 nearest polygons
       4. Concatenate filtered agents + map + routes + polygons into K/V tensor
 
-    Route trim (K_r = N_r/4) is applied upstream before encoding.
-    Coord transform and time normalization are applied upstream in the AR loop.
+    Route trim (K_r = N_r/4) and coord transform / time norm are applied upstream.
     """
     def __init__(self, k_nn: int = cfg.N_AGENTS // 2):
         super().__init__()
@@ -185,24 +184,19 @@ class IVM(nn.Module):
                 polygon_feats: torch.Tensor = None,
                 polygon_poses: torch.Tensor = None) -> torch.Tensor:
         """
-        Returns kv: (B, K_total, D) — filtered and concatenated context for decoder.
+        agent_feats: (B, N, D) — one token per agent (history already aggregated)
+        agent_poses: (B, N, 2) — current-step positions for KNN distance
+        Returns kv:  (B, K_total, D) — filtered and concatenated context for decoder.
         """
-        B, HN, D = agent_feats.shape
-        N = agent_poses.size(1)
+        B, N, D = agent_feats.shape
 
-        H = HN // N
         if N > self.k_nn:
             dist = agent_poses.norm(dim=-1)              # (B, N)
             _, topk = dist.topk(self.k_nn, dim=1, largest=False)  # (B, K)
-            kv_list = []
-            for h in range(H):
-                idx = topk + h * N
-                kv_list.append(agent_feats.gather(
-                    1, idx.unsqueeze(-1).expand(-1, -1, D)
-                ))
-            kv = torch.cat(kv_list, dim=1)               # (B, K*H, D)
-        else:
-            kv = agent_feats                             # (B, H*N, D)
+            agent_feats = agent_feats.gather(
+                1, topk.unsqueeze(-1).expand(-1, -1, D)
+            )                                            # (B, K, D)
+        kv = agent_feats
 
         if map_feats is not None:
             if map_poses is not None:
@@ -616,8 +610,8 @@ class AutoregressivePolicy(nn.Module):
         self.polygon_encoder = PolygonEncoder()
         # Decomposed mode encoder (Section 3.2) — replaces flat nn.Embedding
         self.decomposed_mode = DecomposedModeEncoder()
-        # IVM: parameter-less KNN filtering (§3.3.3)
-        self.ivm = IVM(k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
+        # IVM: parameter-less KNN filtering (§3.3.3), K = N/2 agents
+        self.ivm = IVM(k_nn=cfg.N_AGENTS // 2)
         # Transformer decoder: 3 layers (Table 5)
         self.decoder_layers = nn.ModuleList([
             PolicyDecoderLayer(d_model=D, n_heads=8)
@@ -755,18 +749,19 @@ class AutoregressivePolicy(nn.Module):
                     ag_cat_h,
                 ], dim=-1)  # (B, N, Da=14)
 
-            # Flatten history into agent dimension for PointNet
-            # (B, H*N, Da) — PointNet sees all H frames as a point cloud
-            buffer_flat = buffer_ego.view(B, H * cfg.N_AGENTS, Da)
-            mask_flat = agents_mask.unsqueeze(1).expand(-1, H, -1).reshape(
-                B, H * cfg.N_AGENTS
-            )  # (B, H*N)
+            # Encode each agent's H-frame history into one token via PointNet + max-pool
+            N = cfg.N_AGENTS
+            # (B, H, N, Da) → (B*N, H, Da): each agent's trajectory is a point set
+            agent_seqs = buffer_ego.permute(0, 2, 1, 3).reshape(B * N, H, Da)
+            mask_seqs = agents_mask.unsqueeze(2).expand(-1, -1, H).reshape(B * N, H)
+            agent_tokens_flat, _ = self.agent_encoder_time(agent_seqs, mask_seqs)  # (B*N, H, D)
+            # Max-pool over history → one token per agent
+            agent_tokens_flat = agent_tokens_flat.masked_fill(
+                (mask_seqs == 0).unsqueeze(-1), float('-inf')
+            )
+            per_agent = agent_tokens_flat.max(dim=1).values.view(B, N, -1)  # (B, N, D)
+            per_agent = torch.nan_to_num(per_agent, nan=0.0, posinf=0.0, neginf=0.0)
 
-            # ── PointNet encode agents with time-normalised features ───────
-            per_agent, _ = self.agent_encoder_time(buffer_flat, mask_flat)  # (B, H*N, D)
-
-            # ── IVM K-NN selection: use only CURRENT step (last H slot) ────
-            # K-NN should be on spatial positions only (current agents)
             agents_ego_now = buffer_ego[:, -1]            # (B, N, Da)
 
             # ── Map re-transform per step (Alg 3 step 3) ──────────────────
@@ -992,14 +987,17 @@ class AutoregressivePolicy(nn.Module):
                     ag_cat_h,
                 ], dim=-1)
 
-            # PointNet encode
-            buffer_flat = buffer_ego.view(B, H * cfg.N_AGENTS, Da)
-            mask_flat = agents_mask.unsqueeze(1).expand(-1, H, -1).reshape(
-                B, H * cfg.N_AGENTS
+            # Encode each agent's H-frame history into one token
+            N = cfg.N_AGENTS
+            agent_seqs = buffer_ego.permute(0, 2, 1, 3).reshape(B * N, H, Da)
+            mask_seqs = agents_mask.unsqueeze(2).expand(-1, -1, H).reshape(B * N, H)
+            agent_tokens_flat, _ = self.agent_encoder_time(agent_seqs, mask_seqs)
+            agent_tokens_flat = agent_tokens_flat.masked_fill(
+                (mask_seqs == 0).unsqueeze(-1), float('-inf')
             )
-            per_agent, _ = self.agent_encoder_time(buffer_flat, mask_flat)
+            per_agent = agent_tokens_flat.max(dim=1).values.view(B, N, -1)
+            per_agent = torch.nan_to_num(per_agent, nan=0.0, posinf=0.0, neginf=0.0)
 
-            # K-NN current step
             agents_ego_now = buffer_ego[:, -1]
 
             # Map re-transform per step (Alg 3 step 3)
