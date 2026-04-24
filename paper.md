@@ -753,11 +753,16 @@ python scripts/eval_nuplan.py \
     --stage b --split test14-random --threads 1
 ```
 
-### Eval order
+### Eval strategy
 
-1. Open-loop first — if L_gen is far from 174.3 (IL-best), don't bother with closed-loop
-2. Closed-loop on test14-random — main benchmark (Table 1)
-3. Closed-loop on reduced-val14 — secondary benchmark (Table 2)
+Open-loop is ~2 min; closed-loop is ~52 min per stage. Use open-loop for fast iteration,
+reserve closed-loop for promising checkpoints only.
+
+1. **Iterate on open-loop** — run after every checkpoint change (~2 min)
+   - Track: L_gen, L_sel, ADE/FDE, mode accuracy, consistent ratio
+   - If L_gen is far from paper's 174.3 (IL-best), don't bother with closed-loop
+2. **Closed-loop on test14-random** — only for promising checkpoints (Table 1)
+3. **Closed-loop on reduced-val14** — secondary benchmark, final paper numbers (Table 2)
 
 ---
 
