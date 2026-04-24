@@ -73,18 +73,6 @@ def compute_selector_loss(mode_logits, side_traj, gt_traj, mode_label):
 
 # ── Checkpoint helpers ─────────────────────────────────────────────────────────
 
-def _rename_action_head(state_dict):
-    """Map Stage B 'action_head' keys → Stage C 'action_mean_head'."""
-    mapping = {}
-    for k in list(state_dict.keys()):
-        if k.startswith('policy.action_head.'):
-            new_k = k.replace('policy.action_head.', 'policy.action_mean_head.')
-            mapping[k] = new_k
-    for old_k, new_k in mapping.items():
-        state_dict[new_k] = state_dict.pop(old_k)
-    return state_dict
-
-
 # ── Training loop ──────────────────────────────────────────────────────────────
 
 def train(args):
@@ -152,7 +140,6 @@ def train(args):
         ckpt_b = torch.load(args.stage_b_ckpt, map_location=device)
         pretrained = ckpt_b['model']
         # Rename action_head → action_mean_head for Stage C compatibility
-        pretrained = _rename_action_head(pretrained)
         model_dict = model.state_dict()
         # Only load keys that exist in both checkpoint and current model
         loaded = {k: v for k, v in pretrained.items() if k in model_dict and v.shape == model_dict[k].shape}

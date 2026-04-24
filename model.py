@@ -623,26 +623,20 @@ class AutoregressivePolicy(nn.Module):
         # IVM: 2 stacked cross-attention layers (reduced from paper's 3 for GPU memory)
         self.ivm_layers = nn.ModuleList([
             IVMBlock(d_model=D, n_heads=8, k_nn=cfg.N_AGENTS * cfg.T_HIST // 2)
-            for _ in range(3)
+            for _ in range(2)
         ])
-        # Action head: updated mode query → (x, y, yaw)
-        # Gaussian policy head (replaces deterministic action_head for RL)
+        # Action head: Gaussian policy — shared between Stage B (IL) and Stage C (RL).
+        # Stage B applies L1 on the mean output; Stage C uses mean + std for PPO.
         self.action_mean_head = nn.Sequential(
             nn.Linear(D, D), nn.ReLU(inplace=True),
             nn.Linear(D, 3)
         )
-        self.action_log_std = nn.Parameter(torch.zeros(3))  # learnable per-dim std
+        self.action_log_std = nn.Parameter(torch.zeros(3))
 
-        # Value head (for RL baseline estimation, shares IVM encoder output)
+        # Value head (Stage C only, unused in Stage B)
         self.value_head = nn.Sequential(
             nn.Linear(D, D // 2), nn.ReLU(inplace=True),
             nn.Linear(D // 2, 1)
-        )
-
-        # Deterministic head kept for backward compatibility with Stage B IL
-        self.action_head_deterministic = nn.Sequential(
-            nn.Linear(D, D), nn.ReLU(inplace=True),
-            nn.Linear(D, 3)
         )
 
     @staticmethod
@@ -728,7 +722,7 @@ class AutoregressivePolicy(nn.Module):
             # Time normalisation: assign indices [-H, ..., -1, 0]
             # Last slot (index H-1) = current step t → normalised time 0
             # Earlier slots → normalised time -H..-1
-            time_indices = torch.linspace(-H, 0, H, device=device)  # (H,)
+            time_indices = torch.arange(-(H - 1), 1, dtype=torch.float, device=device)  # (H,)
 
             # ── IVM step 1–3: transform buffer to ego-centric frame at t ──
             # Da=14: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, cat_onehot(4)
@@ -837,10 +831,10 @@ class AutoregressivePolicy(nn.Module):
                 poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
                 poly_poses = polys_ego[..., :2].mean(dim=2)  # (B, N_POLYGONS, 2)
 
-            # ── IVM Step 2: route filtering (Alg 3) ──────────────────────
+            # ── IVM Step 2: route trim — keep K_r forward points from closest ──
             route_feats_t = None
             if route_polylines is not None:
-                rp_xy = route_polylines[..., :2]
+                rp_xy = route_polylines[..., :2]                # (B, N_lat, N_r, 2)
                 dx_r = rp_xy[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
                 dy_r = rp_xy[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
                 cos_hr = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
@@ -848,9 +842,24 @@ class AutoregressivePolicy(nn.Module):
                 rx = cos_hr * dx_r - sin_hr * dy_r
                 ry = sin_hr * dx_r + cos_hr * dy_r
                 route_dists = torch.sqrt(rx**2 + ry**2)
-                closest_idx = route_dists.argmin(dim=-1)
-                active_mask = (closest_idx > 0).float()
-                route_feats_t = lat_modes * active_mask.unsqueeze(-1)
+                closest_idx = route_dists.argmin(dim=-1)        # (B, N_lat)
+                active_mask = (closest_idx > 0).float()         # discard if ego passed start
+
+                N_r = route_polylines.size(2)
+                K_r = max(1, N_r // 4)
+                B_r, N_lat_r = closest_idx.shape
+                trimmed = torch.zeros(B_r, N_lat_r, K_r, route_polylines.size(-1),
+                                      device=device, dtype=route_polylines.dtype)
+                for b in range(B_r):
+                    for r in range(N_lat_r):
+                        start = int(closest_idx[b, r].item())
+                        end = min(start + K_r, N_r)
+                        length = end - start
+                        trimmed[b, r, :length] = route_polylines[b, r, start:end]
+
+                route_feats_t = self.decomposed_mode.route_pointnet(
+                    trimmed, route_mask
+                ) * active_mask.unsqueeze(-1)                   # (B, N_lat, D)
 
             # ── IVM Transformer decoder: update mode query ────────────────
             map_poses = None
@@ -870,7 +879,7 @@ class AutoregressivePolicy(nn.Module):
                 )  # (B, 1, D)
 
             # ── Action head → waypoint in CURRENT ego frame ───────────────
-            a_local = self.action_head_deterministic(mode_query.squeeze(1))  # (B, 3)
+            a_local = self.action_mean_head(mode_query.squeeze(1))  # (B, 3)
 
             # ── Convert back to initial ego frame ─────────────────────────
             cos_h_bk = torch.cos(ego_h)
@@ -952,7 +961,7 @@ class AutoregressivePolicy(nn.Module):
             )
 
             # Time normalisation indices
-            time_indices = torch.linspace(-H, 0, H, device=device)
+            time_indices = torch.arange(-(H - 1), 1, dtype=torch.float, device=device)
 
             # ── IVM coordinate transform (same as forward()) ──────────────
             Da = cfg.D_AGENT
@@ -1057,7 +1066,7 @@ class AutoregressivePolicy(nn.Module):
                 poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
                 poly_poses = polys_ego[..., :2].mean(dim=2)
 
-            # IVM Step 2: route filtering
+            # IVM Step 2: route trim — keep K_r forward points from closest
             route_feats_t = None
             if route_polylines is not None:
                 rp_xy = route_polylines[..., :2]
@@ -1069,7 +1078,22 @@ class AutoregressivePolicy(nn.Module):
                 ry = sin_hr * dx_r + cos_hr * dy_r
                 closest_idx = torch.sqrt(rx**2 + ry**2).argmin(dim=-1)
                 active_mask = (closest_idx > 0).float()
-                route_feats_t = lat_modes * active_mask.unsqueeze(-1)
+
+                N_r = route_polylines.size(2)
+                K_r = max(1, N_r // 4)
+                B_r, N_lat_r = closest_idx.shape
+                trimmed = torch.zeros(B_r, N_lat_r, K_r, route_polylines.size(-1),
+                                      device=device, dtype=route_polylines.dtype)
+                for b in range(B_r):
+                    for r in range(N_lat_r):
+                        start = int(closest_idx[b, r].item())
+                        end = min(start + K_r, N_r)
+                        length = end - start
+                        trimmed[b, r, :length] = route_polylines[b, r, start:end]
+
+                route_feats_t = self.decomposed_mode.route_pointnet(
+                    trimmed, route_mask
+                ) * active_mask.unsqueeze(-1)
 
             map_poses = None
             if lanes_ego is not None:
