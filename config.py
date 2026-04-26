@@ -24,9 +24,17 @@ VAL14_YAML = os.path.join(_SPLIT_DIR, "val14_split.yaml")
 TEST14_RANDOM_YAML = os.path.join(_SPLIT_DIR, "test14_random_split.yaml")
 REDUCED_VAL14_YAML = os.path.join(_SPLIT_DIR, "reduced_val14_split.yaml")
 
+# ── Data cadence ──────────────────────────────────────────────────────────────
+# nuPlan logs are at 20 Hz internally; planning horizon in paper is 8 s @ 1 Hz.
+DB_FREQ_HZ    = 20
+HISTORY_DT_S  = 0.1   # 10 Hz history
+FUTURE_DT_S   = 1.0   # 1 Hz future (paper: 8 future steps over 8 s)
+HISTORY_STRIDE = int(DB_FREQ_HZ * HISTORY_DT_S)  # 2 frames per history step
+FUTURE_STRIDE  = int(DB_FREQ_HZ * FUTURE_DT_S)   # 20 frames per future step
+
 # ── Data dimensions ───────────────────────────────────────────────────────────
 T_HIST = 10           # history frames (~1s at 10Hz)
-T_FUTURE = 8          # horizon steps (paper default, Fig 4)
+T_FUTURE = 8          # horizon steps (paper default: 8 s @ 1 Hz)
 N_AGENTS = 20         # max tracked agents per frame (padded/truncated)
 BEV_C = 3             # BEV raster channels (placeholder zeros)
 BEV_H = 224

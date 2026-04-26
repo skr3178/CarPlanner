@@ -158,6 +158,27 @@ class PolygonEncoder(nn.Module):
         return poly_feat
 
 
+class EgoHistoryEncoder(nn.Module):
+    """
+    Encodes the ego pose history (T_HIST, 4) into a single (D_HIDDEN,) token.
+    The token is added (residual) into s0_global so the state representation
+    contains ego-history information per paper §3.1.
+    """
+    def __init__(self, t_hist: int = cfg.T_HIST, d_in: int = 4,
+                 d_model: int = cfg.D_HIDDEN):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(t_hist * d_in, d_model),
+            nn.ReLU(inplace=True),
+            nn.Linear(d_model, d_model),
+        )
+
+    def forward(self, ego_history: torch.Tensor) -> torch.Tensor:
+        # ego_history: (B, T_HIST, 4) → (B, D_HIDDEN)
+        B = ego_history.size(0)
+        return self.net(ego_history.reshape(B, -1))
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # IVM — Invariant-View Module  (Algorithm 3)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -667,7 +688,8 @@ class AutoregressivePolicy(nn.Module):
                 map_polygons: torch.Tensor = None,
                 map_polygons_mask: torch.Tensor = None,
                 route_polylines: torch.Tensor = None,
-                route_mask: torch.Tensor = None) -> torch.Tensor:
+                route_mask: torch.Tensor = None,
+                ego_token: torch.Tensor = None) -> torch.Tensor:
         """
         T-step autoregressive rollout with IVM (Algorithm 2 + Algorithm 3).
 
@@ -865,6 +887,8 @@ class AutoregressivePolicy(nn.Module):
                 route_feats=route_feats_t,
                 polygon_feats=poly_feats, polygon_poses=poly_poses,
             )  # (B, K_total, D)
+            if ego_token is not None:
+                kv = torch.cat([kv, ego_token.unsqueeze(1)], dim=1)
 
             for layer in self.decoder_layers:
                 mode_query = layer(mode_query, kv)         # (B, 1, D)
@@ -902,7 +926,8 @@ class AutoregressivePolicy(nn.Module):
                    map_polygons: torch.Tensor = None,
                    map_polygons_mask: torch.Tensor = None,
                    route_polylines: torch.Tensor = None,
-                   route_mask: torch.Tensor = None) -> tuple:
+                   route_mask: torch.Tensor = None,
+                   ego_token: torch.Tensor = None) -> tuple:
         """
         RL forward pass with Gaussian policy and value estimation.
 
@@ -1099,6 +1124,8 @@ class AutoregressivePolicy(nn.Module):
                 route_feats=route_feats_t,
                 polygon_feats=poly_feats, polygon_poses=poly_poses,
             )
+            if ego_token is not None:
+                kv = torch.cat([kv, ego_token.unsqueeze(1)], dim=1)
             for layer in self.decoder_layers:
                 mode_query = layer(mode_query, kv)
 
@@ -1435,6 +1462,8 @@ class CarPlanner(nn.Module):
         super().__init__()
         # Shared s_0 encoder for mode selector (and optionally policy backbone)
         self.s0_encoder = PointNetEncoder(in_dim=cfg.D_AGENT, d_model=cfg.D_HIDDEN)
+        # Ego pose history encoder — output added to s0_global (paper §3.1 state)
+        self.ego_encoder = EgoHistoryEncoder()
         # If NOT backbone sharing, policy has its own per-step encoder inside AutoregressivePolicy
         self.mode_selector     = ModeSelector()
         self.policy            = AutoregressivePolicy()
@@ -1455,6 +1484,7 @@ class CarPlanner(nn.Module):
                       map_lanes: torch.Tensor = None,
                       map_lanes_mask: torch.Tensor = None,
                       agents_history: torch.Tensor = None,
+                      ego_history: torch.Tensor = None,
                       map_polygons: torch.Tensor = None,
                       map_polygons_mask: torch.Tensor = None,
                       route_polylines: torch.Tensor = None,
@@ -1469,7 +1499,28 @@ class CarPlanner(nn.Module):
                     hist, agents_mask, map_lanes, map_lanes_mask,
                     map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                 )
+
+        # Mode dropout (paper §4.4): randomly mask routes so the model can't
+        # over-rely on route input. mode_label stays intact.
+        if cfg.MODE_DROPOUT and self.training and route_mask is not None:
+            drop = (torch.rand(route_mask.size(0), device=route_mask.device)
+                    < cfg.MODE_DROPOUT_P)
+            if drop.any():
+                route_mask = route_mask.clone()
+                route_mask[drop] = 0
+
+        # Ego-history dropout (Table 4 ablation): randomly zero ego pose history.
+        ego_for_enc = ego_history
+        if cfg.EGO_HISTORY_DROPOUT and self.training and ego_history is not None:
+            keep = (torch.rand(ego_history.size(0), 1, 1, device=ego_history.device)
+                    >= cfg.MODE_DROPOUT_P).float()
+            ego_for_enc = ego_history * keep
+
+        ego_token = self.ego_encoder(ego_for_enc) if ego_for_enc is not None else None
+
         s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
+        if ego_token is not None:
+            s0_global = s0_global + ego_token
 
         mode_logits, side_traj = self.mode_selector(
             s0_global,
@@ -1483,31 +1534,21 @@ class CarPlanner(nn.Module):
             route_mask=route_mask,
         )
 
-        c = mode_label.clone()
-        if cfg.MODE_DROPOUT and self.training:
-            drop_mask = torch.rand(c.size(0), device=c.device) < cfg.MODE_DROPOUT_P
-            c[drop_mask] = torch.randint(
-                0, cfg.N_MODES, (int(drop_mask.sum()),), device=c.device
-            )
-
-        agents_now_policy = agents_now
-        if cfg.EGO_HISTORY_DROPOUT and self.training:
-            drop_mask_b = (torch.rand(agents_now.size(0), 1, 1, device=agents_now.device)
-                           > cfg.MODE_DROPOUT_P).float()
-            agents_now_policy = agents_now * drop_mask_b
-
+        # Paper Algorithm 1 (IL branch): roll out π to collect a_{0..T-1}.
+        # State updates use predicted ego pose, not GT — so train and val match.
         pred_traj = self.policy(
-            agents_now=agents_now_policy,
+            agents_now=agents_now,
             agents_seq=agents_seq,
             agents_mask=agents_mask,
-            mode_c=c,
-            gt_ego=gt_traj,
+            mode_c=mode_label,
+            gt_ego=None,
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
             map_polygons=map_polygons,
             map_polygons_mask=map_polygons_mask,
             route_polylines=route_polylines,
             route_mask=route_mask,
+            ego_token=ego_token,
         )
 
         return mode_logits, side_traj, pred_traj
@@ -1521,6 +1562,7 @@ class CarPlanner(nn.Module):
                          map_lanes_mask: torch.Tensor = None,
                          stored_actions: torch.Tensor = None,
                          agents_history: torch.Tensor = None,
+                         ego_history: torch.Tensor = None,
                          map_polygons: torch.Tensor = None,
                          map_polygons_mask: torch.Tensor = None,
                          route_polylines: torch.Tensor = None,
@@ -1528,7 +1570,26 @@ class CarPlanner(nn.Module):
         """
         RL training forward pass (Stage C).
         """
+        # Mode dropout (paper §4.4): mask routes, keep mode_label intact.
+        if cfg.MODE_DROPOUT and self.training and route_mask is not None:
+            drop = (torch.rand(route_mask.size(0), device=route_mask.device)
+                    < cfg.MODE_DROPOUT_P)
+            if drop.any():
+                route_mask = route_mask.clone()
+                route_mask[drop] = 0
+
+        # Ego-history dropout (Table 4 ablation).
+        ego_for_enc = ego_history
+        if cfg.EGO_HISTORY_DROPOUT and self.training and ego_history is not None:
+            keep = (torch.rand(ego_history.size(0), 1, 1, device=ego_history.device)
+                    >= cfg.MODE_DROPOUT_P).float()
+            ego_for_enc = ego_history * keep
+
+        ego_token = self.ego_encoder(ego_for_enc) if ego_for_enc is not None else None
+
         s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
+        if ego_token is not None:
+            s0_global = s0_global + ego_token
 
         mode_logits, side_traj = self.mode_selector(
             s0_global,
@@ -1542,18 +1603,11 @@ class CarPlanner(nn.Module):
             route_mask=route_mask,
         )
 
-        c = mode_label.clone()
-        if cfg.MODE_DROPOUT and self.training:
-            drop_mask = torch.rand(c.size(0), device=c.device) < cfg.MODE_DROPOUT_P
-            c[drop_mask] = torch.randint(
-                0, cfg.N_MODES, (int(drop_mask.sum()),), device=c.device
-            )
-
         trajectory, log_probs, values, entropies = self.policy.forward_rl(
             agents_now=agents_now,
             agents_seq=agents_seq,
             agents_mask=agents_mask,
-            mode_c=c,
+            mode_c=mode_label,
             map_lanes=map_lanes,
             map_lanes_mask=map_lanes_mask,
             stored_actions=stored_actions,
@@ -1561,6 +1615,7 @@ class CarPlanner(nn.Module):
             map_polygons_mask=map_polygons_mask,
             route_polylines=route_polylines,
             route_mask=route_mask,
+            ego_token=ego_token,
         )
 
         return mode_logits, side_traj, trajectory, log_probs, values, entropies
@@ -1576,6 +1631,7 @@ class CarPlanner(nn.Module):
                                map_lanes: torch.Tensor = None,
                                map_lanes_mask: torch.Tensor = None,
                                agents_history: torch.Tensor = None,
+                               ego_history: torch.Tensor = None,
                                map_polygons: torch.Tensor = None,
                                map_polygons_mask: torch.Tensor = None,
                                route_polylines: torch.Tensor = None,
@@ -1589,7 +1645,11 @@ class CarPlanner(nn.Module):
         M = cfg.N_MODES
         device = agents_now.device
 
+        ego_token = self.ego_encoder(ego_history) if ego_history is not None else None
+
         s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
+        if ego_token is not None:
+            s0_global = s0_global + ego_token
         mode_logits, _ = self.mode_selector(
             s0_global, s0_per_agent=s0_per_agent,
             map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
@@ -1622,6 +1682,7 @@ class CarPlanner(nn.Module):
             map_polygons_mask=tile(map_polygons_mask),
             route_polylines=tile(route_polylines),
             route_mask=tile(route_mask),
+            ego_token=tile(ego_token),
         )
         # (B*M, T, D) → (B, M, T, D)
         T, D = all_trajs_flat.size(1), all_trajs_flat.size(2)

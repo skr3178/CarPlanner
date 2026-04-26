@@ -217,6 +217,33 @@ def _extract_agents(ego_state: EgoState, observation: DetectionsTracks,
     return agents_now, agents_mask, agents_history
 
 
+def _extract_ego_history(ego_state: EgoState,
+                         ego_states_history: List[EgoState]) -> np.ndarray:
+    """Build ego_history (T_HIST, 4) — x, y, heading, speed in current ego frame.
+    Mirrors data_loader.py: oldest first, last slot = current; pads oldest end
+    by repeating the first valid frame if fewer than T_HIST states are available.
+    """
+    ref_x = ego_state.rear_axle.x
+    ref_y = ego_state.rear_axle.y
+    ref_h = ego_state.rear_axle.heading
+
+    states = list(ego_states_history)[-cfg.T_HIST:] if ego_states_history else []
+    if not states or states[-1] is not ego_state:
+        states = (states + [ego_state])[-cfg.T_HIST:]
+
+    ego_history = np.zeros((cfg.T_HIST, 4), dtype=np.float32)
+    for i, st in enumerate(states):
+        xe, ye, he = _to_ego(st.rear_axle.x, st.rear_axle.y, st.rear_axle.heading,
+                             ref_x, ref_y, ref_h)
+        spd = st.dynamic_car_state.rear_axle_velocity_2d.x
+        idx = cfg.T_HIST - len(states) + i
+        ego_history[idx] = [xe, ye, he, spd]
+    if len(states) < cfg.T_HIST:
+        first_valid = cfg.T_HIST - len(states)
+        ego_history[:first_valid] = ego_history[first_valid]
+    return ego_history
+
+
 def _extract_map_lanes(map_api: AbstractMap, ref_x, ref_y, ref_h,
                        traffic_light_data=None):
     """Build (N_LANES, N_LANE_POINTS, D_POLYLINE_POINT=39) and mask."""
@@ -479,6 +506,9 @@ class CarPlannerPlanner(AbstractPlanner):
             ego_state, observation, ego_states_hist, observations_hist,
         )
 
+        # ── Ego history ──────────────────────────────────────────────────
+        ego_history = _extract_ego_history(ego_state, ego_states_hist)
+
         # ── Map features with position cache ─────────────────────────────
         # Re-query map only when ego moves >1 m; map topology is stable
         # within that radius and queries dominate per-step latency.
@@ -528,6 +558,7 @@ class CarPlannerPlanner(AbstractPlanner):
                 map_lanes=_t(map_lanes),
                 map_lanes_mask=_t(map_lanes_mask),
                 agents_history=_t(agents_history),
+                ego_history=_t(ego_history),
                 map_polygons=_t(map_polygons),
                 map_polygons_mask=_t(map_polygons_mask),
                 route_polylines=_t(route_polylines),

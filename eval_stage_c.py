@@ -211,6 +211,7 @@ def evaluate(args):
                 map_lanes=batch['map_lanes'],
                 map_lanes_mask=batch['map_lanes_mask'],
                 agents_history=batch['agents_history'],
+                ego_history=batch.get('ego_history'),
                 map_polygons=batch.get('map_polygons'),
                 map_polygons_mask=batch.get('map_polygons_mask'),
                 route_polylines=batch.get('route_polylines'),

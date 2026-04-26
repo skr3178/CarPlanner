@@ -924,7 +924,8 @@ def _load_sample(db_path: str, token: str):
     try:
         hist_states = list(get_sampled_ego_states_from_db(
             db_path, token, sensor_source,
-            list(range(0, cfg.T_HIST * 2, 2)), future=False  # 10Hz: every 2nd frame of 20Hz DB
+            list(range(0, cfg.T_HIST * cfg.HISTORY_STRIDE, cfg.HISTORY_STRIDE)),
+            future=False,  # paper: 10 Hz history on a 20 Hz DB
         ))
     except Exception:
         return None
@@ -952,7 +953,10 @@ def _load_sample(db_path: str, token: str):
     try:
         fut_states = list(get_sampled_ego_states_from_db(
             db_path, token, sensor_source,
-            list(range(2, cfg.T_FUTURE * 2 + 1, 2)), future=True  # 10Hz: every 2nd frame of 20Hz DB
+            list(range(cfg.FUTURE_STRIDE,
+                       cfg.T_FUTURE * cfg.FUTURE_STRIDE + 1,
+                       cfg.FUTURE_STRIDE)),
+            future=True,  # paper: 8 s @ 1 Hz future on a 20 Hz DB
         ))
     except Exception:
         return None
@@ -968,19 +972,41 @@ def _load_sample(db_path: str, token: str):
         )
         gt_trajectory[i] = [xe, ye, he]
 
-    # ── Agents at current frame (t=0) ─────────────────────────────────────────
+    # ── Agents at current frame (t=0) — anchor for persistent identity ────────
     # Da=14: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, 4×category_onehot
     _AGENT_CATEGORIES = ['VEHICLE', 'PEDESTRIAN', 'BICYCLE', 'MOTORCYCLE']
 
-    def _load_agents_at_token(tok: str, time_step: float = 0.0) -> tuple:
-        """Returns (agents array (N, Da=14), mask (N,)) in initial ego frame."""
-        try:
-            raw = list(get_tracked_objects_for_lidarpc_token_from_db(db_path, tok))
-        except Exception:
-            raw = []
+    try:
+        raw_now = list(get_tracked_objects_for_lidarpc_token_from_db(db_path, token))
+    except Exception:
+        raw_now = []
+
+    # Anchor: each agent at t=0 owns a slot keyed by its track_token. Past and
+    # future frames look up the same slot, so slot j refers to the same agent
+    # across time. Agents that appear only off-anchor are dropped.
+    token_to_slot = {}
+    for j, ag in enumerate(raw_now[:cfg.N_AGENTS]):
+        ttok = getattr(ag, 'track_token', None)
+        if ttok is not None:
+            token_to_slot[ttok] = j
+
+    def _load_agents_at_token(tok: str = None, time_step: float = 0.0,
+                              raw=None) -> tuple:
+        """Returns (agents array (N, Da=14), mask (N,)) in initial ego frame.
+        Slots are fixed by the t=0 token_to_slot mapping. Pass raw= to skip
+        the DB query (used at the anchor frame)."""
+        if raw is None:
+            try:
+                raw = list(get_tracked_objects_for_lidarpc_token_from_db(db_path, tok))
+            except Exception:
+                raw = []
         arr  = np.zeros((cfg.N_AGENTS, cfg.D_AGENT), dtype=np.float32)
         mask = np.zeros(cfg.N_AGENTS, dtype=np.float32)
-        for j, ag in enumerate(raw[:cfg.N_AGENTS]):
+        for ag in raw:
+            ttok = getattr(ag, 'track_token', None)
+            if ttok is None or ttok not in token_to_slot:
+                continue
+            j = token_to_slot[ttok]
             xe, ye, he = _to_ego_frame(
                 ag.center.x, ag.center.y, ag.center.heading,
                 ref_x, ref_y, ref_h
@@ -1001,7 +1027,7 @@ def _load_sample(db_path: str, token: str):
             mask[j] = 1.0
         return arr, mask
 
-    agents_now, agents_mask = _load_agents_at_token(token)
+    agents_now, agents_mask = _load_agents_at_token(raw=raw_now)
 
     # ── Agent history (t=-H+1..0): load real past frames from DB ─────────────
     # Paper Section 3.1: "each agent maintains poses for the past H time steps"
@@ -1010,7 +1036,10 @@ def _load_sample(db_path: str, token: str):
     try:
         past_pcs = list(get_sampled_lidarpcs_from_db(
             db_path, token, sensor_source,
-            list(range(2, cfg.T_HIST * 2 + 1, 2)), future=False  # 10Hz: every 2nd frame of 20Hz DB
+            list(range(cfg.HISTORY_STRIDE,
+                       cfg.T_HIST * cfg.HISTORY_STRIDE + 1,
+                       cfg.HISTORY_STRIDE)),
+            future=False,  # paper: 10 Hz history on a 20 Hz DB
         ))
         # past_pcs is ordered oldest→newest (furthest past first)
         # Pad from the left with t=0 if fewer than H past frames are available
@@ -1036,7 +1065,10 @@ def _load_sample(db_path: str, token: str):
     try:
         future_pcs = list(get_sampled_lidarpcs_from_db(
             db_path, token, sensor_source,
-            list(range(2, cfg.T_FUTURE * 2 + 1, 2)), future=True  # 10Hz: every 2nd frame of 20Hz DB
+            list(range(cfg.FUTURE_STRIDE,
+                       cfg.T_FUTURE * cfg.FUTURE_STRIDE + 1,
+                       cfg.FUTURE_STRIDE)),
+            future=True,  # paper: 8 s @ 1 Hz future on a 20 Hz DB
         ))
         for step_i, pc in enumerate(future_pcs[:cfg.T_FUTURE]):
             arr_t, _ = _load_agents_at_token(pc.token, time_step=float(step_i + 1))
@@ -1101,7 +1133,7 @@ def _load_sample(db_path: str, token: str):
     # and clamped to the stationary bin.
     lon_dist = max(float(endpoint[0]), 0.0)
     lon_idx = min(
-        int(lon_dist / (cfg.MAX_SPEED * cfg.T_FUTURE * 0.1 / cfg.N_LON)),
+        int(lon_dist / (cfg.MAX_SPEED * cfg.T_FUTURE * cfg.FUTURE_DT_S / cfg.N_LON)),
         cfg.N_LON - 1,
     )
     # Fix 2: never default lat_idx to 0 silently. Use the route-based label
@@ -1285,6 +1317,7 @@ class PreextractedDataset(Dataset):
         self.map_lanes_mask = data['map_lanes_mask']
         # Polygon keys — backward compat with old caches that lack them
         n = data['n_samples']
+        self.ego_history = data.get('ego_history', torch.zeros(n, cfg.T_HIST, 4))
         self.map_polygons = data.get('map_polygons', torch.zeros(
             n, cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT))
         self.map_polygons_mask = data.get('map_polygons_mask', torch.zeros(
@@ -1300,6 +1333,7 @@ class PreextractedDataset(Dataset):
 
     def __getitem__(self, idx):
         item = {
+            'ego_history':         self.ego_history[idx],
             'agents_history':      self.agents_history[idx],
             'agents_history_mask': self.agents_mask[idx],
             'agents_seq':          self.agents_seq[idx],

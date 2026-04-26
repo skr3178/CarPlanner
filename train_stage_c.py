@@ -226,6 +226,7 @@ def train(args):
             map_polygons_mask = (batch['map_polygons_mask'] if pin_gpu else batch['map_polygons_mask'].to(device)) if 'map_polygons_mask' in batch else None
             route_polylines = (batch['route_polylines'] if pin_gpu else batch['route_polylines'].to(device)) if 'route_polylines' in batch else None
             route_mask      = (batch['route_mask'] if pin_gpu else batch['route_mask'].to(device)) if 'route_mask' in batch else None
+            ego_history     = (batch['ego_history'] if pin_gpu else batch['ego_history'].to(device)) if 'ego_history' in batch else None
 
             # Step 1: Simulate agents with frozen transition model
             with torch.no_grad():
@@ -272,6 +273,7 @@ def train(args):
                     map_lanes_mask=map_lanes_mask,
                     stored_actions=traj_old,
                     agents_history=agents_history,
+                    ego_history=ego_history,
                     map_polygons=map_polygons,
                     map_polygons_mask=map_polygons_mask,
                     route_polylines=route_polylines,
@@ -341,6 +343,7 @@ def train(args):
                     v_map_poly_mask  = (vb['map_polygons_mask'] if pin_gpu else vb['map_polygons_mask'].to(device)) if 'map_polygons_mask' in vb else None
                     v_route_poly     = (vb['route_polylines'] if pin_gpu else vb['route_polylines'].to(device)) if 'route_polylines' in vb else None
                     v_route_mask     = (vb['route_mask'] if pin_gpu else vb['route_mask'].to(device)) if 'route_mask' in vb else None
+                    v_ego_history    = (vb['ego_history'] if pin_gpu else vb['ego_history'].to(device)) if 'ego_history' in vb else None
 
                     v_agent_futures = model.transition_model(
                         v_agents_history, v_agents_mask,
@@ -370,6 +373,7 @@ def train(args):
                         mode_label=v_mode_label,
                         map_lanes=v_map_lanes, map_lanes_mask=v_map_lanes_mask,
                         stored_actions=v_traj, agents_history=v_agents_history,
+                        ego_history=v_ego_history,
                         map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
                         route_polylines=v_route_poly, route_mask=v_route_mask,
                     )

@@ -129,7 +129,8 @@ def extract_city(city, pairs, types_list, args):
         prefetch_factor=4 if args.num_workers > 0 else None,
     )
 
-    keys = ['agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
+    keys = ['ego_history',
+            'agents_history', 'agents_history_mask', 'agents_seq', 'agents_now',
             'gt_trajectory', 'mode_label', 'map_lanes', 'map_lanes_mask',
             'map_polygons', 'map_polygons_mask',
             'route_polylines', 'route_mask']

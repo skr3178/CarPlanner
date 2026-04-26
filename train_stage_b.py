@@ -87,6 +87,7 @@ def train(args):
             'mode_label':          data['mode_label'],
             'map_lanes':           data['map_lanes'],
             'map_lanes_mask':      data['map_lanes_mask'],
+            'ego_history':         data.get('ego_history', torch.zeros(data['n_samples'], cfg.T_HIST, 4, device=device)),
             'map_polygons':        data.get('map_polygons', torch.zeros(data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
             'map_polygons_mask':   data.get('map_polygons_mask', torch.zeros(data['n_samples'], cfg.N_POLYGONS, device=device)),
             'route_polylines':     data.get('route_polylines', torch.zeros(data['n_samples'], cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT, device=device)),
@@ -151,6 +152,7 @@ def train(args):
             'mode_label':          val_data['mode_label'],
             'map_lanes':           val_data['map_lanes'],
             'map_lanes_mask':      val_data['map_lanes_mask'],
+            'ego_history':         val_data.get('ego_history', torch.zeros(val_data['n_samples'], cfg.T_HIST, 4, device=device)),
             'map_polygons':        val_data.get('map_polygons', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, cfg.N_LANE_POINTS, cfg.D_POLYGON_POINT, device=device)),
             'map_polygons_mask':   val_data.get('map_polygons_mask', torch.zeros(val_data['n_samples'], cfg.N_POLYGONS, device=device)),
             'route_polylines':     val_data.get('route_polylines', torch.zeros(val_data['n_samples'], cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT, device=device)),
@@ -286,7 +288,8 @@ def train(args):
                         gpu_cache['map_polygons'][idx],
                         gpu_cache['map_polygons_mask'][idx],
                         gpu_cache['route_polylines'][idx],
-                        gpu_cache['route_mask'][idx])
+                        gpu_cache['route_mask'][idx],
+                        gpu_cache['ego_history'][idx])
             else:
                 return (batch['agents_now'].to(device),
                         batch['agents_history'].to(device),
@@ -299,7 +302,8 @@ def train(args):
                         batch['map_polygons'].to(device) if 'map_polygons' in batch else None,
                         batch['map_polygons_mask'].to(device) if 'map_polygons_mask' in batch else None,
                         batch['route_polylines'].to(device) if 'route_polylines' in batch else None,
-                        batch['route_mask'].to(device) if 'route_mask' in batch else None)
+                        batch['route_mask'].to(device) if 'route_mask' in batch else None,
+                        batch['ego_history'].to(device) if 'ego_history' in batch else None)
 
         cpu_batches = random.sample(all_batches, len(all_batches)) if (use_cache and not pin_gpu) else (loader if not pin_gpu else [])
         outer = range(n_batches_epoch) if pin_gpu else enumerate(cpu_batches)
@@ -310,19 +314,20 @@ def train(args):
                 agents_now, agents_history, agents_mask, agents_seq, \
                     gt_traj, mode_label, map_lanes, map_lanes_mask, \
                     map_polygons, map_polygons_mask, \
-                    route_polylines, route_mask_batch = get_batch(batch_idx)
+                    route_polylines, route_mask_batch, ego_history_batch = get_batch(batch_idx)
             else:
                 batch_idx, batch = item
                 agents_now, agents_history, agents_mask, agents_seq, \
                     gt_traj, mode_label, map_lanes, map_lanes_mask, \
                     map_polygons, map_polygons_mask, \
-                    route_polylines, route_mask_batch = get_batch(batch_idx, batch)
+                    route_polylines, route_mask_batch, ego_history_batch = get_batch(batch_idx, batch)
 
             with torch.amp.autocast('cuda', dtype=torch.bfloat16, enabled=device.type == 'cuda'):
                 mode_logits, side_traj, pred_traj = model.forward_train(
                     agents_now, agents_mask, agents_seq, gt_traj, mode_label,
                     map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
                     agents_history=agents_history,
+                    ego_history=ego_history_batch,
                     map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                     route_polylines=route_polylines, route_mask=route_mask_batch,
                 )
@@ -377,6 +382,7 @@ def train(args):
                     map_polygons_mask = val_gpu_cache['map_polygons_mask'][s:e]
                     route_polylines = val_gpu_cache['route_polylines'][s:e]
                     route_mask_batch = val_gpu_cache['route_mask'][s:e]
+                    ego_history = val_gpu_cache['ego_history'][s:e]
 
                     if beta_seq_cpu is not None:
                         agents_seq = val_beta_seq_cpu[s:e].to(device) if val_beta_seq_cpu is not None else agents_seq
@@ -386,6 +392,7 @@ def train(args):
                             agents_now, agents_mask, agents_seq, gt_traj, mode_label,
                             map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
                             agents_history=agents_history,
+                            ego_history=ego_history,
                             map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                             route_polylines=route_polylines, route_mask=route_mask_batch,
                         )
@@ -404,13 +411,14 @@ def train(args):
                     agents_now, agents_history, agents_mask, agents_seq, \
                         gt_traj, mode_label, map_lanes, map_lanes_mask, \
                         map_polygons, map_polygons_mask, \
-                        route_polylines, route_mask_batch = get_batch(b, indices=idx)
+                        route_polylines, route_mask_batch, ego_history_batch = get_batch(b, indices=idx)
 
                     with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                         mode_logits, side_traj, pred_traj = model.forward_train(
                             agents_now, agents_mask, agents_seq, gt_traj, mode_label,
                             map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
                             agents_history=agents_history,
+                            ego_history=ego_history_batch,
                             map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                         )
                         _, loss_dict = compute_il_loss(

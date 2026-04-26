@@ -48,6 +48,7 @@ def main():
     route_polylines = get('route_polylines',
         (N, cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT))
     route_mask = get('route_mask', (N, cfg.N_LAT))
+    ego_history = get('ego_history', (N, cfg.T_HIST, 4))
 
     losses = {'L_CE': 0., 'L_side': 0., 'L_gen': 0., 'L_total': 0.}
     losses_dim = torch.zeros(3, device=device)   # per-dim L1 (x, y, yaw)
@@ -68,6 +69,7 @@ def main():
                     map_lanes=val['map_lanes'][s:e],
                     map_lanes_mask=val['map_lanes_mask'][s:e],
                     agents_history=val['agents_history'][s:e],
+                    ego_history=ego_history[s:e],
                     map_polygons=map_polygons[s:e],
                     map_polygons_mask=map_polygons_mask[s:e],
                     route_polylines=route_polylines[s:e],
