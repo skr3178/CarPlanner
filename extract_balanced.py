@@ -38,6 +38,7 @@ CITY_DIRS = {
     'train_boston': cfg.TRAIN_DIR,
     'train_pittsburgh': cfg.TRAIN_PITTSBURGH_DIR,
     'train_singapore': cfg.TRAIN_SINGAPORE_DIR,
+    'train_vegas': cfg.TRAIN_VEGAS_DIR,
 }
 
 
@@ -312,7 +313,7 @@ if __name__ == '__main__':
     p.add_argument('--num_workers', type=int, default=12)
     p.add_argument('--batch_size', type=int, default=64)
     p.add_argument('--cities', nargs='+', default=None,
-                   choices=['train_boston', 'train_pittsburgh', 'train_singapore'],
+                   choices=['train_boston', 'train_pittsburgh', 'train_singapore', 'train_vegas'],
                    help='Cities to include (default: all 3)')
     p.add_argument('--dry_run', action='store_true',
                    help='Phase 1 only — show type counts, no extraction')

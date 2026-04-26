@@ -11,6 +11,7 @@ MINI_DIR = os.path.join(BASE_DIR, "data/cache/mini")
 TRAIN_DIR = os.path.join(BASE_DIR, "data/cache/train_boston")
 TRAIN_PITTSBURGH_DIR = "/home/skr/nuplan_cities/pittsburgh/data/cache/train_pittsburgh"
 TRAIN_SINGAPORE_DIR = "/home/skr/nuplan_cities/singapore/data/cache/train_singapore"
+TRAIN_VEGAS_DIR = "/media/skr/storage/autoresearch/CarPlanner_Implementation/data/cache/train_vegas_5"
 VAL_DIR = "/home/skr/nuplan_cities/val/data/cache/val"
 MAPS_DIR = os.path.join(BASE_DIR, "nuplan-maps-v1.0")
 
