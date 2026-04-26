@@ -1294,3 +1294,67 @@ Repeat for all scenarios, 50 epochs.
 - Transition model runs frozen and provides the "world dynamics" during rollout.
 - Mode c* is the positive label derived geometrically from the expert's trajectory, not a learned target.
 - PPO's `π_old` refreshes every 8 steps, keeping the importance ratio stable.
+
+## Closed-loop test14-random eval — Stage C (2026-04-26)
+
+Run: 258/258 scenarios succeeded, 0 failed, simulation duration 02:07:31.
+- Checkpoint: `checkpoints/stage_c_20260424_212311/stage_c_best.pt` (best-val from Stage-C run seeded by `stage_b_20260424_140710/stage_b_epoch_020.pt`).
+- Challenge: `closed_loop_nonreactive_agents`, split `test14-random`, 4 process workers (~1.54 GB GPU each).
+- Output: `nuplan_eval/test14-random_stagec_new/`.
+
+Per-metric breakdown (mean across 258 scenarios, "pass" = score ≥ 0.99):
+
+| Metric | Mean | Pass-rate | Interpretation |
+|---|---|---|---|
+| no_ego_at_fault_collisions | 0.256 | 24.8% | At-fault collision in ~75% of scenarios |
+| drivable_area_compliance | 0.426 | 42.6% | Off-road in ~57% |
+| driving_direction_compliance | 0.570 | 18.6% | Wrong-way driving common |
+| **ego_is_making_progress** | **0.105** | 10.5% | **Ego barely moves in 90% of scenarios** |
+| ego_progress_along_expert_route | 0.084 | 3.5% | Covered ~8% of expert distance |
+| ego_is_comfortable | 0.085 | 8.5% | Jerky / uncomfortable |
+| time_to_collision_within_bound | 0.205 | 20.5% | TTC violations frequent |
+| speed_limit_compliance | 0.991 | 93.0% | Only "good" metric — because ego is stationary |
+
+CLS-NR aggregate (manual, since nuPlan's aggregator was skipped due to output-dir name not containing the challenge name):
+
+- Multiplier gate (`no_collision × drivable × direction × making_progress`) ≈ 0.000.
+- Weighted sub-score (5·TTC + 5·comfort + 4·progress + 2·speed) / 16 ≈ 0.236.
+- **CLS-NR = multiplier × weighted = 0.00 / 100** across every scenario type.
+
+Compare to paper: CarPlanner reports test14-random CLS-NR ≈ 85–94. Open-loop val14 L_gen on the same checkpoint is ~0.21 m (sub-2 cm per step), so single-step accuracy is fine — the failure is closed-loop specific (compounding errors, frame mismatch, or inference-path bug between training and the nuPlan wrapper).
+
+## Closed-loop test14-random — Paper vs Ours (Stage B + Stage C)
+
+Paper figures from CarPlanner Table 4 (Test14-Random, non-reactive, all design choices on — IL-best and RL-best highlighted rows). Our figures from `nuplan_eval/test14-random_stageb_seed/` (checkpoint `stage_b_20260424_140710/stage_b_epoch_020.pt`) and `nuplan_eval/test14-random_stagec_new/` (checkpoint `stage_c_20260424_212311/stage_c_best.pt`). Per-component scores are means × 100 to match paper's percentage convention.
+
+### Stage B — paper IL-best vs ours
+
+| Metric | Paper IL-best | Ours (Stage-B-seed) | Δ |
+|---|---|---|---|
+| CLS-NR | **93.41** | **17.00** | **−76.41** |
+| S-CR (no-collision) | 98.85 | 35.1 | −63.75 |
+| S-Area (drivable) | 98.85 | 29.1 | −69.75 |
+| S-PR (progress) | 93.87 | 67.8 | −26.07 |
+| S-Comfort | 96.15 | 43.8 | −52.35 |
+| L_selector (open-loop, val14) | 1.04 | 2.31 | +1.27 |
+| L_generator (open-loop, val14) | 174.3 | 12.6 | (different scale) |
+
+### Stage C — paper RL-best vs ours
+
+| Metric | Paper RL-best | Ours (Stage-C) | Δ |
+|---|---|---|---|
+| CLS-NR | **94.07** | **0.00** | **−94.07** |
+| S-CR (no-collision) | 99.22 | 25.6 | −73.62 |
+| S-Area (drivable) | 99.22 | 42.6 | −56.62 |
+| S-PR (progress) | 95.06 | 8.4 | −86.66 |
+| S-Comfort | 91.09 | 8.5 | −82.59 |
+| L_selector (open-loop, val14) | 1.03 | 2.47 | +1.44 |
+| L_generator (open-loop, val14) | 1624.5 | 14.4 | (different scale) |
+
+### Takeaways
+
+- Paper's IL → RL gain is small: CLS-NR 93.41 → 94.07 (+0.66). RL is a refinement, not a transformation.
+- Our IL → RL went the wrong way: CLS-NR 17.00 → 0.00 (−17). Stage-C inference is broken in closed-loop despite the open-loop L_gen on val14 staying ~0.21 m.
+- Largest Stage-B residual gap is S-Area (98.85 → 29.1): the IL planner leaves the drivable area in ~71% of scenarios — consistent with the heuristic lateral-route selection vs paper's lane-graph search.
+- Largest Stage-C-specific regression is S-PR (67.8 → 8.4) and `ego_is_making_progress` (0.91 → 0.10): the RL fine-tune produced a near-stationary policy.
+- Two distinct gaps to close: (a) Stage-C inference bug (likely `action_log_std` or PPO-trained Gaussian mean leaking into deterministic inference); (b) Stage-B vs paper IL-best — route/lane encoding, training data scale, transition-model fidelity.

@@ -1,0 +1,13 @@
+[Train] Device: cuda
+[Train] Split: train_4city_balanced, Epochs: 2, Batch: 512
+[Train] Loading pre-extracted cache: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_train_4city_balanced.pt
+[PreextractedDataset] Loading /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_train_4city_balanced.pt...
+[PreextractedDataset] 229511 samples loaded in 4.5s
+[Train] Cache loaded: 229511 samples, 449 batches
+[Train] Parameters: 7,427,280
+[Train] Loaded frozen transition model from: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_best.pt
+[Train] Checkpoints → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_b_20260424_140254
+  Epoch 1/2  [89/449]  L_total=3.8854  L_CE=2.7998  L_gen=0.1304
+  Epoch 1/2  [178/449]  L_total=3.0022  L_CE=2.6600  L_gen=0.1140
+  Epoch 1/2  [267/449]  L_total=2.8724  L_CE=2.5746  L_gen=0.1050
+  Epoch 1/2  [356/449]  L_total=2.7554  L_CE=2.4513  L_gen=0.1182

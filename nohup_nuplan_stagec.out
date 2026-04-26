@@ -1,0 +1,383 @@
+INFO:nuplan.planning.script.utils:Setting default NUPLAN_EXP_ROOT: /home/skr/nuplan/exp
+/media/skr/storage/autoresearch/CarPlanner_Implementation/planTF/run_simulation.py:126: UserWarning: 
+The version_base parameter is not specified.
+Please specify a compatability version level, or None.
+Will assume defaults for version 1.1
+  @hydra.main(config_path="./config", config_name="default_simulation")
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/hydra/_internal/config_loader_impl.py:216: UserWarning: provider=hydra.searchpath in main, path=config/simulation is not available.
+  warnings.warn(
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/hydra/_internal/config_loader_impl.py:216: UserWarning: provider=hydra.searchpath in main, path=config/scenario_filter is not available.
+  warnings.warn(
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/hydra/_internal/defaults_list.py:251: UserWarning: In 'default_simulation': Defaults list is missing `_self_`. See https://hydra.cc/docs/1.2/upgrades/1.0_to_1.1/default_composition_order for more information
+  warnings.warn(msg, UserWarning)
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/hydra/_internal/hydra.py:119: UserWarning: Future Hydra versions will no longer change working directory at job runtime by default.
+See https://hydra.cc/docs/1.2/upgrades/1.1_to_1.2/changes_to_job_working_dir/ for more information.
+  ret = run_job(
+Global seed set to 0
+INFO:nuplan.planning.script.builders.main_callback_builder:Building MultiMainCallback...
+INFO:nuplan.planning.script.builders.main_callback_builder:Building MultiMainCallback: 4...DONE!
+2026-04-26 10:23:46,809 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/worker_pool_builder.py:19}  Building WorkerPool...
+2026-04-26 10:23:46,813 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/utils/multithreading/worker_pool.py:101}  Worker: SingleMachineParallelExecutor
+2026-04-26 10:23:46,813 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/utils/multithreading/worker_pool.py:102}  Number of nodes: 1
+Number of CPUs per node: 4
+Number of GPUs per node: 0
+Number of threads across all nodes: 4
+2026-04-26 10:23:46,814 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/worker_pool_builder.py:27}  Building WorkerPool...DONE!
+2026-04-26 10:23:46,814 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/folder_builder.py:32}  Building experiment folders...
+2026-04-26 10:23:46,814 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/folder_builder.py:35}  
+
+	Folder where all results are stored: nuplan_eval/test14-random_stagec_new
+
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/folder_builder.py:70}  Building experiment folders...DONE!
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_callback_builder.py:52}  Building AbstractCallback...
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_callback_builder.py:68}  Building AbstractCallback: 0...DONE!
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_builder.py:47}  Building simulations...
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_builder.py:53}  Extracting scenarios...
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/utils/distributed_scenario_filter.py:83}  Building Scenarios in mode DistributedMode.SINGLE_NODE
+2026-04-26 10:23:46,816 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/scenario_building_builder.py:18}  Building AbstractScenarioBuilder...
+2026-04-26 10:23:46,836 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/scenario_building_builder.py:21}  Building AbstractScenarioBuilder...DONE!
+2026-04-26 10:23:46,837 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/scenario_filter_builder.py:35}  Building ScenarioFilter...
+2026-04-26 10:23:46,837 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/scenario_filter_builder.py:44}  Building ScenarioFilter...DONE!
+2026-04-26 10:24:18,135 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_builder.py:74}  Building metric engines...
+2026-04-26 10:24:18,403 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_builder.py:76}  Building metric engines...DONE
+2026-04-26 10:24:18,403 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_builder.py:80}  Building simulations from 258 scenarios...
+2026-04-26 10:24:20,100 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/builders/simulation_builder.py:133}  Building simulations...DONE!
+2026-04-26 10:24:20,100 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/planTF/run_simulation.py:100}  Running simulation...
+2026-04-26 10:24:20,100 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/utils.py:138}  Executing runners...
+2026-04-26 10:24:20,100 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/runner/executor.py:82}  Starting 258 simulations using SingleMachineParallelExecutor!
+2026-04-26 10:24:20,100 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/utils/multithreading/worker_pool.py:116}  Submitting 258 tasks!
+
+SingleMachineParallelExecutor:   0%|          | 0/258 [00:00<?, ?it/s]/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/torch/_tensor.py:575: UserWarning: floor_divide is deprecated, and will be removed in a future version of pytorch. It currently rounds toward 0 (like the 'trunc' function NOT 'floor'). This results in incorrect rounding for negative values.
+To keep the current behavior, use torch.div(a, b, rounding_mode='trunc'), or for actual floor division, use torch.div(a, b, rounding_mode='floor'). (Triggered internally at  /pytorch/aten/src/ATen/native/BinaryOps.cpp:467.)
+  return torch.floor_divide(self, other)
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/torch/_tensor.py:575: UserWarning: floor_divide is deprecated, and will be removed in a future version of pytorch. It currently rounds toward 0 (like the 'trunc' function NOT 'floor'). This results in incorrect rounding for negative values.
+To keep the current behavior, use torch.div(a, b, rounding_mode='trunc'), or for actual floor division, use torch.div(a, b, rounding_mode='floor'). (Triggered internally at  /pytorch/aten/src/ATen/native/BinaryOps.cpp:467.)
+  return torch.floor_divide(self, other)
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/torch/_tensor.py:575: UserWarning: floor_divide is deprecated, and will be removed in a future version of pytorch. It currently rounds toward 0 (like the 'trunc' function NOT 'floor'). This results in incorrect rounding for negative values.
+To keep the current behavior, use torch.div(a, b, rounding_mode='trunc'), or for actual floor division, use torch.div(a, b, rounding_mode='floor'). (Triggered internally at  /pytorch/aten/src/ATen/native/BinaryOps.cpp:467.)
+  return torch.floor_divide(self, other)
+/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/torch/_tensor.py:575: UserWarning: floor_divide is deprecated, and will be removed in a future version of pytorch. It currently rounds toward 0 (like the 'trunc' function NOT 'floor'). This results in incorrect rounding for negative values.
+To keep the current behavior, use torch.div(a, b, rounding_mode='trunc'), or for actual floor division, use torch.div(a, b, rounding_mode='floor'). (Triggered internally at  /pytorch/aten/src/ATen/native/BinaryOps.cpp:467.)
+  return torch.floor_divide(self, other)
+
+SingleMachineParallelExecutor:   0%|          | 1/258 [02:07<9:04:32, 127.13s/it]
+SingleMachineParallelExecutor:   1%|          | 2/258 [02:11<3:54:34, 54.98s/it] 
+SingleMachineParallelExecutor:   2%|▏         | 5/258 [03:40<2:35:40, 36.92s/it]
+SingleMachineParallelExecutor:   2%|▏         | 6/258 [04:04<2:21:04, 33.59s/it]
+SingleMachineParallelExecutor:   3%|▎         | 8/258 [04:15<1:30:24, 21.70s/it]
+SingleMachineParallelExecutor:   3%|▎         | 9/258 [05:31<2:22:19, 34.29s/it]
+SingleMachineParallelExecutor:   4%|▍         | 10/258 [05:57<2:12:42, 32.11s/it]
+SingleMachineParallelExecutor:   4%|▍         | 11/258 [06:05<1:47:10, 26.04s/it]
+SingleMachineParallelExecutor:   5%|▍         | 12/258 [06:18<1:31:40, 22.36s/it]
+SingleMachineParallelExecutor:   5%|▌         | 13/258 [07:32<2:30:46, 36.92s/it]
+SingleMachineParallelExecutor:   5%|▌         | 14/258 [07:55<2:13:59, 32.95s/it]
+SingleMachineParallelExecutor:   6%|▌         | 15/258 [08:02<1:42:03, 25.20s/it]
+SingleMachineParallelExecutor:   6%|▌         | 16/258 [08:17<1:29:32, 22.20s/it]
+SingleMachineParallelExecutor:   7%|▋         | 17/258 [09:25<2:24:26, 35.96s/it]
+SingleMachineParallelExecutor:   7%|▋         | 18/258 [10:06<2:29:43, 37.43s/it]
+SingleMachineParallelExecutor:   8%|▊         | 20/258 [10:08<1:21:40, 20.59s/it]
+SingleMachineParallelExecutor:   8%|▊         | 21/258 [11:13<2:05:02, 31.66s/it]
+SingleMachineParallelExecutor:   9%|▊         | 22/258 [11:55<2:14:51, 34.28s/it]
+SingleMachineParallelExecutor:   9%|▉         | 23/258 [12:03<1:46:32, 27.20s/it]
+SingleMachineParallelExecutor:   9%|▉         | 24/258 [12:12<1:26:35, 22.20s/it]
+SingleMachineParallelExecutor:  10%|▉         | 25/258 [13:22<2:18:28, 35.66s/it]
+SingleMachineParallelExecutor:  10%|█         | 26/258 [13:45<2:03:33, 31.96s/it]
+SingleMachineParallelExecutor:  10%|█         | 27/258 [14:10<1:55:03, 29.88s/it]
+SingleMachineParallelExecutor:  11%|█         | 29/258 [15:15<1:59:14, 31.24s/it]
+SingleMachineParallelExecutor:  12%|█▏        | 30/258 [15:49<2:01:19, 31.93s/it]
+SingleMachineParallelExecutor:  12%|█▏        | 31/258 [15:58<1:37:42, 25.83s/it]
+SingleMachineParallelExecutor:  12%|█▏        | 32/258 [16:07<1:20:44, 21.44s/it]
+SingleMachineParallelExecutor:  13%|█▎        | 33/258 [17:10<2:03:51, 33.03s/it]
+SingleMachineParallelExecutor:  13%|█▎        | 34/258 [17:48<2:08:40, 34.47s/it]
+SingleMachineParallelExecutor:  14%|█▎        | 35/258 [17:54<1:36:49, 26.05s/it]
+SingleMachineParallelExecutor:  14%|█▍        | 36/258 [18:14<1:29:44, 24.26s/it]
+SingleMachineParallelExecutor:  14%|█▍        | 37/258 [19:02<1:55:52, 31.46s/it]
+SingleMachineParallelExecutor:  15%|█▍        | 38/258 [19:45<2:07:54, 34.88s/it]
+SingleMachineParallelExecutor:  15%|█▌        | 39/258 [19:50<1:34:49, 25.98s/it]
+SingleMachineParallelExecutor:  16%|█▌        | 40/258 [20:20<1:38:09, 27.02s/it]
+SingleMachineParallelExecutor:  16%|█▌        | 41/258 [20:59<1:50:55, 30.67s/it]
+SingleMachineParallelExecutor:  16%|█▋        | 42/258 [21:41<2:02:05, 33.91s/it]
+SingleMachineParallelExecutor:  17%|█▋        | 43/258 [21:44<1:28:37, 24.73s/it]
+SingleMachineParallelExecutor:  17%|█▋        | 44/258 [22:24<1:44:39, 29.34s/it]
+SingleMachineParallelExecutor:  17%|█▋        | 45/258 [23:01<1:52:03, 31.56s/it]
+SingleMachineParallelExecutor:  18%|█▊        | 46/258 [23:42<2:01:33, 34.40s/it]
+SingleMachineParallelExecutor:  19%|█▊        | 48/258 [24:16<1:32:47, 26.51s/it]
+SingleMachineParallelExecutor:  19%|█▉        | 49/258 [25:01<1:48:11, 31.06s/it]
+SingleMachineParallelExecutor:  19%|█▉        | 50/258 [25:39<1:53:51, 32.84s/it]
+SingleMachineParallelExecutor:  20%|██        | 52/258 [26:18<1:32:55, 27.06s/it]
+SingleMachineParallelExecutor:  21%|██        | 53/258 [26:59<1:43:28, 30.28s/it]
+SingleMachineParallelExecutor:  21%|██        | 54/258 [27:32<1:45:16, 30.96s/it]
+SingleMachineParallelExecutor:  21%|██▏       | 55/258 [27:34<1:19:09, 23.40s/it]
+SingleMachineParallelExecutor:  22%|██▏       | 56/258 [28:14<1:34:33, 28.09s/it]
+SingleMachineParallelExecutor:  22%|██▏       | 57/258 [28:58<1:49:06, 32.57s/it]
+SingleMachineParallelExecutor:  22%|██▏       | 58/258 [29:28<1:45:56, 31.78s/it]
+SingleMachineParallelExecutor:  23%|██▎       | 59/258 [29:33<1:19:16, 23.90s/it]
+SingleMachineParallelExecutor:  23%|██▎       | 60/258 [30:10<1:31:38, 27.77s/it]
+SingleMachineParallelExecutor:  24%|██▎       | 61/258 [30:51<1:44:02, 31.69s/it]
+SingleMachineParallelExecutor:  24%|██▍       | 62/258 [31:41<2:01:30, 37.20s/it]
+SingleMachineParallelExecutor:  25%|██▍       | 64/258 [32:03<1:21:14, 25.13s/it]
+SingleMachineParallelExecutor:  25%|██▌       | 65/258 [32:48<1:36:16, 29.93s/it]
+SingleMachineParallelExecutor:  26%|██▌       | 66/258 [33:23<1:40:27, 31.39s/it]
+SingleMachineParallelExecutor:  26%|██▌       | 67/258 [33:48<1:33:57, 29.52s/it]
+SingleMachineParallelExecutor:  26%|██▋       | 68/258 [34:00<1:18:26, 24.77s/it]
+SingleMachineParallelExecutor:  27%|██▋       | 69/258 [34:47<1:37:48, 31.05s/it]
+SingleMachineParallelExecutor:  27%|██▋       | 70/258 [35:19<1:38:38, 31.48s/it]
+SingleMachineParallelExecutor:  28%|██▊       | 71/258 [35:53<1:40:13, 32.16s/it]
+SingleMachineParallelExecutor:  28%|██▊       | 72/258 [35:55<1:12:16, 23.31s/it]
+SingleMachineParallelExecutor:  28%|██▊       | 73/258 [36:39<1:30:19, 29.29s/it]
+SingleMachineParallelExecutor:  29%|██▊       | 74/258 [37:16<1:36:30, 31.47s/it]
+SingleMachineParallelExecutor:  29%|██▉       | 75/258 [37:46<1:35:00, 31.15s/it]
+SingleMachineParallelExecutor:  29%|██▉       | 76/258 [38:07<1:25:32, 28.20s/it]
+SingleMachineParallelExecutor:  30%|██▉       | 77/258 [38:32<1:22:03, 27.20s/it]
+SingleMachineParallelExecutor:  30%|███       | 78/258 [39:20<1:39:48, 33.27s/it]
+SingleMachineParallelExecutor:  31%|███       | 79/258 [39:39<1:27:18, 29.26s/it]
+SingleMachineParallelExecutor:  31%|███       | 80/258 [40:02<1:20:35, 27.16s/it]
+SingleMachineParallelExecutor:  31%|███▏      | 81/258 [40:38<1:28:25, 29.97s/it]
+SingleMachineParallelExecutor:  32%|███▏      | 82/258 [41:13<1:31:46, 31.29s/it]
+SingleMachineParallelExecutor:  32%|███▏      | 83/258 [41:37<1:25:33, 29.34s/it]
+SingleMachineParallelExecutor:  33%|███▎      | 84/258 [41:59<1:18:17, 27.00s/it]
+SingleMachineParallelExecutor:  33%|███▎      | 85/258 [42:39<1:29:31, 31.05s/it]
+SingleMachineParallelExecutor:  33%|███▎      | 86/258 [43:10<1:28:58, 31.04s/it]
+SingleMachineParallelExecutor:  34%|███▎      | 87/258 [43:39<1:26:13, 30.25s/it]
+SingleMachineParallelExecutor:  34%|███▍      | 88/258 [43:57<1:15:09, 26.53s/it]
+SingleMachineParallelExecutor:  34%|███▍      | 89/258 [44:40<1:28:52, 31.55s/it]
+SingleMachineParallelExecutor:  35%|███▍      | 90/258 [45:07<1:24:30, 30.18s/it]
+SingleMachineParallelExecutor:  35%|███▌      | 91/258 [45:36<1:23:00, 29.82s/it]
+SingleMachineParallelExecutor:  36%|███▌      | 92/258 [45:55<1:13:56, 26.73s/it]
+SingleMachineParallelExecutor:  36%|███▌      | 93/258 [46:40<1:28:21, 32.13s/it]
+SingleMachineParallelExecutor:  36%|███▋      | 94/258 [47:05<1:21:53, 29.96s/it]
+SingleMachineParallelExecutor:  37%|███▋      | 95/258 [47:40<1:25:41, 31.54s/it]
+SingleMachineParallelExecutor:  37%|███▋      | 96/258 [47:53<1:09:32, 25.76s/it]
+SingleMachineParallelExecutor:  38%|███▊      | 97/258 [48:35<1:22:36, 30.79s/it]
+SingleMachineParallelExecutor:  38%|███▊      | 98/258 [49:07<1:22:52, 31.08s/it]
+SingleMachineParallelExecutor:  38%|███▊      | 99/258 [49:40<1:23:57, 31.68s/it]
+SingleMachineParallelExecutor:  39%|███▉      | 100/258 [49:54<1:09:13, 26.29s/it]
+SingleMachineParallelExecutor:  39%|███▉      | 101/258 [50:32<1:18:36, 30.04s/it]
+SingleMachineParallelExecutor:  40%|███▉      | 102/258 [51:04<1:19:15, 30.49s/it]
+SingleMachineParallelExecutor:  40%|███▉      | 103/258 [51:38<1:21:16, 31.46s/it]
+SingleMachineParallelExecutor:  40%|████      | 104/258 [51:49<1:05:24, 25.48s/it]
+SingleMachineParallelExecutor:  41%|████      | 105/258 [52:42<1:26:02, 33.74s/it]
+SingleMachineParallelExecutor:  41%|████      | 106/258 [52:57<1:10:46, 27.93s/it]
+SingleMachineParallelExecutor:  41%|████▏     | 107/258 [53:39<1:20:59, 32.18s/it]
+SingleMachineParallelExecutor:  42%|████▏     | 108/258 [53:46<1:01:43, 24.69s/it]
+SingleMachineParallelExecutor:  42%|████▏     | 109/258 [54:30<1:16:01, 30.62s/it]
+SingleMachineParallelExecutor:  43%|████▎     | 110/258 [54:58<1:13:35, 29.83s/it]
+SingleMachineParallelExecutor:  43%|████▎     | 111/258 [55:37<1:19:20, 32.38s/it]
+SingleMachineParallelExecutor:  43%|████▎     | 112/258 [55:54<1:07:57, 27.93s/it]
+SingleMachineParallelExecutor:  44%|████▍     | 113/258 [56:21<1:06:21, 27.46s/it]
+SingleMachineParallelExecutor:  44%|████▍     | 114/258 [57:01<1:15:23, 31.41s/it]
+SingleMachineParallelExecutor:  45%|████▍     | 115/258 [57:38<1:18:53, 33.10s/it]
+SingleMachineParallelExecutor:  45%|████▍     | 116/258 [57:51<1:03:55, 27.01s/it]
+SingleMachineParallelExecutor:  45%|████▌     | 117/258 [58:15<1:01:09, 26.02s/it]
+SingleMachineParallelExecutor:  46%|████▌     | 118/258 [59:01<1:14:35, 31.96s/it]
+SingleMachineParallelExecutor:  46%|████▌     | 119/258 [59:35<1:16:03, 32.83s/it]
+SingleMachineParallelExecutor:  47%|████▋     | 120/258 [59:57<1:07:34, 29.38s/it]
+SingleMachineParallelExecutor:  47%|████▋     | 121/258 [1:00:10<55:52, 24.47s/it]
+SingleMachineParallelExecutor:  47%|████▋     | 122/258 [1:01:02<1:14:21, 32.80s/it]
+SingleMachineParallelExecutor:  48%|████▊     | 123/258 [1:01:32<1:11:41, 31.86s/it]
+SingleMachineParallelExecutor:  48%|████▊     | 124/258 [1:01:52<1:03:11, 28.29s/it]
+SingleMachineParallelExecutor:  48%|████▊     | 125/258 [1:02:16<59:47, 26.97s/it]  
+SingleMachineParallelExecutor:  49%|████▉     | 126/258 [1:02:58<1:09:22, 31.54s/it]
+SingleMachineParallelExecutor:  49%|████▉     | 127/258 [1:03:29<1:08:54, 31.56s/it]
+SingleMachineParallelExecutor:  50%|████▉     | 128/258 [1:03:56<1:05:17, 30.14s/it]
+SingleMachineParallelExecutor:  50%|█████     | 129/258 [1:04:10<54:05, 25.16s/it]  
+SingleMachineParallelExecutor:  50%|█████     | 130/258 [1:04:58<1:08:15, 32.00s/it]
+SingleMachineParallelExecutor:  51%|█████     | 131/258 [1:05:19<1:01:08, 28.88s/it]
+SingleMachineParallelExecutor:  51%|█████     | 132/258 [1:06:00<1:08:03, 32.41s/it]
+SingleMachineParallelExecutor:  52%|█████▏    | 133/258 [1:06:12<54:53, 26.35s/it]  
+SingleMachineParallelExecutor:  52%|█████▏    | 134/258 [1:07:00<1:07:40, 32.75s/it]
+SingleMachineParallelExecutor:  52%|█████▏    | 135/258 [1:07:11<53:39, 26.18s/it]  
+SingleMachineParallelExecutor:  53%|█████▎    | 136/258 [1:07:48<1:00:07, 29.57s/it]
+SingleMachineParallelExecutor:  53%|█████▎    | 137/258 [1:08:20<1:00:48, 30.16s/it]
+SingleMachineParallelExecutor:  53%|█████▎    | 138/258 [1:08:59<1:05:35, 32.80s/it]
+SingleMachineParallelExecutor:  54%|█████▍    | 139/258 [1:09:11<52:44, 26.59s/it]  
+SingleMachineParallelExecutor:  54%|█████▍    | 140/258 [1:09:44<56:08, 28.55s/it]
+SingleMachineParallelExecutor:  55%|█████▍    | 141/258 [1:10:14<56:18, 28.87s/it]
+SingleMachineParallelExecutor:  55%|█████▌    | 142/258 [1:10:57<1:04:08, 33.17s/it]
+SingleMachineParallelExecutor:  55%|█████▌    | 143/258 [1:11:09<51:24, 26.82s/it]  
+SingleMachineParallelExecutor:  56%|█████▌    | 144/258 [1:11:53<1:00:54, 32.06s/it]
+SingleMachineParallelExecutor:  56%|█████▌    | 145/258 [1:12:04<48:37, 25.82s/it]  
+SingleMachineParallelExecutor:  57%|█████▋    | 146/258 [1:12:52<1:00:11, 32.25s/it]
+SingleMachineParallelExecutor:  57%|█████▋    | 147/258 [1:13:12<53:08, 28.73s/it]  
+SingleMachineParallelExecutor:  57%|█████▋    | 148/258 [1:13:55<1:00:36, 33.06s/it]
+SingleMachineParallelExecutor:  58%|█████▊    | 149/258 [1:14:03<46:01, 25.34s/it]  
+SingleMachineParallelExecutor:  58%|█████▊    | 150/258 [1:14:48<56:27, 31.37s/it]
+SingleMachineParallelExecutor:  59%|█████▊    | 151/258 [1:15:10<50:46, 28.47s/it]
+SingleMachineParallelExecutor:  59%|█████▉    | 152/258 [1:15:57<1:00:09, 34.05s/it]
+SingleMachineParallelExecutor:  59%|█████▉    | 153/258 [1:16:00<43:36, 24.92s/it]  
+SingleMachineParallelExecutor:  60%|█████▉    | 154/258 [1:16:42<51:47, 29.88s/it]
+SingleMachineParallelExecutor:  60%|██████    | 155/258 [1:17:15<52:47, 30.75s/it]
+SingleMachineParallelExecutor:  60%|██████    | 156/258 [1:17:51<54:57, 32.33s/it]
+SingleMachineParallelExecutor:  61%|██████    | 157/258 [1:17:57<41:18, 24.54s/it]
+SingleMachineParallelExecutor:  61%|██████    | 158/258 [1:18:51<55:52, 33.52s/it]
+SingleMachineParallelExecutor:  62%|██████▏   | 159/258 [1:19:05<45:27, 27.55s/it]
+SingleMachineParallelExecutor:  62%|██████▏   | 160/258 [1:19:51<53:57, 33.04s/it]
+SingleMachineParallelExecutor:  62%|██████▏   | 161/258 [1:19:55<39:23, 24.37s/it]
+SingleMachineParallelExecutor:  63%|██████▎   | 162/258 [1:20:46<51:45, 32.35s/it]
+SingleMachineParallelExecutor:  63%|██████▎   | 163/258 [1:21:09<46:36, 29.43s/it]
+SingleMachineParallelExecutor:  64%|██████▎   | 164/258 [1:21:42<47:59, 30.63s/it]
+SingleMachineParallelExecutor:  64%|██████▍   | 165/258 [1:21:53<38:21, 24.75s/it]
+SingleMachineParallelExecutor:  64%|██████▍   | 166/258 [1:22:52<53:44, 35.04s/it]
+SingleMachineParallelExecutor:  65%|██████▍   | 167/258 [1:23:03<41:59, 27.69s/it]
+SingleMachineParallelExecutor:  65%|██████▌   | 168/258 [1:23:40<46:03, 30.71s/it]
+SingleMachineParallelExecutor:  66%|██████▌   | 169/258 [1:23:51<36:32, 24.64s/it]
+SingleMachineParallelExecutor:  66%|██████▌   | 170/258 [1:24:54<53:05, 36.20s/it]
+SingleMachineParallelExecutor:  66%|██████▋   | 171/258 [1:25:03<40:36, 28.01s/it]
+SingleMachineParallelExecutor:  67%|██████▋   | 172/258 [1:25:38<43:20, 30.24s/it]
+SingleMachineParallelExecutor:  67%|██████▋   | 173/258 [1:25:47<33:49, 23.88s/it]
+SingleMachineParallelExecutor:  67%|██████▋   | 174/258 [1:26:51<50:08, 35.81s/it]
+SingleMachineParallelExecutor:  68%|██████▊   | 175/258 [1:27:05<40:20, 29.16s/it]
+SingleMachineParallelExecutor:  68%|██████▊   | 176/258 [1:27:39<41:54, 30.67s/it]
+SingleMachineParallelExecutor:  69%|██████▊   | 177/258 [1:27:44<31:00, 22.97s/it]
+SingleMachineParallelExecutor:  69%|██████▉   | 178/258 [1:28:50<47:55, 35.95s/it]
+SingleMachineParallelExecutor:  69%|██████▉   | 179/258 [1:29:08<40:19, 30.63s/it]
+SingleMachineParallelExecutor:  70%|██████▉   | 180/258 [1:29:34<37:49, 29.09s/it]
+SingleMachineParallelExecutor:  70%|███████   | 181/258 [1:29:40<28:24, 22.14s/it]
+SingleMachineParallelExecutor:  71%|███████   | 182/258 [1:30:53<47:28, 37.49s/it]
+SingleMachineParallelExecutor:  71%|███████   | 183/258 [1:31:01<35:48, 28.65s/it]
+SingleMachineParallelExecutor:  71%|███████▏  | 184/258 [1:31:29<35:13, 28.56s/it]
+SingleMachineParallelExecutor:  72%|███████▏  | 185/258 [1:31:42<28:45, 23.63s/it]
+SingleMachineParallelExecutor:  72%|███████▏  | 186/258 [1:33:02<48:55, 40.77s/it]
+SingleMachineParallelExecutor:  73%|███████▎  | 188/258 [1:33:20<30:17, 25.97s/it]
+SingleMachineParallelExecutor:  73%|███████▎  | 189/258 [1:33:29<25:06, 21.83s/it]
+SingleMachineParallelExecutor:  74%|███████▎  | 190/258 [1:35:00<45:05, 39.79s/it]
+SingleMachineParallelExecutor:  74%|███████▍  | 192/258 [1:35:05<26:18, 23.92s/it]
+SingleMachineParallelExecutor:  75%|███████▍  | 193/258 [1:35:34<27:16, 25.18s/it]
+SingleMachineParallelExecutor:  75%|███████▌  | 194/258 [1:36:53<41:10, 38.61s/it]
+SingleMachineParallelExecutor:  76%|███████▌  | 195/258 [1:36:57<31:03, 29.58s/it]
+SingleMachineParallelExecutor:  76%|███████▌  | 196/258 [1:36:58<22:24, 21.69s/it]
+SingleMachineParallelExecutor:  76%|███████▋  | 197/258 [1:37:42<28:25, 27.95s/it]
+SingleMachineParallelExecutor:  77%|███████▋  | 198/258 [1:38:37<35:42, 35.70s/it]
+SingleMachineParallelExecutor:  77%|███████▋  | 199/258 [1:38:59<31:03, 31.58s/it]
+SingleMachineParallelExecutor:  78%|███████▊  | 200/258 [1:39:01<22:13, 23.00s/it]
+SingleMachineParallelExecutor:  78%|███████▊  | 201/258 [1:39:35<25:03, 26.37s/it]
+SingleMachineParallelExecutor:  78%|███████▊  | 202/258 [1:40:30<32:33, 34.88s/it]
+SingleMachineParallelExecutor:  79%|███████▊  | 203/258 [1:40:56<29:24, 32.08s/it]
+SingleMachineParallelExecutor:  79%|███████▉  | 204/258 [1:41:05<22:39, 25.18s/it]
+SingleMachineParallelExecutor:  79%|███████▉  | 205/258 [1:41:31<22:37, 25.61s/it]
+SingleMachineParallelExecutor:  80%|███████▉  | 206/258 [1:42:32<31:10, 35.97s/it]
+SingleMachineParallelExecutor:  80%|████████  | 207/258 [1:42:51<26:24, 31.07s/it]
+SingleMachineParallelExecutor:  81%|████████  | 208/258 [1:43:03<21:10, 25.41s/it]
+SingleMachineParallelExecutor:  81%|████████  | 209/258 [1:43:30<21:03, 25.79s/it]
+SingleMachineParallelExecutor:  81%|████████▏ | 210/258 [1:44:34<29:45, 37.20s/it]
+SingleMachineParallelExecutor:  82%|████████▏ | 211/258 [1:44:42<22:23, 28.58s/it]
+SingleMachineParallelExecutor:  82%|████████▏ | 212/258 [1:45:07<20:56, 27.31s/it]
+SingleMachineParallelExecutor:  83%|████████▎ | 213/258 [1:45:27<18:56, 25.25s/it]
+SingleMachineParallelExecutor:  83%|████████▎ | 214/258 [1:46:31<27:03, 36.90s/it]
+SingleMachineParallelExecutor:  83%|████████▎ | 215/258 [1:46:50<22:35, 31.51s/it]
+SingleMachineParallelExecutor:  84%|████████▎ | 216/258 [1:46:58<16:59, 24.28s/it]
+SingleMachineParallelExecutor:  84%|████████▍ | 217/258 [1:47:21<16:28, 24.10s/it]
+SingleMachineParallelExecutor:  84%|████████▍ | 218/258 [1:48:45<27:56, 41.92s/it]
+SingleMachineParallelExecutor:  85%|████████▌ | 220/258 [1:48:47<14:35, 23.03s/it]
+SingleMachineParallelExecutor:  86%|████████▌ | 221/258 [1:49:15<14:57, 24.26s/it]
+SingleMachineParallelExecutor:  86%|████████▌ | 222/258 [1:50:49<25:29, 42.48s/it]
+SingleMachineParallelExecutor:  87%|████████▋ | 225/258 [1:51:06<12:40, 23.06s/it]
+SingleMachineParallelExecutor:  88%|████████▊ | 226/258 [1:52:34<19:15, 36.10s/it]
+SingleMachineParallelExecutor:  88%|████████▊ | 227/258 [1:52:48<16:09, 31.29s/it]
+SingleMachineParallelExecutor:  88%|████████▊ | 228/258 [1:52:50<12:02, 24.09s/it]
+SingleMachineParallelExecutor:  89%|████████▉ | 229/258 [1:52:59<09:49, 20.33s/it]
+SingleMachineParallelExecutor:  89%|████████▉ | 230/258 [1:54:36<19:06, 40.93s/it]
+SingleMachineParallelExecutor:  90%|████████▉ | 231/258 [1:54:47<14:39, 32.58s/it]
+SingleMachineParallelExecutor:  90%|████████▉ | 232/258 [1:54:49<10:20, 23.85s/it]
+SingleMachineParallelExecutor:  90%|█████████ | 233/258 [1:54:54<07:39, 18.40s/it]
+SingleMachineParallelExecutor:  91%|█████████ | 234/258 [1:56:23<15:37, 39.08s/it]
+SingleMachineParallelExecutor:  91%|█████████ | 235/258 [1:56:46<13:10, 34.36s/it]
+SingleMachineParallelExecutor:  91%|█████████▏| 236/258 [1:56:52<09:30, 25.94s/it]
+SingleMachineParallelExecutor:  92%|█████████▏| 237/258 [1:56:53<06:27, 18.46s/it]
+SingleMachineParallelExecutor:  92%|█████████▏| 238/258 [1:58:08<11:49, 35.46s/it]
+SingleMachineParallelExecutor:  93%|█████████▎| 239/258 [1:58:51<11:56, 37.69s/it]
+SingleMachineParallelExecutor:  93%|█████████▎| 240/258 [1:58:54<08:09, 27.21s/it]
+SingleMachineParallelExecutor:  94%|█████████▍| 242/258 [1:59:44<06:59, 26.23s/it]
+SingleMachineParallelExecutor:  94%|█████████▍| 243/258 [2:00:51<09:04, 36.32s/it]
+SingleMachineParallelExecutor:  95%|█████████▍| 244/258 [2:00:53<06:23, 27.42s/it]
+SingleMachineParallelExecutor:  95%|█████████▍| 245/258 [2:00:55<04:26, 20.51s/it]
+SingleMachineParallelExecutor:  95%|█████████▌| 246/258 [2:01:23<04:30, 22.54s/it]
+SingleMachineParallelExecutor:  96%|█████████▌| 247/258 [2:02:45<07:12, 39.35s/it]
+SingleMachineParallelExecutor:  96%|█████████▌| 248/258 [2:02:58<05:16, 31.70s/it]
+SingleMachineParallelExecutor:  97%|█████████▋| 249/258 [2:03:00<03:27, 23.08s/it]
+SingleMachineParallelExecutor:  97%|█████████▋| 250/258 [2:03:14<02:44, 20.55s/it]
+SingleMachineParallelExecutor:  97%|█████████▋| 251/258 [2:04:41<04:41, 40.19s/it]
+SingleMachineParallelExecutor:  98%|█████████▊| 252/258 [2:05:02<03:26, 34.34s/it]
+SingleMachineParallelExecutor:  98%|█████████▊| 254/258 [2:05:05<01:17, 19.30s/it]
+SingleMachineParallelExecutor:  99%|█████████▉| 255/258 [2:06:33<01:49, 36.37s/it]
+SingleMachineParallelExecutor:  99%|█████████▉| 256/258 [2:06:58<01:06, 33.28s/it]
+                                                                                  
+2026-04-26 12:31:18,388 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/runner/executor.py:127}  Number of successful simulations: 258
+2026-04-26 12:31:18,388 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/runner/executor.py:128}  Number of failed simulations: 0
+2026-04-26 12:31:18,388 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/utils.py:147}  Finished executing runners!
+2026-04-26 12:31:18,416 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/script/utils.py:74}  Saved runner reports to nuplan_eval/test14-random_stagec_new/runner_report.parquet
+2026-04-26 12:31:18,416 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/main_callback/time_callback.py:27}  Simulation duration: 02:07:31 [HH:MM:SS]
+2026-04-26 12:31:20,472 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/main_callback/metric_file_callback.py:79}  Metric files integration: 00:00:02 [HH:MM:SS]
+2026-04-26 12:31:20,496 WARNING {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/main_callback/metric_aggregator_callback.py:61}  closed_loop_nonreactive_agents_weighted_average: No metric files found for aggregation!
+2026-04-26 12:31:20,496 WARNING {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/main_callback/metric_aggregator_callback.py:62}  If you didn't expect this, ensure that the challenge name is part of your submitted job name.
+2026-04-26 12:31:20,496 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/main_callback/metric_aggregator_callback.py:69}  Metric aggregator: 00:00:00 [HH:MM:SS]
+
+Rendering histograms:   0%|          | 0/16 [00:00<?, ?it/s]
+Rendering histograms:   6%|▋         | 1/16 [00:00<00:03,  4.89it/s]
+Rendering histograms:  12%|█▎        | 2/16 [00:00<00:02,  6.37it/s]
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+                                                                    
+
+Rendering histograms:  25%|██▌       | 4/16 [00:00<00:01,  9.48it/s]
+Rendering histograms:  31%|███▏      | 5/16 [00:00<00:01,  6.36it/s]
+Rendering histograms:  38%|███▊      | 6/16 [00:00<00:01,  6.90it/s]
+Rendering histograms:  44%|████▍     | 7/16 [00:00<00:01,  7.31it/s]
+Rendering histograms:  50%|█████     | 8/16 [00:01<00:01,  5.02it/s]
+Rendering histograms:  69%|██████▉   | 11/16 [00:01<00:00,  9.02it/s]
+Rendering histograms:  81%|████████▏ | 13/16 [00:01<00:00,  8.88it/s]
+                                                                     
+
+Rendering histograms:  81%|████████▏ | 13/16 [00:01<00:00,  8.88it/s]
+                                                                     
+
+Rendering histograms:  81%|████████▏ | 13/16 [00:01<00:00,  8.88it/s]
+Rendering histograms:  94%|█████████▍| 15/16 [00:01<00:00,  9.95it/s]
+Rendering histograms: 100%|██████████| 16/16 [00:01<00:00,  8.52it/s]
+2026-04-26 12:31:21,105 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,105 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,109 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,109 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,111 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,112 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,115 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:21,115 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:22,323 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:22,324 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/lib/python3.9/site-packages/matplotlib/category.py:223}  Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-04-26 12:31:23,932 INFO {/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/planning/simulation/main_callback/metric_summary_callback.py:344}  Metric summary: 00:00:03 [HH:MM:SS]
+2026-04-26 12:31:23,932 INFO {/media/skr/storage/autoresearch/CarPlanner_Implementation/planTF/run_simulation.py:107}  Finished running simulation!
+2026-04-26 12:31:23,934 WARNING {/media/skr/storage/autoresearch/CarPlanner_Implementation/planTF/run_simulation.py:42}  No aggregator_metric parquet files found — skipping results summary.
+============================================================
+CarPlanner nuPlan Closed-Loop Evaluation
+============================================================
+  Checkpoint: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_c_20260424_212311/stage_c_best.pt
+  Stage:      c
+  Split:      test14-random
+  Challenge:  closed_loop_nonreactive_agents
+  Output:     nuplan_eval/test14-random_stagec_new
+  DB path:    /home/skr/nuplan_cities/val/data/cache/val
+============================================================
+
+Command:
+  /media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-devkit/nuplan_venv/bin/python /media/skr/storage/autoresearch/CarPlanner_Implementation/planTF/run_simulation.py +simulation=closed_loop_nonreactive_agents scenario_builder=nuplan_challenge scenario_builder.db_files=/home/skr/nuplan_cities/val/data/cache/val scenario_filter=test14-random planner=carplanner planner.carplanner.stage=c worker=single_machine_thread_pool output_dir=nuplan_eval/test14-random_stagec_new verbose=true run_metric=true worker.max_workers=4 worker.use_process_pool=true
+

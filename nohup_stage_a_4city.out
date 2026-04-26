@@ -1,0 +1,397 @@
+[Stage A] Transition Model Pre-training
+[Stage A] Device: cuda
+[Stage A] Split: train_4city_balanced, Epochs: 50, Batch: 1024
+[Stage A] Loading pre-extracted cache: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_train_4city_balanced.pt
+[PreextractedDataset] Loading /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_train_4city_balanced.pt...
+[PreextractedDataset] 229511 samples loaded in 4.4s
+[PreextractedDataset] Loading /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_val14.pt...
+[PreextractedDataset] 1116 samples loaded in 0.0s
+[Stage A] Cache loaded: 229511 train, 1116 val (val14), 225 train batches, 2 val batches
+[Stage A] TransitionModel parameters: 3,447,600
+[Stage A] Checkpoints → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247
+  Epoch 1/50  [45/225]  L_tm=9.9298
+  Epoch 1/50  [90/225]  L_tm=9.3440
+  Epoch 1/50  [135/225]  L_tm=10.2061
+  Epoch 1/50  [180/225]  L_tm=8.6875
+  Epoch 1/50  [225/225]  L_tm=9.1989
+Epoch 1/50  train=9.5909  val=10.9013  lr=1.00e-04  (54.7s, 0.24s/batch)
+  * New best (val)   L_tm=10.9013 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.5909 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 2/50  [45/225]  L_tm=9.1967
+  Epoch 2/50  [90/225]  L_tm=8.7606
+  Epoch 2/50  [135/225]  L_tm=9.3391
+  Epoch 2/50  [180/225]  L_tm=9.8341
+  Epoch 2/50  [225/225]  L_tm=8.6797
+Epoch 2/50  train=9.2091  val=10.7714  lr=1.00e-04  (54.8s, 0.24s/batch)
+  * New best (val)   L_tm=10.7714 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.2091 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 3/50  [45/225]  L_tm=9.2011
+  Epoch 3/50  [90/225]  L_tm=8.8938
+  Epoch 3/50  [135/225]  L_tm=8.8348
+  Epoch 3/50  [180/225]  L_tm=8.6933
+  Epoch 3/50  [225/225]  L_tm=8.8048
+Epoch 3/50  train=9.1248  val=10.7378  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.7378 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.1248 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 4/50  [45/225]  L_tm=8.8922
+  Epoch 4/50  [90/225]  L_tm=9.1935
+  Epoch 4/50  [135/225]  L_tm=8.9141
+  Epoch 4/50  [180/225]  L_tm=9.1437
+  Epoch 4/50  [225/225]  L_tm=8.9490
+Epoch 4/50  train=9.0809  val=10.7138  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.7138 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.0809 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 5/50  [45/225]  L_tm=9.9262
+  Epoch 5/50  [90/225]  L_tm=9.0536
+  Epoch 5/50  [135/225]  L_tm=9.3171
+  Epoch 5/50  [180/225]  L_tm=8.8709
+  Epoch 5/50  [225/225]  L_tm=9.2920
+Epoch 5/50  train=9.0537  val=10.6884  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.6884 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.0537 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 6/50  [45/225]  L_tm=9.1950
+  Epoch 6/50  [90/225]  L_tm=9.2462
+  Epoch 6/50  [135/225]  L_tm=9.7930
+  Epoch 6/50  [180/225]  L_tm=9.3261
+  Epoch 6/50  [225/225]  L_tm=9.0923
+Epoch 6/50  train=9.0328  val=10.6786  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.6786 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.0328 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 7/50  [45/225]  L_tm=8.4930
+  Epoch 7/50  [90/225]  L_tm=9.7812
+  Epoch 7/50  [135/225]  L_tm=8.9547
+  Epoch 7/50  [180/225]  L_tm=9.0457
+  Epoch 7/50  [225/225]  L_tm=9.2860
+Epoch 7/50  train=9.0157  val=10.6633  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.6633 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=9.0157 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 8/50  [45/225]  L_tm=9.3223
+  Epoch 8/50  [90/225]  L_tm=9.0567
+  Epoch 8/50  [135/225]  L_tm=9.0565
+  Epoch 8/50  [180/225]  L_tm=9.4516
+  Epoch 8/50  [225/225]  L_tm=9.2323
+Epoch 8/50  train=8.9947  val=10.6424  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.6424 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.9947 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 9/50  [45/225]  L_tm=9.6370
+  Epoch 9/50  [90/225]  L_tm=9.2735
+  Epoch 9/50  [135/225]  L_tm=9.0331
+  Epoch 9/50  [180/225]  L_tm=9.4307
+  Epoch 9/50  [225/225]  L_tm=8.5289
+Epoch 9/50  train=8.9760  val=10.6314  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.6314 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.9760 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 10/50  [45/225]  L_tm=9.4959
+  Epoch 10/50  [90/225]  L_tm=9.2768
+  Epoch 10/50  [135/225]  L_tm=8.9555
+  Epoch 10/50  [180/225]  L_tm=8.8982
+  Epoch 10/50  [225/225]  L_tm=8.9135
+Epoch 10/50  train=8.9619  val=10.6070  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.6070 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.9619 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 11/50  [45/225]  L_tm=8.5525
+  Epoch 11/50  [90/225]  L_tm=8.8113
+  Epoch 11/50  [135/225]  L_tm=9.2461
+  Epoch 11/50  [180/225]  L_tm=8.7002
+  Epoch 11/50  [225/225]  L_tm=8.4791
+Epoch 11/50  train=8.9420  val=10.5737  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.5737 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.9420 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 12/50  [45/225]  L_tm=8.8811
+  Epoch 12/50  [90/225]  L_tm=8.5743
+  Epoch 12/50  [135/225]  L_tm=8.9190
+  Epoch 12/50  [180/225]  L_tm=7.8589
+  Epoch 12/50  [225/225]  L_tm=8.4323
+Epoch 12/50  train=8.9136  val=10.5380  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.5380 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.9136 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 13/50  [45/225]  L_tm=8.8886
+  Epoch 13/50  [90/225]  L_tm=8.6474
+  Epoch 13/50  [135/225]  L_tm=8.3882
+  Epoch 13/50  [180/225]  L_tm=8.5540
+  Epoch 13/50  [225/225]  L_tm=8.6740
+Epoch 13/50  train=8.8862  val=10.5185  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.5185 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.8862 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 14/50  [45/225]  L_tm=8.8523
+  Epoch 14/50  [90/225]  L_tm=9.0270
+  Epoch 14/50  [135/225]  L_tm=9.7328
+  Epoch 14/50  [180/225]  L_tm=8.6770
+  Epoch 14/50  [225/225]  L_tm=9.5497
+Epoch 14/50  train=8.8602  val=10.4936  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.4936 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.8602 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 15/50  [45/225]  L_tm=9.1728
+  Epoch 15/50  [90/225]  L_tm=8.8173
+  Epoch 15/50  [135/225]  L_tm=9.3388
+  Epoch 15/50  [180/225]  L_tm=8.4992
+  Epoch 15/50  [225/225]  L_tm=9.5271
+Epoch 15/50  train=8.8399  val=10.4713  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.4713 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.8399 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 16/50  [45/225]  L_tm=9.3269
+  Epoch 16/50  [90/225]  L_tm=8.9920
+  Epoch 16/50  [135/225]  L_tm=8.7556
+  Epoch 16/50  [180/225]  L_tm=8.7877
+  Epoch 16/50  [225/225]  L_tm=8.8045
+Epoch 16/50  train=8.8153  val=10.4380  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.4380 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.8153 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 17/50  [45/225]  L_tm=8.8274
+  Epoch 17/50  [90/225]  L_tm=8.0623
+  Epoch 17/50  [135/225]  L_tm=8.3377
+  Epoch 17/50  [180/225]  L_tm=8.1517
+  Epoch 17/50  [225/225]  L_tm=8.7037
+Epoch 17/50  train=8.8056  val=10.4251  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.4251 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.8056 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 18/50  [45/225]  L_tm=7.7510
+  Epoch 18/50  [90/225]  L_tm=9.1766
+  Epoch 18/50  [135/225]  L_tm=8.3172
+  Epoch 18/50  [180/225]  L_tm=8.7567
+  Epoch 18/50  [225/225]  L_tm=9.4789
+Epoch 18/50  train=8.7897  val=10.4089  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.4089 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.7897 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 19/50  [45/225]  L_tm=8.9417
+  Epoch 19/50  [90/225]  L_tm=8.7778
+  Epoch 19/50  [135/225]  L_tm=8.7136
+  Epoch 19/50  [180/225]  L_tm=8.3360
+  Epoch 19/50  [225/225]  L_tm=8.8549
+Epoch 19/50  train=8.7782  val=10.3992  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.3992 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.7782 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 20/50  [45/225]  L_tm=8.8144
+  Epoch 20/50  [90/225]  L_tm=8.6699
+  Epoch 20/50  [135/225]  L_tm=9.0363
+  Epoch 20/50  [180/225]  L_tm=8.3851
+  Epoch 20/50  [225/225]  L_tm=8.6772
+Epoch 20/50  train=8.7594  val=10.3944  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.3944 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.7594 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 21/50  [45/225]  L_tm=8.8351
+  Epoch 21/50  [90/225]  L_tm=8.6293
+  Epoch 21/50  [135/225]  L_tm=9.4140
+  Epoch 21/50  [180/225]  L_tm=8.7477
+  Epoch 21/50  [225/225]  L_tm=8.3548
+Epoch 21/50  train=8.7449  val=10.3488  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.3488 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.7449 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 22/50  [45/225]  L_tm=9.2188
+  Epoch 22/50  [90/225]  L_tm=9.0053
+  Epoch 22/50  [135/225]  L_tm=8.3085
+  Epoch 22/50  [180/225]  L_tm=8.4019
+  Epoch 22/50  [225/225]  L_tm=8.9808
+Epoch 22/50  train=8.7196  val=10.2941  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.2941 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.7196 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 23/50  [45/225]  L_tm=8.6957
+  Epoch 23/50  [90/225]  L_tm=8.4674
+  Epoch 23/50  [135/225]  L_tm=8.6228
+  Epoch 23/50  [180/225]  L_tm=9.1404
+  Epoch 23/50  [225/225]  L_tm=9.0842
+Epoch 23/50  train=8.6860  val=10.2260  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.2260 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.6860 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 24/50  [45/225]  L_tm=8.6174
+  Epoch 24/50  [90/225]  L_tm=7.7482
+  Epoch 24/50  [135/225]  L_tm=8.4612
+  Epoch 24/50  [180/225]  L_tm=9.9253
+  Epoch 24/50  [225/225]  L_tm=8.5526
+Epoch 24/50  train=8.6376  val=10.1705  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.1705 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.6376 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 25/50  [45/225]  L_tm=9.0858
+  Epoch 25/50  [90/225]  L_tm=8.0030
+  Epoch 25/50  [135/225]  L_tm=9.0433
+  Epoch 25/50  [180/225]  L_tm=8.0481
+  Epoch 25/50  [225/225]  L_tm=8.8081
+Epoch 25/50  train=8.5979  val=10.1876  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.5979 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 26/50  [45/225]  L_tm=8.5675
+  Epoch 26/50  [90/225]  L_tm=8.5680
+  Epoch 26/50  [135/225]  L_tm=8.5658
+  Epoch 26/50  [180/225]  L_tm=9.3209
+  Epoch 26/50  [225/225]  L_tm=8.8252
+Epoch 26/50  train=8.5600  val=10.0931  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.0931 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.5600 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 27/50  [45/225]  L_tm=7.9527
+  Epoch 27/50  [90/225]  L_tm=8.8471
+  Epoch 27/50  [135/225]  L_tm=8.0659
+  Epoch 27/50  [180/225]  L_tm=7.8517
+  Epoch 27/50  [225/225]  L_tm=8.1488
+Epoch 27/50  train=8.5264  val=10.0700  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.0700 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.5264 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 28/50  [45/225]  L_tm=8.4244
+  Epoch 28/50  [90/225]  L_tm=8.4534
+  Epoch 28/50  [135/225]  L_tm=8.4883
+  Epoch 28/50  [180/225]  L_tm=8.2714
+  Epoch 28/50  [225/225]  L_tm=9.1555
+Epoch 28/50  train=8.4960  val=10.0729  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.4960 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 29/50  [45/225]  L_tm=8.4149
+  Epoch 29/50  [90/225]  L_tm=8.3748
+  Epoch 29/50  [135/225]  L_tm=9.0576
+  Epoch 29/50  [180/225]  L_tm=8.7840
+  Epoch 29/50  [225/225]  L_tm=8.4388
+Epoch 29/50  train=8.4690  val=10.0387  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.0387 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.4690 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 30/50  [45/225]  L_tm=8.6807
+  Epoch 30/50  [90/225]  L_tm=8.7607
+  Epoch 30/50  [135/225]  L_tm=8.4309
+  Epoch 30/50  [180/225]  L_tm=7.9589
+  Epoch 30/50  [225/225]  L_tm=8.7359
+Epoch 30/50  train=8.4440  val=10.0623  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.4440 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 31/50  [45/225]  L_tm=8.1621
+  Epoch 31/50  [90/225]  L_tm=8.6900
+  Epoch 31/50  [135/225]  L_tm=8.3040
+  Epoch 31/50  [180/225]  L_tm=8.2952
+  Epoch 31/50  [225/225]  L_tm=8.4586
+Epoch 31/50  train=8.4217  val=10.0342  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=10.0342 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.4217 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 32/50  [45/225]  L_tm=7.5617
+  Epoch 32/50  [90/225]  L_tm=8.4125
+  Epoch 32/50  [135/225]  L_tm=8.5451
+  Epoch 32/50  [180/225]  L_tm=8.3811
+  Epoch 32/50  [225/225]  L_tm=8.5061
+Epoch 32/50  train=8.3983  val=9.9947  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=9.9947 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.3983 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 33/50  [45/225]  L_tm=8.3677
+  Epoch 33/50  [90/225]  L_tm=8.5950
+  Epoch 33/50  [135/225]  L_tm=9.0241
+  Epoch 33/50  [180/225]  L_tm=8.3448
+  Epoch 33/50  [225/225]  L_tm=8.8127
+Epoch 33/50  train=8.3785  val=9.9887  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=9.9887 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.3785 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 34/50  [45/225]  L_tm=8.2361
+  Epoch 34/50  [90/225]  L_tm=8.6959
+  Epoch 34/50  [135/225]  L_tm=8.4208
+  Epoch 34/50  [180/225]  L_tm=9.0745
+  Epoch 34/50  [225/225]  L_tm=7.8998
+Epoch 34/50  train=8.3550  val=9.9743  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=9.9743 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.3550 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 35/50  [45/225]  L_tm=8.4003
+  Epoch 35/50  [90/225]  L_tm=7.9712
+  Epoch 35/50  [135/225]  L_tm=8.8847
+  Epoch 35/50  [180/225]  L_tm=9.1294
+  Epoch 35/50  [225/225]  L_tm=8.5817
+Epoch 35/50  train=8.3410  val=9.9905  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.3410 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 36/50  [45/225]  L_tm=7.6698
+  Epoch 36/50  [90/225]  L_tm=7.8664
+  Epoch 36/50  [135/225]  L_tm=7.3984
+  Epoch 36/50  [180/225]  L_tm=8.4106
+  Epoch 36/50  [225/225]  L_tm=8.2669
+Epoch 36/50  train=8.3213  val=9.9977  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.3213 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 37/50  [45/225]  L_tm=8.5923
+  Epoch 37/50  [90/225]  L_tm=8.2007
+  Epoch 37/50  [135/225]  L_tm=8.0278
+  Epoch 37/50  [180/225]  L_tm=8.3665
+  Epoch 37/50  [225/225]  L_tm=8.2217
+Epoch 37/50  train=8.3043  val=9.9465  lr=1.00e-04  (55.0s, 0.24s/batch)
+  * New best (val)   L_tm=9.9465 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.3043 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 38/50  [45/225]  L_tm=7.3370
+  Epoch 38/50  [90/225]  L_tm=8.6018
+  Epoch 38/50  [135/225]  L_tm=8.3140
+  Epoch 38/50  [180/225]  L_tm=8.4015
+  Epoch 38/50  [225/225]  L_tm=7.8656
+Epoch 38/50  train=8.2764  val=9.9856  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.2764 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 39/50  [45/225]  L_tm=8.5534
+  Epoch 39/50  [90/225]  L_tm=8.2628
+  Epoch 39/50  [135/225]  L_tm=8.4241
+  Epoch 39/50  [180/225]  L_tm=9.4419
+  Epoch 39/50  [225/225]  L_tm=8.3768
+Epoch 39/50  train=8.2598  val=9.9985  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.2598 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 40/50  [45/225]  L_tm=8.2466
+  Epoch 40/50  [90/225]  L_tm=8.1478
+  Epoch 40/50  [135/225]  L_tm=9.0345
+  Epoch 40/50  [180/225]  L_tm=7.8018
+  Epoch 40/50  [225/225]  L_tm=8.5526
+Epoch 40/50  train=8.2486  val=10.0006  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.2486 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 41/50  [45/225]  L_tm=8.4242
+  Epoch 41/50  [90/225]  L_tm=8.9350
+  Epoch 41/50  [135/225]  L_tm=8.4492
+  Epoch 41/50  [180/225]  L_tm=8.7161
+  Epoch 41/50  [225/225]  L_tm=8.3022
+Epoch 41/50  train=8.2328  val=9.9398  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=9.9398 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.2328 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 42/50  [45/225]  L_tm=8.1194
+  Epoch 42/50  [90/225]  L_tm=8.0927
+  Epoch 42/50  [135/225]  L_tm=7.9388
+  Epoch 42/50  [180/225]  L_tm=8.1685
+  Epoch 42/50  [225/225]  L_tm=8.9183
+Epoch 42/50  train=8.2059  val=10.0765  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.2059 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 43/50  [45/225]  L_tm=8.7515
+  Epoch 43/50  [90/225]  L_tm=8.0430
+  Epoch 43/50  [135/225]  L_tm=8.8593
+  Epoch 43/50  [180/225]  L_tm=8.2970
+  Epoch 43/50  [225/225]  L_tm=8.0019
+Epoch 43/50  train=8.1967  val=9.9949  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.1967 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 44/50  [45/225]  L_tm=8.0766
+  Epoch 44/50  [90/225]  L_tm=7.9869
+  Epoch 44/50  [135/225]  L_tm=7.7789
+  Epoch 44/50  [180/225]  L_tm=8.0463
+  Epoch 44/50  [225/225]  L_tm=8.1919
+Epoch 44/50  train=8.1811  val=9.9454  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.1811 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 45/50  [45/225]  L_tm=7.9599
+  Epoch 45/50  [90/225]  L_tm=8.6483
+  Epoch 45/50  [135/225]  L_tm=8.8482
+  Epoch 45/50  [180/225]  L_tm=7.9550
+  Epoch 45/50  [225/225]  L_tm=8.0921
+Epoch 45/50  train=8.1709  val=9.9896  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.1709 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 46/50  [45/225]  L_tm=8.0863
+  Epoch 46/50  [90/225]  L_tm=8.3057
+  Epoch 46/50  [135/225]  L_tm=8.0934
+  Epoch 46/50  [180/225]  L_tm=8.1627
+  Epoch 46/50  [225/225]  L_tm=8.6561
+Epoch 46/50  train=8.1534  val=10.0413  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.1534 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 47/50  [45/225]  L_tm=8.0103
+  Epoch 47/50  [90/225]  L_tm=7.8972
+  Epoch 47/50  [135/225]  L_tm=8.7343
+  Epoch 47/50  [180/225]  L_tm=8.1747
+  Epoch 47/50  [225/225]  L_tm=8.0305
+Epoch 47/50  train=8.1388  val=9.8819  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (val)   L_tm=9.8819 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best.pt
+  * New best (train) L_tm=8.1388 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 48/50  [45/225]  L_tm=8.6117
+  Epoch 48/50  [90/225]  L_tm=7.6571
+  Epoch 48/50  [135/225]  L_tm=8.8066
+  Epoch 48/50  [180/225]  L_tm=8.1361
+  Epoch 48/50  [225/225]  L_tm=7.5006
+Epoch 48/50  train=8.1178  val=9.9566  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.1178 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 49/50  [45/225]  L_tm=8.1599
+  Epoch 49/50  [90/225]  L_tm=8.0828
+  Epoch 49/50  [135/225]  L_tm=8.1517
+  Epoch 49/50  [180/225]  L_tm=8.1521
+  Epoch 49/50  [225/225]  L_tm=8.8086
+Epoch 49/50  train=8.1003  val=10.0738  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.1003 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+  Epoch 50/50  [45/225]  L_tm=7.3461
+  Epoch 50/50  [90/225]  L_tm=8.7182
+  Epoch 50/50  [135/225]  L_tm=8.1175
+  Epoch 50/50  [180/225]  L_tm=7.9110
+  Epoch 50/50  [225/225]  L_tm=7.7296
+Epoch 50/50  train=8.0918  val=9.9629  lr=1.00e-04  (54.9s, 0.24s/batch)
+  * New best (train) L_tm=8.0918 → /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_a_20260424_111247/stage_a_best_train.pt
+
+[Stage A] Done. Best val L_tm=9.8819  Best train L_tm=8.0918

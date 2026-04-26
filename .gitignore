@@ -9,6 +9,7 @@ build/
 
 # Datasets and large files
 checkpoints/
+nuplan_eval/
 *.db
 *.zip
 *.log
