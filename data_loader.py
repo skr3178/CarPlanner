@@ -626,13 +626,19 @@ def _extract_routes(map_api, ref_x: float, ref_y: float, ref_h: float,
       2. Get all lanes in the current roadblock (parallel lanes = lateral options)
       3. For each starting lane, trace forward through lane graph
       4. Encode each route as a resampled polyline with D_POLYLINE_POINT features
-      5. Sort by lateral offset and subsample to N_LAT
-      6. Compute positive lateral mode label from GT trajectory
+      5. Bin each route into a fixed lateral slot via _bin_lateral_offset(lat_y)
+         so slot index has consistent semantic meaning across scenes
+         (lat=2 is always "ego's lane", lat=0 is always "far left of ego", etc.)
+      6. Compute positive lateral mode label from GT trajectory; fall back to
+         the y-offset bin of the GT endpoint if no route matched.
 
     Returns:
-        route_polylines: (N_LAT, N_ROUTE_POINTS, D_POLYLINE_POINT)
-        route_mask: (N_LAT,)
-        positive_lat_idx: int in [0, N_LAT)
+        route_polylines: (N_LAT, N_ROUTE_POINTS, D_POLYLINE_POINT) — bin-aligned
+        route_mask: (N_LAT,) — 1.0 only for filled bins
+        positive_lat_idx: int in [0, N_LAT). When the GT endpoint matched a
+            binned route, this is its bin index. Otherwise this is the y-offset
+            bin of the GT endpoint (a sensible target even if the route slot is
+            empty). Returns -1 only when gt_trajectory is None.
     """
     N_LAT = cfg.N_LAT
     N_RP = cfg.N_ROUTE_POINTS
@@ -688,21 +694,34 @@ def _extract_routes(map_api, ref_x: float, ref_y: float, ref_h: float,
         lat_y = float(first_valid[closest_idx, 1])
         routes_with_offset.append((lat_y, polyline))
 
-    routes_with_offset.sort(key=lambda x: x[0])
+    # Fix 3: bin-aligned route assignment. Each route is placed in a fixed
+    # lateral slot determined by its lateral offset relative to ego (lat_y),
+    # so slot index has consistent semantic meaning across scenes:
+    #   LAT_BIN_EDGES = [-inf, -3, -1, 1, 3, +inf]
+    #     lat=0  far-left   (y < -3 m)
+    #     lat=1  left       (-3 < y < -1 m)
+    #     lat=2  ego lane   (|y| < 1 m)
+    #     lat=3  right      ( 1 < y <  3 m)
+    #     lat=4  far-right  (y >  3 m)
+    # If multiple routes fall in the same bin, keep the one closest to ego.
+    binned_routes = {}  # bin_idx -> (abs(lat_y), polyline)
+    for lat_y, polyline in routes_with_offset:
+        bin_idx = _bin_lateral_offset(lat_y)
+        abs_offset = abs(lat_y)
+        if bin_idx not in binned_routes or abs_offset < binned_routes[bin_idx][0]:
+            binned_routes[bin_idx] = (abs_offset, polyline)
 
-    if len(routes_with_offset) > N_LAT:
-        indices = np.linspace(0, len(routes_with_offset) - 1, N_LAT).astype(int).tolist()
-        routes_with_offset = [routes_with_offset[i] for i in indices]
+    for bin_idx, (_, polyline) in binned_routes.items():
+        route_polylines[bin_idx] = polyline
+        route_mask[bin_idx] = 1.0
 
-    for i, (_, polyline) in enumerate(routes_with_offset):
-        route_polylines[i] = polyline
-        route_mask[i] = 1.0
-
-    positive_lat_idx = 0
-    if gt_trajectory is not None and len(routes_with_offset) > 0:
+    # Match GT endpoint to a binned route's polyline; positive_lat_idx is the
+    # bin index of the closest matching route.
+    positive_lat_idx = -1
+    if gt_trajectory is not None and len(binned_routes) > 0:
         gt_endpoint = gt_trajectory[-1, :2]
         best_dist = float('inf')
-        for i, (_, polyline) in enumerate(routes_with_offset):
+        for bin_idx, (_, polyline) in binned_routes.items():
             route_xy = polyline[:, :2]
             valid = route_xy[np.abs(route_xy[:, 0]) + np.abs(route_xy[:, 1]) > 1e-6]
             if len(valid) == 0:
@@ -712,7 +731,13 @@ def _extract_routes(map_api, ref_x: float, ref_y: float, ref_h: float,
             )))
             if dist < best_dist:
                 best_dist = dist
-                positive_lat_idx = i
+                positive_lat_idx = bin_idx
+
+    # Fallback: if GT didn't match any extracted route, use the y-offset bin
+    # of the GT endpoint as the target. The bin is semantically meaningful
+    # even when the corresponding route slot is empty.
+    if positive_lat_idx < 0 and gt_trajectory is not None:
+        positive_lat_idx = _bin_lateral_offset(float(gt_trajectory[-1, 1]))
 
     return route_polylines, route_mask, positive_lat_idx
 
@@ -1065,16 +1090,24 @@ def _load_sample(db_path: str, token: str):
             (cfg.N_LAT, cfg.N_ROUTE_POINTS, cfg.D_POLYLINE_POINT), dtype=np.float32
         )
         route_mask = np.zeros(cfg.N_LAT, dtype=np.float32)
-        positive_lat_idx = 0
+        # Sentinel: route extraction failed. Caller falls back to y-offset bin.
+        positive_lat_idx = -1
 
     # ── Mode assignment (use route-based lateral label) ───────────────────
     endpoint = gt_trajectory[-1]
-    dist = math.sqrt(endpoint[0] ** 2 + endpoint[1] ** 2)
+    # Fix 1: longitudinal mode = forward distance (ego frame x), not Euclidean.
+    # In ego frame ego heading is +x, so endpoint[0] is the longitudinal
+    # progress; endpoint[1] is lateral offset. Reversing (negative x) is rare
+    # and clamped to the stationary bin.
+    lon_dist = max(float(endpoint[0]), 0.0)
     lon_idx = min(
-        int(dist / (cfg.MAX_SPEED * cfg.T_FUTURE * 0.1 / cfg.N_LON)),
+        int(lon_dist / (cfg.MAX_SPEED * cfg.T_FUTURE * 0.1 / cfg.N_LON)),
         cfg.N_LON - 1,
     )
-    if route_mask.sum() > 0:
+    # Fix 2: never default lat_idx to 0 silently. Use the route-based label
+    # only when the GT actually matched one of the extracted routes; otherwise
+    # fall back to the GT-y-offset bin (closest valid lateral mode by data).
+    if route_mask.sum() > 0 and positive_lat_idx >= 0:
         lat_idx = positive_lat_idx
     else:
         lat_idx = _bin_lateral_offset(endpoint[1])

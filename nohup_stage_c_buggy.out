@@ -1,0 +1,318 @@
+[Stage C] RL Fine-tuning
+[Stage C] Device: cuda
+[Stage C] Split: train_4city_balanced, Epochs: 50, Batch: 1024
+[Stage C] Loading pre-extracted cache: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_train_4city_balanced.pt
+[PreextractedDataset] Loading /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_train_4city_balanced.pt...
+[PreextractedDataset] 229511 samples loaded in 4.5s
+[Stage C] Cache loaded: 229511 samples, 225 batches
+[Stage C] Parameters: 7,469,584
+[Stage C] Loaded frozen transition model: checkpoints/stage_a_best.pt
+[Stage C] Loaded 190/190 params from: checkpoints/stage_b_20260424_140710/stage_b_epoch_020.pt
+[Stage C]   New params (value_head, action_log_std) randomly initialised
+[PreextractedDataset] Loading /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_val14.pt...
+[PreextractedDataset] 1116 samples loaded in 0.0s
+[Stage C] Val14 loaded: 1116 samples, 2 batches
+  Epoch 1/50  [45/225]  L_total=17.2300  L_policy=0.0188  L_value=4.4654
+  Epoch 1/50  [90/225]  L_total=15.3536  L_policy=0.0287  L_value=3.4002
+  Epoch 1/50  [135/225]  L_total=15.0662  L_policy=0.0327  L_value=3.2787
+  Epoch 1/50  [180/225]  L_total=13.8815  L_policy=0.0257  L_value=3.1047
+  Epoch 1/50  [225/225]  L_total=14.5828  L_policy=0.0386  L_value=2.9285
+Epoch 1/50  train=26.4702  L_policy=0.1142  L_value=4.3415  L_entropy=-4.2256  L_selector=2.0285  val=15.7536  (512.4s)
+  * New best saved: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_c_20260424_212311/stage_c_best.pt
+  Epoch 2/50  [45/225]  L_total=14.0665  L_policy=0.0320  L_value=2.9532
+  Epoch 2/50  [90/225]  L_total=220.1994  L_policy=2.1004  L_value=2.7242
+  Epoch 2/50  [135/225]  L_total=17.6920  L_policy=0.0750  L_value=2.7366
+  Epoch 2/50  [180/225]  L_total=13.8052  L_policy=0.0349  L_value=2.7699
+  Epoch 2/50  [225/225]  L_total=13.8848  L_policy=0.0330  L_value=2.8797
+Epoch 2/50  train=58.2675  L_policy=0.4763  L_value=2.8866  L_entropy=-4.1643  L_selector=1.9828  val=14.6407  (511.9s)
+  * New best saved: /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_c_20260424_212311/stage_c_best.pt
+  Epoch 3/50  [45/225]  L_total=14.7763  L_policy=0.0492  L_value=2.6282
+  Epoch 3/50  [90/225]  L_total=13.9278  L_policy=0.0410  L_value=2.6302
+  Epoch 3/50  [135/225]  L_total=15.1823  L_policy=0.0595  L_value=2.4421
+  Epoch 3/50  [180/225]  L_total=14.8023  L_policy=0.0518  L_value=2.5478
+  Epoch 3/50  [225/225]  L_total=14.2583  L_policy=0.0513  L_value=2.3898
+Epoch 3/50  train=22.3500  L_policy=0.1245  L_value=2.6442  L_entropy=-4.1118  L_selector=1.9757  val=18.5617  (511.5s)
+  Epoch 4/50  [45/225]  L_total=15.1703  L_policy=0.0550  L_value=2.5663
+  Epoch 4/50  [90/225]  L_total=15.0398  L_policy=0.0580  L_value=2.4217
+  Epoch 4/50  [135/225]  L_total=14.3865  L_policy=0.0535  L_value=2.3597
+  Epoch 4/50  [180/225]  L_total=15.2573  L_policy=0.0590  L_value=2.4784
+  Epoch 4/50  [225/225]  L_total=15.1376  L_policy=0.0625  L_value=2.2974
+Epoch 4/50  train=18.0147  L_policy=0.0873  L_value=2.4408  L_entropy=-4.0628  L_selector=1.9622  val=15.6770  (511.5s)
+  Epoch 5/50  [45/225]  L_total=19.3538  L_policy=0.1089  L_value=2.1485
+  Epoch 5/50  [90/225]  L_total=21.0430  L_policy=0.1205  L_value=2.3456
+  Epoch 5/50  [135/225]  L_total=15.4505  L_policy=0.0683  L_value=2.2350
+  Epoch 5/50  [180/225]  L_total=15.5588  L_policy=0.0687  L_value=2.2448
+  Epoch 5/50  [225/225]  L_total=15.9941  L_policy=0.0768  L_value=2.1310
+Epoch 5/50  train=18.7885  L_policy=0.0995  L_value=2.2945  L_entropy=-4.0176  L_selector=1.9606  val=20.7951  (511.8s)
+  Epoch 6/50  [45/225]  L_total=16.8835  L_policy=0.0872  L_value=2.0673
+  Epoch 6/50  [90/225]  L_total=16.9636  L_policy=0.0882  L_value=2.0638
+  Epoch 6/50  [135/225]  L_total=17.5770  L_policy=0.0915  L_value=2.1706
+  Epoch 6/50  [180/225]  L_total=18.0995  L_policy=0.0979  L_value=2.1004
+  Epoch 6/50  [225/225]  L_total=21.5819  L_policy=0.1302  L_value=2.2055
+Epoch 6/50  train=18.4000  L_policy=0.1000  L_value=2.1507  L_entropy=-3.9747  L_selector=1.9537  val=20.9797  (511.5s)
+  Epoch 7/50  [45/225]  L_total=18.4203  L_policy=0.1038  L_value=2.0420
+  Epoch 7/50  [90/225]  L_total=17.9295  L_policy=0.1011  L_value=1.9628
+  Epoch 7/50  [135/225]  L_total=18.4336  L_policy=0.1047  L_value=2.0097
+  Epoch 7/50  [180/225]  L_total=19.5238  L_policy=0.1158  L_value=2.0079
+  Epoch 7/50  [225/225]  L_total=19.5434  L_policy=0.1160  L_value=2.0018
+Epoch 7/50  train=19.6738  L_policy=0.1141  L_value=2.1053  L_entropy=-3.9347  L_selector=1.9521  val=23.6071  (511.7s)
+  Epoch 8/50  [45/225]  L_total=20.4422  L_policy=0.1209  L_value=2.1482
+  Epoch 8/50  [90/225]  L_total=18.3504  L_policy=0.1023  L_value=2.0479
+  Epoch 8/50  [135/225]  L_total=21.1415  L_policy=0.1253  L_value=2.2277
+  Epoch 8/50  [180/225]  L_total=21.1561  L_policy=0.1308  L_value=2.0469
+  Epoch 8/50  [225/225]  L_total=23.4831  L_policy=0.1409  L_value=2.5021
+Epoch 8/50  train=21.1905  L_policy=0.1289  L_value=2.1225  L_entropy=-3.8983  L_selector=1.9385  val=26.2943  (511.7s)
+  Epoch 9/50  [45/225]  L_total=22.4003  L_policy=0.1446  L_value=2.0024
+  Epoch 9/50  [90/225]  L_total=536.5118  L_policy=5.2800  L_value=2.2058
+  Epoch 9/50  [135/225]  L_total=21.0346  L_policy=0.1323  L_value=1.9607
+  Epoch 9/50  [180/225]  L_total=21.8539  L_policy=0.1364  L_value=2.1010
+  Epoch 9/50  [225/225]  L_total=21.1418  L_policy=0.1321  L_value=2.0003
+Epoch 9/50  train=25.1742  L_policy=0.1699  L_value=2.0949  L_entropy=-3.8738  L_selector=1.9069  val=25.4106  (511.4s)
+  Epoch 10/50  [45/225]  L_total=22.0022  L_policy=0.1448  L_value=1.8944
+  Epoch 10/50  [90/225]  L_total=22.1181  L_policy=0.1400  L_value=2.0834
+  Epoch 10/50  [135/225]  L_total=22.2065  L_policy=0.1432  L_value=1.9927
+  Epoch 10/50  [180/225]  L_total=22.1493  L_policy=0.1456  L_value=1.9014
+  Epoch 10/50  [225/225]  L_total=24.0548  L_policy=0.1523  L_value=2.3082
+Epoch 10/50  train=23.1558  L_policy=0.1506  L_value=2.0660  L_entropy=-3.8613  L_selector=1.9009  val=29.6516  (511.9s)
+  Epoch 11/50  [45/225]  L_total=24.3275  L_policy=0.1645  L_value=1.9940
+  Epoch 11/50  [90/225]  L_total=24.2693  L_policy=0.1615  L_value=2.0732
+  Epoch 11/50  [135/225]  L_total=23.6247  L_policy=0.1551  L_value=2.0756
+  Epoch 11/50  [180/225]  L_total=26.4400  L_policy=0.1770  L_value=2.2782
+  Epoch 11/50  [225/225]  L_total=25.7901  L_policy=0.1734  L_value=2.1919
+Epoch 11/50  train=25.5879  L_policy=0.1729  L_value=2.1359  L_entropy=-3.8496  L_selector=1.8975  val=26.7397  (512.0s)
+  Epoch 12/50  [45/225]  L_total=24.8253  L_policy=0.1651  L_value=2.1342
+  Epoch 12/50  [90/225]  L_total=24.6657  L_policy=0.1612  L_value=2.2037
+  Epoch 12/50  [135/225]  L_total=28.5010  L_policy=0.1994  L_value=2.2165
+  Epoch 12/50  [180/225]  L_total=25.5909  L_policy=0.1739  L_value=2.1151
+  Epoch 12/50  [225/225]  L_total=25.5545  L_policy=0.1715  L_value=2.1672
+Epoch 12/50  train=29.4848  L_policy=0.2115  L_value=2.1485  L_entropy=-3.8387  L_selector=1.8961  val=27.5221  (511.5s)
+  Epoch 13/50  [45/225]  L_total=26.2550  L_policy=0.1810  L_value=2.0824
+  Epoch 13/50  [90/225]  L_total=25.6930  L_policy=0.1768  L_value=2.0176
+  Epoch 13/50  [135/225]  L_total=26.2784  L_policy=0.1802  L_value=2.1357
+  Epoch 13/50  [180/225]  L_total=26.7393  L_policy=0.1791  L_value=2.3079
+  Epoch 13/50  [225/225]  L_total=27.0648  L_policy=0.1785  L_value=2.4424
+Epoch 13/50  train=27.0721  L_policy=0.1859  L_value=2.1979  L_entropy=-3.8284  L_selector=1.8916  val=28.4987  (511.6s)
+  Epoch 14/50  [45/225]  L_total=28.3680  L_policy=0.2015  L_value=2.1114
+  Epoch 14/50  [90/225]  L_total=27.3605  L_policy=0.1942  L_value=2.0362
+  Epoch 14/50  [135/225]  L_total=28.0950  L_policy=0.1968  L_value=2.1725
+  Epoch 14/50  [180/225]  L_total=27.4724  L_policy=0.1879  L_value=2.2605
+  Epoch 14/50  [225/225]  L_total=28.9207  L_policy=0.2079  L_value=2.0705
+Epoch 14/50  train=28.0597  L_policy=0.1958  L_value=2.1994  L_entropy=-3.8187  L_selector=1.8886  val=29.6227  (511.0s)
+  Epoch 15/50  [45/225]  L_total=28.0794  L_policy=0.1981  L_value=2.1298
+  Epoch 15/50  [90/225]  L_total=28.3157  L_policy=0.1960  L_value=2.2764
+  Epoch 15/50  [135/225]  L_total=28.2590  L_policy=0.1919  L_value=2.4010
+  Epoch 15/50  [180/225]  L_total=28.9117  L_policy=0.1943  L_value=2.5398
+  Epoch 15/50  [225/225]  L_total=28.1048  L_policy=0.1887  L_value=2.4529
+Epoch 15/50  train=28.4019  L_policy=0.1984  L_value=2.2283  L_entropy=-3.8124  L_selector=1.8783  val=29.4373  (511.1s)
+  Epoch 16/50  [45/225]  L_total=28.8429  L_policy=0.2030  L_value=2.2014
+  Epoch 16/50  [90/225]  L_total=28.9962  L_policy=0.2071  L_value=2.1388
+  Epoch 16/50  [135/225]  L_total=28.5960  L_policy=0.1999  L_value=2.2536
+  Epoch 16/50  [180/225]  L_total=29.4519  L_policy=0.2072  L_value=2.3096
+  Epoch 16/50  [225/225]  L_total=28.6402  L_policy=0.2000  L_value=2.2680
+Epoch 16/50  train=29.1736  L_policy=0.2061  L_value=2.2304  L_entropy=-3.8090  L_selector=1.8741  val=29.0791  (510.8s)
+  Epoch 17/50  [45/225]  L_total=28.7975  L_policy=0.2065  L_value=2.0894
+  Epoch 17/50  [90/225]  L_total=28.7464  L_policy=0.2028  L_value=2.1746
+  Epoch 17/50  [135/225]  L_total=29.1199  L_policy=0.2090  L_value=2.1075
+  Epoch 17/50  [180/225]  L_total=29.2772  L_policy=0.2123  L_value=2.0681
+  Epoch 17/50  [225/225]  L_total=28.1931  L_policy=0.1991  L_value=2.1512
+Epoch 17/50  train=29.0480  L_policy=0.2052  L_value=2.2193  L_entropy=-3.8056  L_selector=1.8729  val=28.6704  (511.6s)
+  Epoch 18/50  [45/225]  L_total=30.1891  L_policy=0.2079  L_value=2.4798
+  Epoch 18/50  [90/225]  L_total=29.2898  L_policy=0.2099  L_value=2.1586
+  Epoch 18/50  [135/225]  L_total=32.6743  L_policy=0.2409  L_value=2.2572
+  Epoch 18/50  [180/225]  L_total=28.7106  L_policy=0.2047  L_value=2.1244
+  Epoch 18/50  [225/225]  L_total=29.7899  L_policy=0.2166  L_value=2.1057
+Epoch 18/50  train=29.4083  L_policy=0.2093  L_value=2.2035  L_entropy=-3.8024  L_selector=1.8712  val=30.7216  (511.5s)
+  Epoch 19/50  [45/225]  L_total=29.5372  L_policy=0.2130  L_value=2.1283
+  Epoch 19/50  [90/225]  L_total=29.3403  L_policy=0.2108  L_value=2.1442
+  Epoch 19/50  [135/225]  L_total=30.0386  L_policy=0.2162  L_value=2.1789
+  Epoch 19/50  [180/225]  L_total=29.4005  L_policy=0.2079  L_value=2.2407
+  Epoch 19/50  [225/225]  L_total=30.0398  L_policy=0.2169  L_value=2.1694
+Epoch 19/50  train=30.3443  L_policy=0.2187  L_value=2.2011  L_entropy=-3.7991  L_selector=1.8704  val=30.7482  (511.3s)
+  Epoch 20/50  [45/225]  L_total=31.3968  L_policy=0.2250  L_value=2.3111
+  Epoch 20/50  [90/225]  L_total=28.7681  L_policy=0.2070  L_value=2.0890
+  Epoch 20/50  [135/225]  L_total=29.0037  L_policy=0.2069  L_value=2.1340
+  Epoch 20/50  [180/225]  L_total=30.6030  L_policy=0.2191  L_value=2.2740
+  Epoch 20/50  [225/225]  L_total=29.9013  L_policy=0.2188  L_value=2.0323
+Epoch 20/50  train=30.1011  L_policy=0.2160  L_value=2.2112  L_entropy=-3.7957  L_selector=1.8698  val=31.4338  (510.6s)
+  Epoch 21/50  [45/225]  L_total=29.9262  L_policy=0.2115  L_value=2.3040
+  Epoch 21/50  [90/225]  L_total=30.0915  L_policy=0.2184  L_value=2.1468
+  Epoch 21/50  [135/225]  L_total=29.1630  L_policy=0.2078  L_value=2.1659
+  Epoch 21/50  [180/225]  L_total=29.5864  L_policy=0.2135  L_value=2.1269
+  Epoch 21/50  [225/225]  L_total=30.0397  L_policy=0.2177  L_value=2.1731
+Epoch 21/50  train=29.9873  L_policy=0.2158  L_value=2.1835  L_entropy=-3.7934  L_selector=1.8647  val=34.5104  (511.4s)
+  Epoch 22/50  [45/225]  L_total=29.5755  L_policy=0.2138  L_value=2.1041
+  Epoch 22/50  [90/225]  L_total=29.8987  L_policy=0.2205  L_value=2.0196
+  Epoch 22/50  [135/225]  L_total=30.9652  L_policy=0.2231  L_value=2.2473
+  Epoch 22/50  [180/225]  L_total=30.7709  L_policy=0.2233  L_value=2.1673
+  Epoch 22/50  [225/225]  L_total=30.0067  L_policy=0.2176  L_value=2.1353
+Epoch 22/50  train=30.2437  L_policy=0.2183  L_value=2.1864  L_entropy=-3.7923  L_selector=1.8633  val=30.9672  (510.9s)
+  Epoch 23/50  [45/225]  L_total=29.9877  L_policy=0.2181  L_value=2.0942
+  Epoch 23/50  [90/225]  L_total=29.8911  L_policy=0.2149  L_value=2.1627
+  Epoch 23/50  [135/225]  L_total=30.6495  L_policy=0.2231  L_value=2.1815
+  Epoch 23/50  [180/225]  L_total=30.0488  L_policy=0.2173  L_value=2.1917
+  Epoch 23/50  [225/225]  L_total=29.9169  L_policy=0.2145  L_value=2.1879
+Epoch 23/50  train=31.5171  L_policy=0.2301  L_value=2.2158  L_entropy=-3.7911  L_selector=1.8635  val=31.2073  (510.7s)
+  Epoch 24/50  [45/225]  L_total=30.3211  L_policy=0.2139  L_value=2.3587
+  Epoch 24/50  [90/225]  L_total=31.2923  L_policy=0.2255  L_value=2.3015
+  Epoch 24/50  [135/225]  L_total=30.0396  L_policy=0.2173  L_value=2.1360
+  Epoch 24/50  [180/225]  L_total=30.3895  L_policy=0.2184  L_value=2.2209
+  Epoch 24/50  [225/225]  L_total=29.6207  L_policy=0.2126  L_value=2.1595
+Epoch 24/50  train=30.5967  L_policy=0.2202  L_value=2.2390  L_entropy=-3.7899  L_selector=1.8627  val=31.3474  (511.3s)
+  Epoch 25/50  [45/225]  L_total=29.6582  L_policy=0.2100  L_value=2.2532
+  Epoch 25/50  [90/225]  L_total=30.1580  L_policy=0.2184  L_value=2.1511
+  Epoch 25/50  [135/225]  L_total=30.0151  L_policy=0.2150  L_value=2.2147
+  Epoch 25/50  [180/225]  L_total=29.1958  L_policy=0.2073  L_value=2.2017
+  Epoch 25/50  [225/225]  L_total=30.4943  L_policy=0.2213  L_value=2.1550
+Epoch 25/50  train=31.3056  L_policy=0.2274  L_value=2.2370  L_entropy=-3.7888  L_selector=1.8616  val=31.7218  (511.0s)
+  Epoch 26/50  [45/225]  L_total=29.5534  L_policy=0.2144  L_value=2.1020
+  Epoch 26/50  [90/225]  L_total=30.3482  L_policy=0.2219  L_value=2.1097
+  Epoch 26/50  [135/225]  L_total=30.5607  L_policy=0.2244  L_value=2.0932
+  Epoch 26/50  [180/225]  L_total=30.0100  L_policy=0.2177  L_value=2.1329
+  Epoch 26/50  [225/225]  L_total=28.9927  L_policy=0.2097  L_value=2.0569
+Epoch 26/50  train=30.3007  L_policy=0.2176  L_value=2.2275  L_entropy=-3.7875  L_selector=1.8615  val=30.5787  (511.3s)
+  Epoch 27/50  [45/225]  L_total=29.9583  L_policy=0.2137  L_value=2.2200
+  Epoch 27/50  [90/225]  L_total=29.6119  L_policy=0.2134  L_value=2.1566
+  Epoch 27/50  [135/225]  L_total=29.9135  L_policy=0.2122  L_value=2.2837
+  Epoch 27/50  [180/225]  L_total=31.7283  L_policy=0.2289  L_value=2.3291
+  Epoch 27/50  [225/225]  L_total=29.4979  L_policy=0.2060  L_value=2.3540
+Epoch 27/50  train=30.2146  L_policy=0.2167  L_value=2.2308  L_entropy=-3.7867  L_selector=1.8602  val=31.6280  (510.9s)
+  Epoch 28/50  [45/225]  L_total=30.1923  L_policy=0.2129  L_value=2.3462
+  Epoch 28/50  [90/225]  L_total=30.8081  L_policy=0.2180  L_value=2.3739
+  Epoch 28/50  [135/225]  L_total=30.1475  L_policy=0.2138  L_value=2.3054
+  Epoch 28/50  [180/225]  L_total=30.5774  L_policy=0.2166  L_value=2.3624
+  Epoch 28/50  [225/225]  L_total=29.8480  L_policy=0.2146  L_value=2.1850
+Epoch 28/50  train=68.9715  L_policy=0.6040  L_value=2.2378  L_entropy=-3.7863  L_selector=1.8578  val=31.2533  (511.1s)
+  Epoch 29/50  [45/225]  L_total=29.8688  L_policy=0.2128  L_value=2.2379
+  Epoch 29/50  [90/225]  L_total=29.6356  L_policy=0.2143  L_value=2.1155
+  Epoch 29/50  [135/225]  L_total=30.3330  L_policy=0.2129  L_value=2.3975
+  Epoch 29/50  [180/225]  L_total=30.6548  L_policy=0.2208  L_value=2.2465
+  Epoch 29/50  [225/225]  L_total=30.8161  L_policy=0.2225  L_value=2.2108
+Epoch 29/50  train=30.4385  L_policy=0.2191  L_value=2.2242  L_entropy=-3.7859  L_selector=1.8599  val=31.5879  (511.1s)
+  Epoch 30/50  [45/225]  L_total=31.8219  L_policy=0.2299  L_value=2.3169
+  Epoch 30/50  [90/225]  L_total=30.0075  L_policy=0.2143  L_value=2.2123
+  Epoch 30/50  [135/225]  L_total=30.7587  L_policy=0.2212  L_value=2.2577
+  Epoch 30/50  [180/225]  L_total=31.0645  L_policy=0.2182  L_value=2.4462
+  Epoch 30/50  [225/225]  L_total=29.8311  L_policy=0.2160  L_value=2.1333
+Epoch 30/50  train=32.0018  L_policy=0.2343  L_value=2.2394  L_entropy=-3.7854  L_selector=1.8595  val=30.9500  (510.8s)
+  Epoch 31/50  [45/225]  L_total=30.8398  L_policy=0.2211  L_value=2.3092
+  Epoch 31/50  [90/225]  L_total=34.4314  L_policy=0.2556  L_value=2.3360
+  Epoch 31/50  [135/225]  L_total=30.3949  L_policy=0.2193  L_value=2.1935
+  Epoch 31/50  [180/225]  L_total=30.8665  L_policy=0.2225  L_value=2.2527
+  Epoch 31/50  [225/225]  L_total=31.5351  L_policy=0.2309  L_value=2.2063
+Epoch 31/50  train=31.7580  L_policy=0.2313  L_value=2.2585  L_entropy=-3.7850  L_selector=1.8602  val=32.7754  (510.8s)
+  Epoch 32/50  [45/225]  L_total=30.9869  L_policy=0.2173  L_value=2.4803
+  Epoch 32/50  [90/225]  L_total=30.8929  L_policy=0.2256  L_value=2.1536
+  Epoch 32/50  [135/225]  L_total=30.1859  L_policy=0.2142  L_value=2.2952
+  Epoch 32/50  [180/225]  L_total=29.9168  L_policy=0.2152  L_value=2.1701
+  Epoch 32/50  [225/225]  L_total=31.2247  L_policy=0.2246  L_value=2.3071
+Epoch 32/50  train=30.6568  L_policy=0.2202  L_value=2.2587  L_entropy=-3.7846  L_selector=1.8598  val=31.6334  (511.2s)
+  Epoch 33/50  [45/225]  L_total=30.7707  L_policy=0.2241  L_value=2.1644
+  Epoch 33/50  [90/225]  L_total=30.3663  L_policy=0.2161  L_value=2.2966
+  Epoch 33/50  [135/225]  L_total=29.7388  L_policy=0.2105  L_value=2.2768
+  Epoch 33/50  [180/225]  L_total=29.8678  L_policy=0.2163  L_value=2.1299
+  Epoch 33/50  [225/225]  L_total=30.5441  L_policy=0.2210  L_value=2.2103
+Epoch 33/50  train=30.6722  L_policy=0.2205  L_value=2.2550  L_entropy=-3.7843  L_selector=1.8594  val=31.1268  (511.1s)
+  Epoch 34/50  [45/225]  L_total=30.4965  L_policy=0.2212  L_value=2.1765
+  Epoch 34/50  [90/225]  L_total=31.1373  L_policy=0.2274  L_value=2.1871
+  Epoch 34/50  [135/225]  L_total=30.5417  L_policy=0.2229  L_value=2.1469
+  Epoch 34/50  [180/225]  L_total=30.5669  L_policy=0.2124  L_value=2.4854
+  Epoch 34/50  [225/225]  L_total=31.8078  L_policy=0.2316  L_value=2.2795
+Epoch 34/50  train=30.7666  L_policy=0.2214  L_value=2.2586  L_entropy=-3.7841  L_selector=1.8586  val=30.9353  (511.2s)
+  Epoch 35/50  [45/225]  L_total=29.9984  L_policy=0.2138  L_value=2.2795
+  Epoch 35/50  [90/225]  L_total=30.1277  L_policy=0.2147  L_value=2.2568
+  Epoch 35/50  [135/225]  L_total=30.4374  L_policy=0.2258  L_value=1.9954
+  Epoch 35/50  [180/225]  L_total=30.3572  L_policy=0.2174  L_value=2.2425
+  Epoch 35/50  [225/225]  L_total=29.9833  L_policy=0.2178  L_value=2.1161
+Epoch 35/50  train=31.3908  L_policy=0.2275  L_value=2.2607  L_entropy=-3.7840  L_selector=1.8588  val=32.5674  (511.5s)
+  Epoch 36/50  [45/225]  L_total=30.3627  L_policy=0.2184  L_value=2.2189
+  Epoch 36/50  [90/225]  L_total=31.8314  L_policy=0.2369  L_value=2.0993
+  Epoch 36/50  [135/225]  L_total=30.3694  L_policy=0.2202  L_value=2.1559
+  Epoch 36/50  [180/225]  L_total=30.4513  L_policy=0.2219  L_value=2.1360
+  Epoch 36/50  [225/225]  L_total=30.7183  L_policy=0.2246  L_value=2.1161
+Epoch 36/50  train=30.5214  L_policy=0.2192  L_value=2.2478  L_entropy=-3.7839  L_selector=1.8589  val=32.4767  (511.4s)
+  Epoch 37/50  [45/225]  L_total=29.8706  L_policy=0.2212  L_value=1.9581
+  Epoch 37/50  [90/225]  L_total=30.1988  L_policy=0.2153  L_value=2.2773
+  Epoch 37/50  [135/225]  L_total=31.2429  L_policy=0.2242  L_value=2.3283
+  Epoch 37/50  [180/225]  L_total=30.3173  L_policy=0.2184  L_value=2.1778
+  Epoch 37/50  [225/225]  L_total=30.2679  L_policy=0.2119  L_value=2.3825
+Epoch 37/50  train=46.4081  L_policy=0.3778  L_value=2.2569  L_entropy=-3.7837  L_selector=1.8585  val=30.9356  (511.4s)
+  Epoch 38/50  [45/225]  L_total=30.3348  L_policy=0.2183  L_value=2.2269
+  Epoch 38/50  [90/225]  L_total=30.1999  L_policy=0.2184  L_value=2.1456
+  Epoch 38/50  [135/225]  L_total=32.3838  L_policy=0.2351  L_value=2.3532
+  Epoch 38/50  [180/225]  L_total=30.3439  L_policy=0.2163  L_value=2.3034
+  Epoch 38/50  [225/225]  L_total=30.4801  L_policy=0.2150  L_value=2.3654
+Epoch 38/50  train=31.3954  L_policy=0.2278  L_value=2.2546  L_entropy=-3.7836  L_selector=1.8583  val=31.9731  (511.1s)
+  Epoch 39/50  [45/225]  L_total=30.9904  L_policy=0.2192  L_value=2.4084
+  Epoch 39/50  [90/225]  L_total=29.8284  L_policy=0.2172  L_value=2.0943
+  Epoch 39/50  [135/225]  L_total=31.0895  L_policy=0.2224  L_value=2.3269
+  Epoch 39/50  [180/225]  L_total=29.8504  L_policy=0.2106  L_value=2.3204
+  Epoch 39/50  [225/225]  L_total=30.3424  L_policy=0.2153  L_value=2.3352
+Epoch 39/50  train=31.0219  L_policy=0.2239  L_value=2.2584  L_entropy=-3.7835  L_selector=1.8581  val=31.9278  (511.6s)
+  Epoch 40/50  [45/225]  L_total=30.8192  L_policy=0.2192  L_value=2.3694
+  Epoch 40/50  [90/225]  L_total=29.8966  L_policy=0.2162  L_value=2.1421
+  Epoch 40/50  [135/225]  L_total=31.9300  L_policy=0.2288  L_value=2.3977
+  Epoch 40/50  [180/225]  L_total=30.6434  L_policy=0.2222  L_value=2.2020
+  Epoch 40/50  [225/225]  L_total=30.7614  L_policy=0.2199  L_value=2.2780
+Epoch 40/50  train=30.7101  L_policy=0.2208  L_value=2.2590  L_entropy=-3.7835  L_selector=1.8578  val=31.8373  (511.2s)
+  Epoch 41/50  [45/225]  L_total=29.5870  L_policy=0.2122  L_value=2.1704
+  Epoch 41/50  [90/225]  L_total=30.6311  L_policy=0.2216  L_value=2.2020
+  Epoch 41/50  [135/225]  L_total=30.3172  L_policy=0.2181  L_value=2.2339
+  Epoch 41/50  [180/225]  L_total=30.9519  L_policy=0.2254  L_value=2.1875
+  Epoch 41/50  [225/225]  L_total=30.6587  L_policy=0.2179  L_value=2.3503
+Epoch 41/50  train=30.7193  L_policy=0.2211  L_value=2.2521  L_entropy=-3.7834  L_selector=1.8574  val=31.1772  (511.5s)
+  Epoch 42/50  [45/225]  L_total=30.9211  L_policy=0.2165  L_value=2.4670
+  Epoch 42/50  [90/225]  L_total=30.1816  L_policy=0.2184  L_value=2.1452
+  Epoch 42/50  [135/225]  L_total=30.9444  L_policy=0.2196  L_value=2.3780
+  Epoch 42/50  [180/225]  L_total=30.5812  L_policy=0.2221  L_value=2.1684
+  Epoch 42/50  [225/225]  L_total=30.3075  L_policy=0.2204  L_value=2.1531
+Epoch 42/50  train=30.8236  L_policy=0.2220  L_value=2.2552  L_entropy=-3.7834  L_selector=1.8583  val=31.4144  (511.2s)
+  Epoch 43/50  [45/225]  L_total=29.9708  L_policy=0.2154  L_value=2.1948
+  Epoch 43/50  [90/225]  L_total=30.1437  L_policy=0.2160  L_value=2.2371
+  Epoch 43/50  [135/225]  L_total=45.6995  L_policy=0.3755  L_value=2.0966
+  Epoch 43/50  [180/225]  L_total=29.7121  L_policy=0.2122  L_value=2.2148
+  Epoch 43/50  [225/225]  L_total=30.7765  L_policy=0.2180  L_value=2.3454
+Epoch 43/50  train=31.0140  L_policy=0.2241  L_value=2.2507  L_entropy=-3.7833  L_selector=1.8584  val=31.8479  (511.1s)
+  Epoch 44/50  [45/225]  L_total=30.2483  L_policy=0.2195  L_value=2.1416
+  Epoch 44/50  [90/225]  L_total=30.7443  L_policy=0.2140  L_value=2.5035
+  Epoch 44/50  [135/225]  L_total=30.4056  L_policy=0.2162  L_value=2.3255
+  Epoch 44/50  [180/225]  L_total=30.2634  L_policy=0.2193  L_value=2.1772
+  Epoch 44/50  [225/225]  L_total=30.3872  L_policy=0.2211  L_value=2.1352
+Epoch 44/50  train=31.3312  L_policy=0.2268  L_value=2.2662  L_entropy=-3.7833  L_selector=1.8570  val=31.2635  (511.4s)
+  Epoch 45/50  [45/225]  L_total=30.8530  L_policy=0.2195  L_value=2.3688
+  Epoch 45/50  [90/225]  L_total=30.1745  L_policy=0.2195  L_value=2.1141
+  Epoch 45/50  [135/225]  L_total=30.2920  L_policy=0.2134  L_value=2.3537
+  Epoch 45/50  [180/225]  L_total=31.2705  L_policy=0.2251  L_value=2.2776
+  Epoch 45/50  [225/225]  L_total=31.9881  L_policy=0.2380  L_value=2.1220
+Epoch 45/50  train=30.7964  L_policy=0.2213  L_value=2.2698  L_entropy=-3.7833  L_selector=1.8576  val=31.4199  (511.1s)
+  Epoch 46/50  [45/225]  L_total=30.6893  L_policy=0.2196  L_value=2.3001
+  Epoch 46/50  [90/225]  L_total=31.4503  L_policy=0.2270  L_value=2.2953
+  Epoch 46/50  [135/225]  L_total=32.2090  L_policy=0.2399  L_value=2.1311
+  Epoch 46/50  [180/225]  L_total=30.5134  L_policy=0.2231  L_value=2.1161
+  Epoch 46/50  [225/225]  L_total=30.2832  L_policy=0.2203  L_value=2.1438
+Epoch 46/50  train=30.9360  L_policy=0.2232  L_value=2.2528  L_entropy=-3.7833  L_selector=1.8578  val=31.9087  (511.3s)
+  Epoch 47/50  [45/225]  L_total=32.8646  L_policy=0.2392  L_value=2.3706
+  Epoch 47/50  [90/225]  L_total=30.6542  L_policy=0.2214  L_value=2.2236
+  Epoch 47/50  [135/225]  L_total=30.0359  L_policy=0.2111  L_value=2.3591
+  Epoch 47/50  [180/225]  L_total=30.1367  L_policy=0.2126  L_value=2.3282
+  Epoch 47/50  [225/225]  L_total=31.3577  L_policy=0.2233  L_value=2.3883
+Epoch 47/50  train=30.6680  L_policy=0.2204  L_value=2.2577  L_entropy=-3.7833  L_selector=1.8585  val=32.1627  (511.5s)
+  Epoch 48/50  [45/225]  L_total=30.1335  L_policy=0.2183  L_value=2.1600
+  Epoch 48/50  [90/225]  L_total=30.7171  L_policy=0.2187  L_value=2.3522
+  Epoch 48/50  [135/225]  L_total=30.3514  L_policy=0.2239  L_value=2.0540
+  Epoch 48/50  [180/225]  L_total=30.4180  L_policy=0.2180  L_value=2.2710
+  Epoch 48/50  [225/225]  L_total=30.6697  L_policy=0.2177  L_value=2.3609
+Epoch 48/50  train=30.9144  L_policy=0.2232  L_value=2.2459  L_entropy=-3.7832  L_selector=1.8575  val=31.6159  (511.4s)
+  Epoch 49/50  [45/225]  L_total=30.9627  L_policy=0.2260  L_value=2.1610
+  Epoch 49/50  [90/225]  L_total=30.0995  L_policy=0.2144  L_value=2.2614
+  Epoch 49/50  [135/225]  L_total=30.5682  L_policy=0.2199  L_value=2.2440
+  Epoch 49/50  [180/225]  L_total=30.4755  L_policy=0.2229  L_value=2.1195
+  Epoch 49/50  [225/225]  L_total=30.6289  L_policy=0.2188  L_value=2.2908
+Epoch 49/50  train=31.4948  L_policy=0.2286  L_value=2.2601  L_entropy=-3.7832  L_selector=1.8570  val=32.4634  (511.4s)
+  Epoch 50/50  [45/225]  L_total=30.6452  L_policy=0.2182  L_value=2.3110
+  Epoch 50/50  [90/225]  L_total=30.9489  L_policy=0.2247  L_value=2.1836
+  Epoch 50/50  [135/225]  L_total=31.1215  L_policy=0.2248  L_value=2.2748
+  Epoch 50/50  [180/225]  L_total=30.9348  L_policy=0.2273  L_value=2.1178
+  Epoch 50/50  [225/225]  L_total=30.3840  L_policy=0.2194  L_value=2.1978
+Epoch 50/50  train=32.5318  L_policy=0.2390  L_value=2.2595  L_entropy=-3.7832  L_selector=1.8578  val=31.5094  (511.1s)
+
+[Stage C] Done. Best val L_total=14.6407
