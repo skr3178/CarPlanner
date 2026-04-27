@@ -768,6 +768,56 @@ reserve closed-loop for promising checkpoints only.
 
 ## Current Run Results (Apr 23 2026)
 
+### Open-loop infrastructure ceiling (val14, GT pass-through)
+
+`eval_sanity_open_loop.py` is the open-loop counterpart to the
+`log_future_planner` closed-loop sanity test (which produced CLS-NR ≈ 93.08).
+It bypasses the model entirely and feeds **ground-truth trajectories** through
+the same metric functions used by `eval_stage_b.py`. Anything that's still off
+afterwards is a model issue, not infrastructure.
+
+**What the script does, per sample (full val14, 1,116 samples):**
+1. Load the cached sample.
+2. Set `pred_traj = gt_trajectory` (prediction = ground truth, exactly).
+3. Build fake `mode_logits` as one-hot at `mode_label` (logit_correct = +1e4,
+   others = −1e4).
+4. Build 60 candidate trajectories all equal to GT (consistent-ratio and
+   col/area expect a per-mode trajectory tensor).
+5. Call the same metric routines imported from `eval_stage_b.py`
+   (`_compute_consistent_ratio`, `_compute_ol_col_area`, plus inline math
+   for L_gen/ADE/FDE/L_sel/mode-acc/GT-rank).
+
+**Tier 1 — hard pass/fail.** Infrastructure must yield these exactly; if any
+fails, the eval pipeline is broken.
+
+| Metric | Expected | Reason | Observed |
+|---|---|---|---|
+| L_gen | 0.000000 | pred == gt | 0.000000 ✓ |
+| ADE | 0.000000 m | pred == gt | 0.000000 ✓ |
+| FDE | 0.000000 m | pred == gt | 0.000000 ✓ |
+| L_sel (CE) | 0.000000 | one-hot at mode_label | 0.000000 ✓ |
+| Mode acc top-1 | 100.00% | argmax → mode_label | 100.00% ✓ |
+| Mode acc top-5 | 100.00% | argmax → mode_label | 100.00% ✓ |
+| Median GT rank | 1 | one-hot logit ranks GT first | 1 ✓ |
+| Consistent Ratio Lat | 100/N_LAT = 20.00% | all 60 modes = same GT traj → only GT's lat bin matches its assigned mode | 20.00% ✓ |
+| Consistent Ratio Lon | 100/N_LON = 8.33% | same logic on speed bin | 8.33% ✓ |
+
+**Tier 2 — practical ceilings.** These can never be beaten by any model
+(would mean better-than-GT on a metric GT defines). Treat them as the floor
+against which real Stage-B / Stage-C numbers are compared.
+
+| Metric | Ceiling (GT achieves) | Cause |
+|---|---|---|
+| Open-loop Col Mean | **0.023** | Collision = ego within 2 m of any agent at t=0 (static proxy). GT trajectories occasionally pass within 2 m of other agents in parking lots and traffic queues — real label noise, not a bug. |
+| Open-loop Area Mean | **0.214** | Off-road = ego >3.5 m from any lane centerline or route polyline. Cache stores `N_LANES=20` sorted by t=0 ego distance, so an 8 s × 15 m/s ≈ 120 m forward trajectory loses lane coverage mid-route. Only fixable by re-extracting with more lanes / longer-coverage strategy. |
+
+**How to use:**
+- Stage-B / Stage-C eval results with `col_mean < 0.023` or `area_mean < 0.214`
+  imply a metric error (impossible without bug) — re-check.
+- Real model "shortfall" = (model's value) − (ceiling), not (model's value) − 0.
+- Closed-loop counterpart: CLS-NR ceiling ≈ 93.08 from `log_future_planner`
+  on test14_random.
+
 ### Stage B — Open-loop eval on val14 (1116 samples)
 
 Checkpoint: `stage_b_best.pt` (epoch 11, 3-city train_all_balanced, route polylines, IL-best config)
@@ -803,6 +853,258 @@ Checkpoint: `stage_b_best.pt` (epoch 11, 3-city train_all_balanced, route polyli
 - L_sel (2.31) worse than paper (1.04) — mode selector not yet accurately predicting GT mode
 - Consistent Ratio far below paper — model not committing to coherent lateral/longitudinal bins
 - Zero collisions is good; area off-road fraction similar to paper
+
+### Stage B v2 — Closed-loop subset eval on test14-random (Apr 27 2026)
+
+Checkpoint: `checkpoints/stage_b_20260427_114916/stage_b_best.pt` (epoch 31,
+post-fix: 8 s @ 1 Hz horizon, persistent agent identity, ego-history encoder,
+route-mask dropout, rule-selector progress normalised by max horizon distance).
+
+Pipeline: real nuPlan simulator path — `planTF/run_simulation.py
++simulation=closed_loop_nonreactive_agents` with
+`scenario_filter=test14-random scenario_filter.num_scenarios_per_type=4`
+(55 scenarios, 1 type came up short). Same path as the
+`log_future_planner` sanity baseline, just with the new model.
+
+CLS-NR aggregated post-hoc by `scripts/aggregate_nuplan_cls.py` from the
+per-scenario parquet files (the auto-aggregator skips when the output dir
+doesn't carry the challenge name; the per-scenario files are still written).
+
+**Headline**
+
+| Run | Scenarios | CLS-NR |
+|---|---|---|
+| Sanity ceiling (`log_future_planner`, full test14-random) | 258 | **92.72** |
+| **Stage B v2 (post-fix, ep31, 55-scenario subset)** | 55 | **25.13** |
+| Paper IL-best (Table 4) | full | 93.41 |
+| Paper RL-best (Table 4) | full | 94.07 |
+
+**Per-multiplier pass rate** (multipliers gate CLS-NR — score 0 → whole CLS-NR 0):
+
+| Multiplier | log_future | Stage B v2 |
+|---|---|---|
+| no_ego_at_fault_collisions | 98.3% | **65.5%** |
+| drivable_area_compliance | 96.9% | **70.9%** |
+| ego_is_making_progress | 100.0% | **67.3%** |
+| driving_direction_compliance | 99.4% | 97.3% |
+
+**Per-score component** (each ∈ [0, 1]):
+
+| Score | weight | log_future | Stage B v2 |
+|---|---|---|---|
+| ego_progress_along_expert_route | 5 | 0.989 | **0.475** |
+| time_to_collision_within_bound | 5 | 0.938 | **0.618** |
+| speed_limit_compliance | 4 | 0.971 | 0.934 |
+| **ego_is_comfortable** | 2 | 0.996 | **0.200** |
+
+**Per-type CLS-NR** (Stage B v2, sorted worst → best):
+
+| CLS-NR | Type | n |
+|---|---|---|
+| 0.00 | changing_lane | 4 |
+| 0.00 | high_lateral_acceleration | 4 |
+| 0.00 | starting_right_turn | 4 |
+| 0.00 | traversing_pickup_dropoff | 4 |
+| 8.57 | starting_left_turn | 4 |
+| 12.24 | following_lane_with_lead | 4 |
+| 16.70 | low_magnitude_speed | 4 |
+| 23.74 | waiting_for_pedestrian_to_cross | 4 |
+| 25.00 | high_magnitude_speed | 4 |
+| 25.00 | stationary_in_traffic | 4 |
+| 32.60 | starting_straight_traffic_light_intersection_traversal | 4 |
+| 59.71 | near_multiple_vehicles | 4 |
+| 66.92 | stopping_with_lead | 4 |
+| 100.00 | behind_long_vehicle | 3 |
+
+**Read of the result**
+
+Closed-loop is a different story from open-loop. On val14 open-loop the new
+Stage B beats paper IL-best on `L_gen` (130.7 vs 174.3) and matches it on
+collision rate. In closed-loop on the *same scenarios as the 92.72 ceiling*,
+CLS-NR collapses to 25.13. Three diagnostic signals all point at compounding
+distribution shift in the autoregressive rollout:
+
+1. **Comfort = 0.20** (paper ≈ 1.0). The model emits jerky waypoints; once
+   they're fed back as the next planning step's input, errors compound.
+2. **Progress = 0.475 + ego_is_making_progress = 67%**. The ego doesn't
+   complete the route in 1/3 of scenarios — matches the
+   `eval_closedloop_gpu.py` 0.05% progress signal.
+3. **0% CLS-NR on dynamic/lateral types** (changing_lane,
+   high_lateral_acceleration, starting_right_turn, traversing_pickup_dropoff)
+   — exactly where compounding heading/lateral error hurts most.
+
+Stage B's IL training rolls out the policy non-teacher-forced (the cadence /
+identity / ego-history fixes are confirmed to work via open-loop). But that
+rollout is still on cached data with fixed initial conditions, in a single
+8 s window. The simulator replans every 100 ms over 15 s with the planner's
+own outputs as inputs — covariate shift IL training never saw.
+
+**Likely remedies, ordered by effort:**
+
+1. *Smooth the action head output* in `carplanner_planner.py` (low-pass
+   filter or velocity clip) before handing waypoints to the simulator —
+   directly attacks the comfort = 0.20 problem; quick read on whether the
+   rest of the closed-loop infra is sound.
+2. *Verify the planner-to-model coordinate handoff* — simulator is in world
+   frame, model trains in initial-ego frame; any frame-conversion error
+   compounds.
+3. *Train Stage C (PPO)* — the paper's RL-best CLS-NR=94.07 vs IL-best 93.41
+   is the gap closed-loop training is supposed to bridge for exactly this
+   covariate-shift reason.
+
+#### Per-type CLS-NR vs training-set count
+
+Cross-referencing `data_stats/four_city_merged_stats.txt` (training counts
+post 4,000-per-type cap) with the closed-loop per-type CLS-NR. Three
+test14-random scenario types are **completely absent** from training, three
+others are **severely under-represented**:
+
+| CLS-NR | Scenario type | Train (capped) | Status |
+|---|---|---|---|
+| 0.00 | changing_lane | 1,387 | low |
+| 0.00 | high_lateral_acceleration | 4,000 | full |
+| 0.00 | starting_right_turn | 467 | very low |
+| 0.00 | traversing_pickup_dropoff | **0** | **missing** |
+| 8.57 | starting_left_turn | 3,350 | ok |
+| 12.24 | following_lane_with_lead | 4,000 | full |
+| 16.70 | low_magnitude_speed | 4,000 | full |
+| 23.74 | waiting_for_pedestrian_to_cross | 174 | very low |
+| 25.00 | high_magnitude_speed | 4,000 | full |
+| 25.00 | stationary_in_traffic | **0** | **missing** |
+| 32.60 | starting_straight_traffic_light_intersection_traversal | **0** | **missing** |
+| 59.71 | near_multiple_vehicles | 4,000 | full |
+| 66.92 | stopping_with_lead | 2,801 | medium |
+| 100.00 | behind_long_vehicle | 4,000 | full |
+
+**Read.** Data scarcity explains the bottom of the table only partially:
+
+- *Where scarcity does correlate with closed-loop failure:*
+  `traversing_pickup_dropoff` (0 → CLS 0), `starting_right_turn`
+  (467 → 0), `changing_lane` (1,387 → 0),
+  `waiting_for_pedestrian_to_cross` (174 → 24).
+- *Where it doesn't:* `high_lateral_acceleration` has the full 4,000-sample
+  cap and still scores **CLS = 0**. `following_lane_with_lead`,
+  `low_magnitude_speed`, `high_magnitude_speed` likewise have full
+  training and only land 12–25. Conversely
+  `stationary_in_traffic` has **0 training samples but scores 25** —
+  closed-loop dynamics there happen to be easy (just don't move).
+
+**Two distinct fixes are warranted, attacking independent causes:**
+
+1. **Re-extract balanced training with the missing/scarce types included.**
+   Add `traversing_pickup_dropoff`, `stationary_in_traffic`,
+   `starting_straight_traffic_light_intersection_traversal`, and rebalance
+   `waiting_for_pedestrian_to_cross`, `starting_right_turn`, `changing_lane`
+   up to a meaningful per-type floor (e.g., ≥ 1,000 samples). Quickest win
+   for the absent / scarce rows.
+2. **Address covariate shift** — Stage C (PPO), action-head smoothing in
+   `carplanner_planner.py`, or fixing any planner-to-model frame-conversion
+   error. Targets the full-trained-but-still-failing rows
+   (`high_lateral_acceleration`, etc.) where data isn't the bottleneck.
+
+(Note: an earlier session reported all val14 types were present in training
+— that was incorrect. `data_stats/four_city_merged_stats.txt` confirms three
+types are absent.)
+
+### Stage B v3 — Post-fix re-eval (open-loop + GPU closed-loop) (Apr 27 2026, late session)
+
+Same checkpoint as v2 — `checkpoints/stage_b_best.pt` (epoch 31). What
+changed between v2 and this run is **paper-fidelity fixes pushed in this
+session**, not the model:
+
+| Commit | Files | Effect |
+|---|---|---|
+| `b6f6d15` | `config.py`, `model.py`, `scripts/eval_closedloop_gpu.py` | PPO loss magnitudes match paper §A; RuleSelector rule:mode = 1:0.3 + emergency stop; GPU closed-loop interpolates 1 Hz plan to 10 Hz, `--replan_hz` CLI |
+| `02240c4` | `carplanner_planner.py`, `model.py`, `eval_stage_b.py`, `config.py`, `train_stage_b.py` | nuPlan wrapper interpolates 1 Hz → 10 Hz; RuleSelector collision uses `agent_futures` (per-step); `eval_stage_b` consistency mirrors trainer's lon side; `LR_PATIENCE 5→0`; train_stage_b default batch 96→64 |
+| `cd975ac` | `eval_stage_b.py` | consistency lat now mirrors trainer's `route_polylines`/`route_mask` matching (not the legacy `map_lanes` candidate matcher) |
+
+#### Open-loop on val14 (1,116 samples)
+
+**Table 4 — Open-loop metrics**
+
+| Metric | v3 (post-fix) | v2 baseline | Paper IL-best | Paper RL-best |
+|---|---:|---:|---:|---:|
+| L_gen (Eq 11, GT-mode-conditioned, mean-reduced) | **1.98** | 12.6 (sum-style) | 174.3 | 1624.5 |
+| L_gen (inference, sum-reduced) | 113.2 | — | — | — |
+| L_sel (CE) | 1.43 | 2.31 | 1.04 | 1.03 |
+| ADE (m) | 12.69 | 1.499 | — | — |
+| FDE (m) | 25.70 | 2.664 | — | — |
+| Mode acc top-1 (%) | 25.90 | 9.32 | — | — |
+| Mode acc top-5 (%) | 89.70 | 72.04 | — | — |
+| Median GT rank | 1 / 60 | 3 / 60 | — | — |
+
+The L_gen "improvement" vs v2 is a units change (post-fix splits training-style and inference-style L_gen; the magnitudes are not comparable between rows). ADE/FDE jumped because v2 was on a different checkpoint era / cache version — treat v3 as authoritative under the corrected eval.
+
+**Table 8 — Consistent Ratio (now paper-faithful both sides)**
+
+| Metric | v3 (post-fix) | Paper IL-best | Paper RL-best |
+|---|---:|---:|---:|
+| Consistent Ratio Lat (%) | **20.24** | 68.26 | 79.58 |
+| Consistent Ratio Lon (%) | **43.14** | 43.01 | 43.03 |
+
+Lon **matches paper IL-best to within 0.13 points**. Lat is stuck at the trivial 1/N_LAT = 20 % baseline. Re-running with the legacy lane-candidate metric returned 20.11 % vs the new route-polyline metric's 20.24 % — both definitions agree, so this is **not** a metric mismatch. The model's 60 candidate trajectories collapse to a single lateral route; only the modes whose `lat_idx` happens to coincide with that route can pass.
+
+**Table 10 — Open-loop Collision & Area**
+
+| Metric | v3 (post-fix) | Paper IL-best | Paper RL-best |
+|---|---:|---:|---:|
+| Col Mean | 0.05 | 0.15 | 0.12 |
+| Col [Min, Max] | [0.00, 0.15] | [0.00, 0.44] | [0.00, 0.39] |
+| Area Mean | 0.33 | 0.09 | 0.05 |
+| Area [Min, Max] | [0.05, 0.66] | [0.00, 0.40] | [0.00, 0.22] |
+
+#### Closed-loop GPU eval on test14-random subset (55 scenarios)
+
+`scripts/eval_closedloop_gpu.py --cache test14_random_cache_subset56.pt --checkpoint stage_b_best.pt --stage b --replan_hz 10`
+
+This is the **cached / GPU-native** closed-loop path, not the official nuPlan simulator. Same 55-scenario subset as v2.
+
+| Metric | v3 GPU CL | v2 nuPlan official CL |
+|---|---:|---:|
+| Scenarios | 55 | 55 |
+| **CLS-NR (composite)** | **67.85** | 25.13 |
+| No-collision | 94.44 % | 65.5 % multiplier |
+| Drivable compliance | 60.74 % | 70.9 % multiplier |
+| Comfort | 84.68 % | 0.200 component |
+| Progress | 0.06 % | 0.475 component |
+
+**Per-type CLS-NR (GPU CL, v3):**
+
+| CLS-NR | Type | n |
+|---:|---|---:|
+| 58.03 | traversing_pickup_dropoff | 4 |
+| 59.64 | following_lane_with_lead | 4 |
+| 60.71 | changing_lane | 4 |
+| 61.25 | near_multiple_vehicles | 4 |
+| 63.13 | high_magnitude_speed | 4 |
+| 65.58 | low_magnitude_speed | 4 |
+| 66.67 | behind_long_vehicle | 3 |
+| 67.50 | waiting_for_pedestrian_to_cross | 4 |
+| 67.83 | starting_left_turn | 4 |
+| 71.17 | high_lateral_acceleration | 4 |
+| 75.00 | stationary_in_traffic | 4 |
+| 75.67 | starting_straight_traffic_light_intersection_traversal | 4 |
+| 77.37 | starting_right_turn | 4 |
+| 80.00 | stopping_with_lead | 4 |
+
+#### Reading the v3 numbers
+
+1. **The closed-loop replanning + interpolation fixes are doing real work.** The GPU CL number jumped from a previously-reported ~17 to **67.85** on the same scenarios. ~50 CLS-NR points were being eaten by replanning every 8 sim steps and treating 1 Hz waypoints as 10 Hz waypoints (10× ego-velocity warping).
+
+2. **Lon consistency is paper-correct.** 43.14 % vs paper 43.01 %. The trainer's longitudinal label assignment is now exactly mirrored at eval time.
+
+3. **Lat consistency 20 % is a real model issue, not a metric artefact.** Both the legacy lane-candidate metric (20.11 %) and the corrected route-polyline metric (20.24 %) return the same value. The trajectory generator collapses laterally — this needs investigation in the policy decoder, not in the eval.
+
+4. **GPU CL 67.85 vs nuPlan official 25.13 is the new gap to close.** Same checkpoint, same 55 scenarios. Two pipelines diverge by ~43 CLS-NR points. Hypotheses, ordered by likelihood:
+   - **Wrapper/sim disparity.** GPU CL uses a simple holonomic ego (just place ego at next waypoint). nuPlan official runs LQR tracking on top of an InterpolatedTrajectory + bicycle dynamics. The 10 Hz interpolation fix in `carplanner_planner.py` (commit `02240c4`) may close some of this gap; **not yet re-run via nuPlan**.
+   - **Comfort = 0.20 in nuPlan-official** vs 84.68 % comfort in GPU CL — the LQR tracker is what surfaces jerky waypoints; the GPU sim doesn't track, just teleports.
+   - **Progress 0.06 % in GPU CL** is nearly the lowest possible — the ego barely moves forward. In nuPlan-official, progress was 0.475. The GPU eval scores progress as forward distance covered relative to an expert reference; with lat-collapsed candidates the rule selector picks plans that don't commit to forward motion, scoring near zero.
+
+5. **Lat-collapse + zero-GPU-progress are the same disease.** When the policy can't produce lateral diversity, the rule selector's safety-then-best-score logic prefers near-stationary plans (no collisions, comfortable, but no progress). This is the next-most-useful diagnostic to instrument.
+
+**Action priority unchanged from earlier session read:**
+- (a) Instrument lateral-spread variance on the 60 candidate endpoints during eval → confirms the policy collapse hypothesis without retraining.
+- (b) Re-run the **official nuPlan simulator** on the same 55 scenarios with the post-fix `carplanner_planner.py` (commit `02240c4`'s wrapper interpolation). Expect the v2 nuPlan-official CLS-NR = 25.13 to climb significantly; the gap to v3 GPU CL (67.85) tells us how much of the disparity was just the wrapper.
 
 ### Stage C — Open-loop eval on val14 (1116 samples)
 
@@ -1389,4 +1691,123 @@ Output: `nuplan_eval/test14-random_logfuture/`.
   edge brushes, etc. Even GT can't score 100.
 - **The 76-point Stage-B-vs-paper gap is entirely a model problem, not a wrapper
   bug.** No more wrapper hunts needed — the gap is in the planner's output
+
+
+## Eval gating thresholds — when to run open-loop / closed-loop
+
+**Important caveat.** With the horizon fix (8 s @ 1 Hz, GT spans up to ~120 m),
+absolute loss magnitudes are roughly 10× the old 0.8 s numbers. Do not compare
+post-fix losses directly to pre-fix runs; the thresholds below are calibrated
+from the post-fix run `stage_b_20260427_114916` (4city_paper_balanced, batch=1280).
+
+### Stage B — when to run eval
+
+Calibrated from observed val trajectory through epoch 26 of the post-fix run
+(epoch 1 ≈ untrained, epoch 25 ≈ near-converged):
+
+| Epoch | L_CE | L_side | L_gen | L_total (val) |
+|---|---|---|---|---|
+| 1 (untrained) | 2.30 | 8.14 | 8.13 | 18.58 |
+| 10 | 1.49 | 4.02 | 2.71 | 8.22 |
+| 25 | 1.36 | 3.45 | 2.03 | 6.83 |
+
+| Component | Untrained baseline | Skip eval | Worth open-loop eval | Worth closed-loop eval | Paper-target |
+|---|---|---|---|---|---|
+| **L_CE** (mode selector cross-entropy) | ~2.3 (random init not log(60); the network's initial logit distribution is closer to uniform across active modes) | > 2.0 | < 1.8 | < 1.5 | ~1.04 (Table 4 IL-best) |
+| **L_side** (selector side-task) | ~8.1 | > 6.0 | < 5.0 | < 4.0 | ~3 (asymptote in this run) |
+| **L_gen** (trajectory L1, 8 s @ 1 Hz, sum over T) | ~8.1 | > 5.0 | < 3.5 | < 2.5 | ~2 (asymptote in this run) |
+| **L_total** (sum) | ~18.6 | > 13 | < 10 | < 8 | ~6–7 (asymptote) |
+
+Note: L_gen's paper-published 174.3 (Table 4) uses a different reduction (sum
+over T and dims, mean over batch only) so it is **not** comparable to the values
+above. The "paper-target" column reflects observed asymptotes in our reduction
+convention `(pred-gt).abs().sum(dim=-1).mean()`.
+
+Reading the table:
+- **"Skip eval"** = loss so high that running eval is wasted compute; the model
+  isn't planning, ADE just reflects scenery.
+- **"Worth open-loop eval"** = signs of learning. Open-loop is cheap (~5-10 min
+  on val14) — run it whenever val L_total crosses this threshold, and after
+  each best-checkpoint save.
+- **"Worth closed-loop eval"** = trustworthy enough to feed into the simulator.
+  Closed-loop is expensive (~30-60 min on test14_random with the nuPlan sim) —
+  only run when L_CE is solidly below 2.0 and L_gen produces trajectories that
+  don't crash the sim. Premature closed-loop eval mostly reports "ego left the
+  road / collided" because the policy outputs are garbage.
+
+### Stage C — RL fine-tuning specifics
+
+PPO's L_policy is a clipped ratio loss and can hover near 0 throughout training,
+so it's not a useful progress signal on its own.
+
+| Component | Useful threshold | Notes |
+|---|---|---|
+| **L_selector** (still trained jointly) | < 1.5 to be safe | Use as the gating signal, similar to Stage B L_CE. |
+| **mean reward** (per-batch) | track trend, not absolute | If reward is monotonically increasing for ≥5 epochs, run closed-loop. |
+| **L_policy** | not a gate | Don't use; near-zero by construction. |
+| **L_value** | < 5 | Sanity check the value function isn't diverging. |
+
+### How to use these thresholds in practice
+
+```
+Per epoch end (cheap):
+  - log all losses
+  - if L_total < 10: run open-loop eval on val14 (5 min)
+  - track best-val checkpoint by ADE on val14, not by L_total directly
+
+After every 5 epochs OR when best-val improves significantly:
+  - if L_CE < 1.5 AND L_gen < 2.5: run closed-loop on test14_random (30-60 min)
+  - if best closed-loop CLS-NR > prev best by ≥1 point: keep checkpoint, else discard
+```
+
+### Caveats
+
+- **Thresholds are calibrated from one post-fix run** (`stage_b_20260427_114916`).
+  If you train with a different cache, batch size, or LR schedule the asymptote
+  will shift — re-read epoch 1 (≈ untrained) and the converged plateau, then
+  recalibrate.
+- **L_CE ≈ 1.04 from paper Table 4** is the stable target, but reaching it
+  requires the class-imbalance and missing-types issues to also be addressed.
+  Don't treat L_CE > 1.5 as failure if you're capacity- or compute-limited.
+- **L_gen units are not comparable to the paper.** Paper Table 4 publishes L_gen
+  = 174.3 (IL-best) using `Σ_t Σ_d |pred - gt|` summed over T and dims and meaned
+  over batch only; our `compute_il_loss` does `(...).abs().sum(dim=-1).mean()`,
+  meaning over batch *and* time, so our numbers are roughly `paper / T = 174.3 / 8
+  ≈ 22` — and even that doesn't match because their state may include extra
+  dims. Treat L_gen progress as relative-only.
+- **Closed-loop is the only metric that tells you whether the planner is
+  actually useful.** Open-loop ADE/FDE can look good while closed-loop CLS-NR
+  is awful (compounding error during sim rollout). If open-loop and closed-loop
+  diverge after the AR-training fix, that's diagnostic of problems in the
+  policy decoder, not the loss.
   quality (mode selection + trajectory generation).
+
+
+
+
+### What needs to be done
+
+- Retrain Stage B, not Stage A.
+- The latest issue is no longer the evaluator. After fixing lateral consistency to use cached routes, it
+stayed at the trivial baseline. After fixing the policy route-K/V path in model.py, a 256-sample val14
+rerun still gave Lat ratio = 20.27%, so the current epoch-31 checkpoint has not learned useful lateral
+diversity.
+- The most likely next step is: train Stage B again from the same frozen Stage A checkpoint, using the
+updated route-path code and the paper-closer recipe (LR_PATIENCE=0, batch 64 if you want that fix to
+matter).
+
+### What has to be tested
+
+- First, open-loop val14 during Stage B retraining:
+- Consistent Ratio Lat is the key metric. It needs to move materially above ~20%.
+- Also watch L_sel, top-1 mode accuracy, and Area Mean.
+- Then, once open-loop improves, closed-loop Stage B eval on val14 or test14-random:
+- check progress, drivable area, collisions, comfort, and CLS-NR.
+- If lateral consistency still stays near 20% after a fresh retrain, the next place to debug is route
+generation / route feature quality, not the evaluator.
+
+Current signal
+
+- The route-eval fix was correct, but it did not change the number.
+- The route-K/V mask bug was real, but this existing checkpoint does not improve from it.
+- So the actionable path is: fresh Stage B training, then reevaluate.
