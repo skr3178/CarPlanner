@@ -28,6 +28,83 @@ import config as cfg
 from data_loader import make_dataloader, make_cached_dataloader
 from model import CarPlanner
 
+# Eval helpers (paper-faithful — see eval_stage_b.py and the paper §3.3.2 / Table 8)
+from eval_stage_b import _compute_consistent_ratio, _compute_ol_col_area
+
+
+# ── Per-epoch open-loop metrics (Table 4 / Table 8 / Table 10 subset) ─────────
+
+@torch.no_grad()
+def compute_extras_val(model, val_gpu_cache, batch_size: int) -> dict:
+    """One-shot inference pass on val14 to track open-loop metrics during
+    training. Mirrors eval_stage_b.py exactly so numbers are paper-comparable.
+
+    Tracked (per the success criterion):
+      - top1 / top5 mode accuracy  (mode_logits vs mode_label)
+      - L_sel  (CE = -log_softmax[mode_label])
+      - consistency lat / lon  (route-polylines route-matching, paper §3.3.2)
+      - area mean (Table 10 open-loop)
+    """
+    n = val_gpu_cache['mode_label'].size(0)
+    if n == 0:
+        return {}
+    n_top1 = 0
+    n_top5 = 0
+    sum_l_sel = 0.0
+    sum_lat = 0.0
+    sum_lon = 0.0
+    sum_area = 0.0
+
+    for s in range(0, n, batch_size):
+        e = min(s + batch_size, n)
+        with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+            mode_logits, all_trajs, _, _ = model.forward_inference_fast(
+                agents_now        = val_gpu_cache['agents_now'][s:e],
+                agents_mask       = val_gpu_cache['agents_mask'][s:e],
+                map_lanes         = val_gpu_cache['map_lanes'][s:e],
+                map_lanes_mask    = val_gpu_cache['map_lanes_mask'][s:e],
+                agents_history    = val_gpu_cache['agents_history'][s:e],
+                ego_history       = val_gpu_cache['ego_history'][s:e],
+                map_polygons      = val_gpu_cache['map_polygons'][s:e],
+                map_polygons_mask = val_gpu_cache['map_polygons_mask'][s:e],
+                route_polylines   = val_gpu_cache['route_polylines'][s:e],
+                route_mask        = val_gpu_cache['route_mask'][s:e],
+            )
+        mode_logits = mode_logits.float()
+        log_probs = F.log_softmax(mode_logits, dim=-1)
+        labels = val_gpu_cache['mode_label'][s:e]
+
+        order = torch.argsort(mode_logits, dim=-1, descending=True)
+        n_top1 += (order[:, 0] == labels).sum().item()
+        n_top5 += (order[:, :5] == labels.unsqueeze(1)).any(dim=1).sum().item()
+        sum_l_sel += float((-log_probs.gather(1, labels.unsqueeze(1))).sum().item())
+
+        # Per-sample numpy metrics (consistency + area).
+        all_trajs_np = all_trajs.cpu().numpy()
+        rp_b = val_gpu_cache['route_polylines'][s:e].cpu().numpy()
+        rm_b = val_gpu_cache['route_mask'][s:e].cpu().numpy()
+        an_b = val_gpu_cache['agents_now'][s:e].cpu().numpy()
+        am_b = val_gpu_cache['agents_mask'][s:e].cpu().numpy()
+        ml_b = val_gpu_cache['map_lanes'][s:e].cpu().numpy()
+        mlm_b = val_gpu_cache['map_lanes_mask'][s:e].cpu().numpy()
+        for i in range(e - s):
+            lat_r, lon_r = _compute_consistent_ratio(all_trajs_np[i], rp_b[i], rm_b[i])
+            sum_lat += lat_r
+            sum_lon += lon_r
+            _, _, _, am, _, _ = _compute_ol_col_area(
+                all_trajs_np[i], an_b[i], am_b[i], ml_b[i], mlm_b[i],
+                route_polylines_np=rp_b[i], route_mask_np=rm_b[i])
+            sum_area += am
+
+    return {
+        'top1_pct':   100.0 * n_top1 / n,
+        'top5_pct':   100.0 * n_top5 / n,
+        'L_sel':      sum_l_sel / n,
+        'lat_pct':    sum_lat / n,
+        'lon_pct':    sum_lon / n,
+        'area_mean':  sum_area / n,
+    }
+
 
 # ── Loss functions ─────────────────────────────────────────────────────────────
 
@@ -433,13 +510,30 @@ def train(args):
 
         avg_val = {k: v / max(val_batches, 1) for k, v in val_losses.items()}
 
+        # Per-epoch open-loop extras (paper Tables 4 / 8 / 10 subset). Tracked
+        # specifically so we can watch consistency_lat move off the trivial
+        # 1/N_LAT = 20% baseline as the trajectory generator learns lateral
+        # diversity.
+        extras = {}
+        if val_gpu_cache is not None:
+            extras = compute_extras_val(model, val_gpu_cache, args.batch_size)
+
+        extras_str = ""
+        if extras:
+            extras_str = (
+                f"  top1={extras['top1_pct']:.2f}%  top5={extras['top5_pct']:.2f}%  "
+                f"L_sel={extras['L_sel']:.3f}  "
+                f"lat={extras['lat_pct']:.2f}%  lon={extras['lon_pct']:.2f}%  "
+                f"area={extras['area_mean']:.3f}"
+            )
+
         print(f"Epoch {epoch+1}/{args.epochs}  "
               f"train={avg_train['L_total']:.4f}  val={avg_val['L_total']:.4f}  "
               f"L_CE={avg_val['L_CE']:.4f}  "
               f"L_side={avg_val['L_side']:.4f}  "
               f"L_gen={avg_val['L_gen']:.4f}  "
               f"lr={optimizer.param_groups[0]['lr']:.2e}  "
-              f"({elapsed:.1f}s)")
+              f"({elapsed:.1f}s){extras_str}")
 
         scheduler.step(avg_val['L_total'])
 
@@ -450,6 +544,7 @@ def train(args):
             'optimizer': optimizer.state_dict(),
             'train_loss': avg_train,
             'val_loss': avg_val,
+            'extras_val': extras,
         }
         ckpt_path = os.path.join(run_dir, f"stage_b_epoch_{epoch+1:03d}.pt")
         torch.save(ckpt, ckpt_path)

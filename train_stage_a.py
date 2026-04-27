@@ -370,7 +370,7 @@ def parse_args():
     p.add_argument('--split', default='mini',
                    choices=['mini', 'train_boston', 'train_pittsburgh', 'train_singapore',
                             'train_all', 'train_all_balanced', 'train_3city_balanced',
-                            'train_4city_balanced'])
+                            'train_4city_balanced', 'train_4city_paper_balanced'])
     p.add_argument('--epochs', type=int, default=cfg.EPOCHS)
     p.add_argument('--batch_size', type=int, default=cfg.BATCH_SIZE)
     p.add_argument('--num_workers', type=int, default=cfg.NUM_WORKERS,
