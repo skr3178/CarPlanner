@@ -1,0 +1,64 @@
+# Source: tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter/val14_split.yaml
+# Joined against: /home/skr/nuplan_cities/val/data/cache/val (1381 .db files)
+# Tokens in YAML: 1118    Resolved: 1118    Missing: 0
+# Total tags (a scenario can carry multiple): 3324    Unique types: 55
+
+  #   Scenario type                                               Tag count
+  ----------------------------------------------------------------------------
+    1  on_intersection                                                   372
+    2  on_traffic_light_intersection                                     259
+    3  traversing_traffic_light_intersection                             228
+    4  traversing_intersection                                           198
+    5  stationary                                                        171
+    6  high_magnitude_speed                                              133
+    7  on_pickup_dropoff                                                 130
+    8  near_pedestrian_on_crosswalk                                      129
+    9  low_magnitude_speed                                               107
+   10  stationary_in_traffic                                             103
+   11  starting_left_turn                                                100
+   12  traversing_pickup_dropoff                                          99
+   13  starting_straight_traffic_light_intersection_traversal             98
+   14  starting_right_turn                                                98
+   15  high_lateral_acceleration                                          96
+   16  stopping_with_lead                                                 93
+   17  near_multiple_vehicles                                             87
+   18  changing_lane                                                      70
+   19  waiting_for_pedestrian_to_cross                                    62
+   20  traversing_crosswalk                                               62
+   21  starting_protected_noncross_turn                                   60
+   22  medium_magnitude_speed                                             60
+   23  starting_unprotected_cross_turn                                    54
+   24  on_stopline_traffic_light                                          48
+   25  starting_protected_cross_turn                                      47
+   26  changing_lane_to_left                                              38
+   27  starting_unprotected_noncross_turn                                 37
+   28  near_long_vehicle                                                  36
+   29  on_all_way_stop_intersection                                       35
+   30  changing_lane_to_right                                             32
+   31  near_pedestrian_at_pickup_dropoff                                  28
+   32  behind_long_vehicle                                                17
+   33  on_stopline_stop_sign                                              16
+   34  following_lane_with_lead                                           15
+   35  near_trafficcone_on_driveable                                      11
+   36  on_stopline_crosswalk                                               9
+   37  stopping_at_traffic_light_with_lead                                 8
+   38  stopping_at_stop_sign_with_lead                                     8
+   39  starting_high_speed_turn                                            8
+   40  near_high_speed_vehicle                                             7
+   41  following_lane_without_lead                                         7
+   42  near_multiple_pedestrians                                           6
+   43  starting_low_speed_turn                                             5
+   44  following_lane_with_slow_lead                                       5
+   45  near_construction_zone_sign                                         5
+   46  stationary_at_traffic_light_with_lead                               5
+   47  accelerating_at_stop_sign                                           5
+   48  stationary_at_traffic_light_without_lead                            4
+   49  accelerating_at_traffic_light                                       3
+   50  accelerating_at_traffic_light_without_lead                          3
+   51  accelerating_at_crosswalk                                           2
+   52  on_carpark                                                          2
+   53  traversing_narrow_lane                                              1
+   54  near_barrier_on_driveable                                           1
+   55  accelerating_at_stop_sign_no_crosswalk                              1
+  ----------------------------------------------------------------------------
+  55 types                                                    Total:        3,324

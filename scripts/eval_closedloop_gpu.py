@@ -37,14 +37,34 @@ from model import CarPlanner
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 T_SIM        = 150
-DT           = 0.1
-REPLAN_EVERY = cfg.T_FUTURE   # 8 steps = 0.8 s
+DT           = 0.1                                # sim cadence: 10 Hz
+SIM_HZ       = int(round(1.0 / DT))               # 10
+SUB_PER_PLAN = int(round(cfg.FUTURE_DT_S / DT))   # 1 Hz plan → 10 sim sub-steps
 N_AGENTS     = cfg.N_AGENTS   # 20
 N_LANES      = cfg.N_LANES    # 20
 N_PTS        = cfg.N_LANE_POINTS  # 10
 T_HIST       = cfg.T_HIST     # 10
-D_AGENT      = cfg.D_AGENT    # 10
+D_AGENT      = cfg.D_AGENT    # 14: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, cat_onehot(4)
 D_MAP        = cfg.D_POLYLINE_POINT  # 27
+
+
+def interp_plan_to_sim(pred_world_xy: torch.Tensor,
+                       ego_xy: torch.Tensor) -> torch.Tensor:
+    """Linearly interpolate 1 Hz predictions to 10 Hz sim cadence.
+
+    pred_world_xy: (B, T_FUTURE, 2)  world frame, paper cadence (1 Hz @ 1 s)
+    ego_xy:        (B, 2)            current ego world position (= t=0 anchor)
+    Returns:       (B, T_FUTURE * SUB_PER_PLAN, 2) at t = DT, 2·DT, ..., T_FUTURE s
+    """
+    B, T, _ = pred_world_xy.shape
+    anchors = torch.cat([ego_xy.unsqueeze(1), pred_world_xy], dim=1)  # (B, T+1, 2)
+    n_out = T * SUB_PER_PLAN + 1                                       # incl. t=0
+    interp = F.interpolate(
+        anchors.transpose(1, 2),     # (B, 2, T+1)
+        size=n_out,
+        mode='linear', align_corners=True,
+    )                                # (B, 2, n_out)
+    return interp.transpose(1, 2)[:, 1:]   # drop t=0 anchor → (B, T*SUB_PER_PLAN, 2)
 
 COLL_THRESH  = 2.0
 ROAD_THRESH  = 3.0
@@ -151,6 +171,11 @@ def build_batch_inputs(batch, t, ego_states, device):
     sz  = batch['agents_size']          # (B, N, 3)
     cat = batch['agents_cat'].float()   # (B, N)
 
+    # Pre-build 4-class one-hot category (VEHICLE, PEDESTRIAN, BICYCLE, MOTORCYCLE)
+    cat_idx = cat.long().clamp(0, 3)                         # (B, N)
+    cat_onehot_agents = torch.zeros(B, N_AGENTS, 4)
+    cat_onehot_agents.scatter_(2, cat_idx.unsqueeze(-1), 1.0)  # (B, N, 4)
+
     def encode_agents_at(t_step, t_offset):
         aw = batch['agents_world'][:, t_step]   # (B, N, 5)
         av = batch['agents_valid'][:, t_step]   # (B, N)
@@ -164,9 +189,15 @@ def build_batch_inputs(batch, t, ego_states, device):
         vye  = sin_h[:, None] * aw[:, :, 3] + cos_h[:, None] * aw[:, :, 4]
         t_off = torch.full((B, N_AGENTS), t_offset)
 
-        feat = torch.stack([xe, ye, h_e, vxe, vye,
-                            sz[:, :, 0], sz[:, :, 1], sz[:, :, 2],
-                            t_off, cat], dim=-1)  # (B, N, D_AGENT)
+        # 14-dim: x, y, sin_h, cos_h, vx, vy, box_w, box_l, box_h, time_step, cat_onehot(4)
+        feat = torch.cat([
+            xe.unsqueeze(-1), ye.unsqueeze(-1),
+            torch.sin(h_e).unsqueeze(-1), torch.cos(h_e).unsqueeze(-1),
+            vxe.unsqueeze(-1), vye.unsqueeze(-1),
+            sz,                                              # (B, N, 3)
+            t_off.unsqueeze(-1),
+            cat_onehot_agents,                               # (B, N, 4)
+        ], dim=-1)                                           # (B, N, 14)
         return feat * av.unsqueeze(-1), av   # mask invalid agents to 0
 
     agents_now, agents_mask = encode_agents_at(t, 0.0)   # (B, N, D), (B, N)
@@ -188,8 +219,10 @@ def build_batch_inputs(batch, t, ego_states, device):
     cat_onehot.scatter_(2, cat_idx_long.unsqueeze(-1), 1.0)  # (B, NL, 4)
 
     def _encode_polyline(pts_world):
-        """Transform world-frame xy to ego-frame 9-dim features per point.
-        pts_world: (B, NL, NP, 2) → returns (B, NL, NP, 9)"""
+        """Transform world-frame xy to ego-frame 13-dim features per point.
+        pts_world: (B, NL, NP, 2) → returns (B, NL, NP, 13)
+        13 dims: [x, y, sin_h, cos_h, speed_limit, cat_onehot(4), tl_onehot(4)]
+        """
         dx = pts_world[:, :, :, 0] - ego_x[:, None, None]
         dy = pts_world[:, :, :, 1] - ego_y[:, None, None]
         xe = cos_h[:, None, None] * dx - sin_h[:, None, None] * dy
@@ -201,22 +234,22 @@ def build_batch_inputs(batch, t, ego_states, device):
         headings = torch.atan2(dy_seg, dx_seg)
         headings = torch.cat([headings, headings[:, :, -1:]], dim=2)
 
-        # Build 9-dim: [x, y, sin_h, cos_h, speed_limit, cat_onehot(4)]
-        feats = torch.zeros(B, N_LANES, N_PTS, 9)
+        feats = torch.zeros(B, N_LANES, N_PTS, 13)
         feats[:, :, :, 0] = xe
         feats[:, :, :, 1] = ye
         feats[:, :, :, 2] = torch.sin(headings)
         feats[:, :, :, 3] = torch.cos(headings)
         feats[:, :, :, 4] = speed_lim.unsqueeze(-1).expand(-1, -1, N_PTS)
         feats[:, :, :, 5:9] = cat_onehot.unsqueeze(2).expand(-1, -1, N_PTS, -1)
+        # Traffic-light onehot dims [9:13] left as zeros (cache lacks TL state).
         return feats
 
-    feats_center = _encode_polyline(batch['map_center_world'])  # (B, NL, NP, 9)
-    feats_left   = _encode_polyline(batch['map_left_world'])    # (B, NL, NP, 9)
-    feats_right  = _encode_polyline(batch['map_right_world'])   # (B, NL, NP, 9)
+    feats_center = _encode_polyline(batch['map_center_world'])  # (B, NL, NP, 13)
+    feats_left   = _encode_polyline(batch['map_left_world'])    # (B, NL, NP, 13)
+    feats_right  = _encode_polyline(batch['map_right_world'])   # (B, NL, NP, 13)
 
-    # Concatenate: [center(9) | left(9) | right(9)] = 27 per point
-    map_lanes = torch.cat([feats_center, feats_left, feats_right], dim=-1)  # (B, NL, NP, 27)
+    # Concatenate: [center(13) | left(13) | right(13)] = 39 per point
+    map_lanes = torch.cat([feats_center, feats_left, feats_right], dim=-1)  # (B, NL, NP, 39)
 
     return {
         'agents_now':     agents_now.to(device),        # (B, N, D)
@@ -291,9 +324,15 @@ def compute_metrics_batch(ego_trajs, batch, device):
 
 # ── Batched simulation loop ─────────────────────────────────────────────────────
 
-def run_batch(model, batch, device):
+def run_batch(model, batch, device, replan_every: int):
     """
-    Run all B scenarios simultaneously, replanning every REPLAN_EVERY steps.
+    Run all B scenarios simultaneously, replanning every `replan_every` sim steps
+    (each sim step is DT = 0.1 s). The model emits a 1 Hz plan over T_FUTURE
+    seconds, which is linearly interpolated to 10 Hz sim cadence before being
+    consumed (paper §A: "trajectories are interpolated to 0.1-second intervals").
+
+    replan_every = 1  → 10 Hz replan (Test14-Random)
+    replan_every = 10 → 1 Hz replan  (Reduced-Val14)
 
     batch  : prestack() output
     Returns: dict of (B,) metric tensors
@@ -309,7 +348,7 @@ def run_batch(model, batch, device):
 
     t = 0
     while t < T_SIM - 1:
-        steps_to_fill = min(REPLAN_EVERY, T_SIM - t - 1)
+        steps_to_fill = min(replan_every, T_SIM - t - 1)
 
         # Build batched inputs and run model
         inp = build_batch_inputs(batch, t, ego_states, device)
@@ -321,29 +360,32 @@ def run_batch(model, batch, device):
                 map_lanes_mask=inp['map_lanes_mask'],
                 agents_history=inp['agents_history'],
             )
-        # best_traj: (B, T_FUTURE, 3) in ego frame
+        # best_traj: (B, T_FUTURE, 3) in ego frame (1 Hz waypoints)
 
-        # Transform to world frame: (B, T_FUTURE, 2)
+        # Transform to world frame, then interpolate 1 Hz → 10 Hz.
         pred_world = ego_to_world_batch(
-            best_traj[:, :, :2].cpu(), ego_states)
+            best_traj[:, :, :2].cpu(), ego_states)         # (B, T_FUTURE, 2)
+        sub_traj = interp_plan_to_sim(
+            pred_world, ego_states[:, :2])                 # (B, T_FUTURE*SUB_PER_PLAN, 2)
+                                                          #  index k → t = (k+1)·DT
 
-        # Fill trajectory buffer
+        # Fill trajectory buffer with the first `steps_to_fill` sub-steps.
         active = (t < n_iters - 1)                       # (B,) bool
         for k in range(steps_to_fill):
             si = t + 1 + k
             if si < T_SIM:
                 ego_trajs[:, si] = torch.where(
                     active.unsqueeze(1).expand(-1, 2),
-                    pred_world[:, k],
+                    sub_traj[:, k],
                     ego_trajs[:, si - 1],
                 )
 
-        # Advance ego position; keep GT yaw
+        # Advance ego position to the last consumed sub-step; keep GT yaw.
         last_k = steps_to_fill - 1
         next_step = min(t + steps_to_fill, T_SIM - 1)
         ego_states[:, :2] = torch.where(
             active.unsqueeze(1).expand(-1, 2),
-            pred_world[:, last_k],
+            sub_traj[:, last_k],
             ego_states[:, :2],
         )
         ego_states[:, 2] = batch['ego_gt'][:, next_step, 2]
@@ -376,13 +418,23 @@ def main():
     parser.add_argument('--batch_size', type=int, default=64,
                         help='Scenarios per forward pass (default: 64)')
     parser.add_argument('--device',     default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--replan_hz',  type=float, default=10.0,
+                        help='Replanning frequency in Hz. Paper: 10 for Test14-Random, '
+                             '1 for Reduced-Val14. (default: 10)')
     args = parser.parse_args()
+
+    replan_every = max(1, int(round(SIM_HZ / args.replan_hz)))
+    if abs(SIM_HZ / replan_every - args.replan_hz) > 1e-3:
+        print(f"[GPU Eval] WARN: --replan_hz={args.replan_hz} not a divisor of "
+              f"sim {SIM_HZ} Hz; using replan_every={replan_every} "
+              f"({SIM_HZ/replan_every:.2f} Hz effective)")
 
     device = torch.device(args.device)
     print(f"[GPU Eval] Device:      {device}")
     print(f"[GPU Eval] Cache:       {args.cache}")
     print(f"[GPU Eval] Checkpoint:  {args.checkpoint}")
     print(f"[GPU Eval] Batch size:  {args.batch_size}")
+    print(f"[GPU Eval] Replan Hz:   {args.replan_hz}  (every {replan_every} sim steps)")
 
     # ── Load cache ─────────────────────────────────────────────────────────
     data      = torch.load(args.cache, map_location='cpu')
@@ -415,7 +467,7 @@ def main():
 
         try:
             batch   = prestack(scens_b)
-            metrics = run_batch(model, batch, device)
+            metrics = run_batch(model, batch, device, replan_every)
 
             B_cur = len(scens_b)
             for b in range(B_cur):

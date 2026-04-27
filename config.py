@@ -100,9 +100,9 @@ def set_stage(stage: str):
     else:
         raise ValueError(f"Unknown stage: {stage!r}  (expected 'a', 'b', or 'c')")
 
-# ── RL coefficients (Eq 8-10, unused in IL-only baseline) ────────────────────
-LAMBDA_POLICY = 100.0
-LAMBDA_VALUE = 3.0
+# ── RL coefficients (Eq 8-10, paper §A "loss magnitudes value:1e3 policy:1 entropy:1e-3")
+LAMBDA_POLICY = 1.0
+LAMBDA_VALUE = 1000.0
 LAMBDA_ENTROPY = 0.001
 PPO_CLIP = 0.2
 GAMMA = 0.1

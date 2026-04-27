@@ -1,0 +1,67 @@
+# Source: 4-city paper-balanced merge
+# Per-city sidecars (one cached scenario per row, post-extraction):
+#   boston       n_cached= 89,407  unique_types=43
+#   vegas        n_cached=112,456  unique_types=50
+#   pittsburgh   n_cached= 94,467  unique_types=39
+#   singapore    n_cached= 83,757  unique_types=45
+# Pool unique types: 52
+# Pool sum (pre-cap): 380,087
+# Cap: per-type 4000 (global)
+# After cap: 144,983 samples (matches stage_cache_train_4city_paper_balanced.pt)
+
+  #   Scenario type                                               BOS    VEG    PIT    SNG    pool  capped
+  ----------------------------------------------------------------------------------------------------
+    1  accelerating_at_stop_sign                                 3,924    232  3,954  3,441  11,551   4,000
+    2  high_magnitude_speed                                      3,788  3,953  3,683  3,792  15,216   4,000
+    3  medium_magnitude_speed                                    3,813  3,963  3,897  3,815  15,488   4,000
+    4  near_long_vehicle                                         3,780  3,937  3,911  3,867  15,495   4,000
+    5  near_pedestrian_on_crosswalk                              3,853  3,957  3,927  3,944  15,681   4,000
+    6  on_intersection                                           3,781  3,951  3,880  3,792  15,404   4,000
+    7  on_stopline_crosswalk                                     3,712  3,963  3,930  3,876  15,481   4,000
+    8  on_stopline_stop_sign                                     3,886    117  3,980  3,841  11,824   4,000
+    9  traversing_crosswalk                                      3,751  3,950  3,858  3,874  15,433   4,000
+   10  accelerating_at_traffic_light                             3,677  3,380  3,714  3,667  14,438   4,000
+   11  behind_long_vehicle                                       3,932  3,996  4,000  3,970  15,898   4,000
+   12  on_stopline_traffic_light                                 3,901  3,964  3,913  3,915  15,693   4,000
+   13  stationary                                                3,935  3,955  3,919  3,961  15,770   4,000
+   14  following_lane_with_slow_lead                             3,834  3,946  3,913  3,305  14,998   4,000
+   15  following_lane_without_lead                               3,784  3,749  2,965  3,504  14,002   4,000
+   16  high_lateral_acceleration                                 3,784  3,951  3,876  3,685  15,296   4,000
+   17  low_magnitude_speed                                       3,807  3,964  3,916  3,946  15,633   4,000
+   18  near_multiple_vehicles                                    3,877  3,929  3,707    737  12,250   4,000
+   19  near_trafficcone_on_driveable                             3,632  3,968  3,830  3,334  14,764   4,000
+   20  accelerating_at_crosswalk                                 1,406    533  2,584    719   5,242   4,000
+   21  near_high_speed_vehicle                                   1,861  3,970  3,451  3,915  13,197   4,000
+   22  behind_bike                                               2,003    681  2,581  2,985   8,250   4,000
+   23  near_barrier_on_driveable                                 3,740  3,635    279  3,955  11,609   4,000
+   24  following_lane_with_lead                                  2,256  2,060    199     89   4,604   4,000
+   25  on_all_way_stop_intersection                                  0  3,954  3,955      0   7,909   4,000
+   26  on_carpark                                                    0  3,968  3,942     68   7,978   4,000
+   27  near_multiple_pedestrians                                     4  3,951      0     35   3,990   3,990
+   28  traversing_traffic_light_intersection                         0  3,949      0     26   3,975   3,975
+   29  near_construction_zone_sign                                   0  3,970      0      0   3,970   3,970
+   30  near_pedestrian_at_pickup_dropoff                             0  3,960      0      0   3,960   3,960
+   31  on_pickup_dropoff                                             0  3,953      0      0   3,953   3,953
+   32  stopping_at_crosswalk                                     1,107    483  1,227    645   3,462   3,462
+   33  starting_left_turn                                          932  2,190     55    173   3,350   3,350
+   34  stopping_with_lead                                          477  1,635    626     63   2,801   2,801
+   35  behind_pedestrian_on_driveable                              269    116    971    861   2,217   2,217
+   36  accelerating_at_traffic_light_with_lead                     697    460    474     45   1,676   1,676
+   37  changing_lane                                               201    235    145    806   1,387   1,387
+   38  near_pedestrian_on_crosswalk_with_ego                       185    973     87    104   1,349   1,349
+   39  stopping_at_stop_sign_with_lead                             517    153    322    219   1,211   1,211
+   40  starting_protected_noncross_turn                            627    208      0      0     835     835
+   41  high_magnitude_jerk                                          80     33    410     27     550     550
+   42  starting_high_speed_turn                                    336      0    140     46     522     522
+   43  starting_right_turn                                          82     53      0    332     467     467
+   44  traversing_narrow_lane                                       46     13    184    143     386     386
+   45  crossed_by_vehicle                                           53     76     42    125     296     296
+   46  starting_low_speed_turn                                       0    177      0     22     199     199
+   47  waiting_for_pedestrian_to_cross                              43     97     20     14     174     174
+   48  behind_pedestrian_on_pickup_dropoff                           0    103      0      0     103     103
+   49  crossed_by_bike                                              25     14      0     56      95      95
+   50  near_multiple_bikes                                           3     17      0      8      28      28
+   51  stationary_at_crosswalk                                       6     11      0      0      17      17
+   52  starting_protected_cross_turn                                 0      0      0     10      10      10
+  ----------------------------------------------------------------------------------------------------
+  52 types                                                    89,407 112,456 94,467 83,757 380,087 144,983

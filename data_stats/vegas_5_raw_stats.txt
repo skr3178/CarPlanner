@@ -1,0 +1,78 @@
+# Source: data/cache/train_vegas_5
+# .db files: 562    queried in 0.6s on 24 threads
+# Unique types: 70    Total scenario_tag rows: 12,584,026
+
+  #   Scenario type                                               Tag count
+  ----------------------------------------------------------------------------
+    1  stationary                                                  2,810,908
+    2  on_pickup_dropoff                                           1,367,207
+    3  near_pedestrian_on_crosswalk                                1,230,543
+    4  on_intersection                                             1,077,461
+    5  on_traffic_light_intersection                                 822,577
+    6  traversing_intersection                                       735,035
+    7  high_magnitude_speed                                          699,204
+    8  traversing_traffic_light_intersection                         680,004
+    9  stationary_in_traffic                                         650,181
+   10  traversing_pickup_dropoff                                     627,566
+   11  medium_magnitude_speed                                        554,589
+   12  near_pedestrian_at_pickup_dropoff                             310,748
+   13  low_magnitude_speed                                           142,697
+   14  near_long_vehicle                                             129,174
+   15  traversing_crosswalk                                          102,091
+   16  on_stopline_traffic_light                                      93,731
+   17  near_trafficcone_on_driveable                                  72,123
+   18  near_multiple_vehicles                                         52,446
+   19  near_high_speed_vehicle                                        52,008
+   20  stationary_at_traffic_light_with_lead                          43,441
+   21  stationary_at_traffic_light_without_lead                       40,918
+   22  near_construction_zone_sign                                    39,334
+   23  on_all_way_stop_intersection                                   36,971
+   24  following_lane_with_slow_lead                                  33,772
+   25  on_stopline_stop_sign                                          27,534
+   26  on_stopline_crosswalk                                          27,407
+   27  following_lane_without_lead                                    11,609
+   28  high_lateral_acceleration                                      11,528
+   29  behind_long_vehicle                                            10,892
+   30  on_carpark                                                      9,181
+   31  near_multiple_pedestrians                                       7,941
+   32  near_pedestrian_on_crosswalk_with_ego                           7,047
+   33  starting_right_turn                                             6,987
+   34  starting_protected_noncross_turn                                6,418
+   35  starting_left_turn                                              5,935
+   36  waiting_for_pedestrian_to_cross                                 5,747
+   37  near_barrier_on_driveable                                       4,722
+   38  starting_straight_traffic_light_intersection_traversal          4,564
+   39  starting_unprotected_cross_turn                                 4,377
+   40  accelerating_at_traffic_light                                   3,472
+   41  stationary_at_crosswalk                                         3,293
+   42  accelerating_at_traffic_light_without_lead                      2,816
+   43  starting_straight_stop_sign_intersection_traversal              2,558
+   44  stopping_at_crosswalk                                           2,300
+   45  following_lane_with_lead                                        2,137
+   46  stopping_with_lead                                              2,123
+   47  starting_protected_cross_turn                                   1,558
+   48  starting_high_speed_turn                                        1,385
+   49  starting_low_speed_turn                                         1,201
+   50  behind_bike                                                       681
+   51  stopping_at_stop_sign_without_lead                                627
+   52  starting_unprotected_noncross_turn                                569
+   53  accelerating_at_crosswalk                                         541
+   54  accelerating_at_traffic_light_with_lead                           460
+   55  changing_lane                                                     240
+   56  accelerating_at_stop_sign                                         236
+   57  stopping_at_stop_sign_with_lead                                   175
+   58  stopping_at_traffic_light_with_lead                               175
+   59  behind_pedestrian_on_driveable                                    161
+   60  stopping_at_traffic_light_without_lead                            159
+   61  changing_lane_to_right                                            127
+   62  changing_lane_to_left                                             113
+   63  behind_pedestrian_on_pickup_dropoff                               110
+   64  crossed_by_vehicle                                                 84
+   65  high_magnitude_jerk                                                36
+   66  near_multiple_bikes                                                32
+   67  traversing_narrow_lane                                             21
+   68  crossed_by_bike                                                    14
+   69  changing_lane_with_trail                                            3
+   70  changing_lane_with_lead                                             1
+  ----------------------------------------------------------------------------
+  70 types                                                    Total:   12,584,026

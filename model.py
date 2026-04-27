@@ -1341,12 +1341,14 @@ class RuleSelector(nn.Module):
     All operations are pure Python / torch, no learned parameters.
     """
 
-    def __init__(self, w_mode: float = 1.0, w_comfort: float = 0.1,
-                 w_progress: float = 0.5, w_collision: float = 1.0,
-                 w_drivable: float = 0.3, collision_radius: float = 2.0,
-                 lane_max_dist: float = 3.0):
+    def __init__(self, w_rule: float = 1.0, w_mode: float = 0.3,
+                 w_comfort: float = 0.1, w_progress: float = 0.5,
+                 w_collision: float = 1.0, w_drivable: float = 0.3,
+                 collision_radius: float = 2.0, lane_max_dist: float = 3.0):
         super().__init__()
-        self.w_mode      = w_mode
+        # Paper §A: rule:mode score ratio = 1 : 0.3
+        self.w_rule       = w_rule
+        self.w_mode       = w_mode
         self.w_comfort    = w_comfort
         self.w_progress   = w_progress
         self.w_collision  = w_collision
@@ -1385,8 +1387,13 @@ class RuleSelector(nn.Module):
         jerk = acc[:, :, 1:] - acc[:, :, :-1]               # (B, M, T-3, 2)
         comfort = -jerk.norm(dim=-1).mean(dim=-1)            # (B, M) — higher is smoother
 
-        # Progress: forward distance (x-axis in ego frame, positive = forward)
+        # Progress: forward distance (x-axis in ego frame, positive = forward),
+        # normalised by max achievable horizon distance so it stays in roughly
+        # [-1, 1] regardless of T_FUTURE / FUTURE_DT_S. Without this, post-fix
+        # 8 s @ 1 Hz horizons let progress dominate mode_scores by ~60×.
         progress = all_trajs[:, :, -1, 0]                   # (B, M) final x-displacement
+        max_progress = cfg.MAX_SPEED * cfg.T_FUTURE * cfg.FUTURE_DT_S
+        progress = progress / max(max_progress, 1e-6)
 
         # Collision: penalise trajectories that come within collision_radius of agents
         collision = torch.zeros(B, M, device=device)
@@ -1422,17 +1429,42 @@ class RuleSelector(nn.Module):
             off_road = (min_lane_dist > self.lane_max_dist).float()
             drivable = -off_road.mean(dim=-1)                 # (B, M)
 
-        # Combined score (Algorithm 2: "combine with mode selector scores")
-        score = (self.w_mode * mode_scores
-                 + self.w_comfort * comfort
-                 + self.w_progress * progress
-                 + self.w_collision * collision
-                 + self.w_drivable * drivable)                # (B, M)
+        # Aggregate rule terms into a single rule_score, then combine with the
+        # mode selector at the paper's 1:0.3 ratio (Algorithm 2 step 5).
+        rule_score = (self.w_comfort * comfort
+                      + self.w_progress * progress
+                      + self.w_collision * collision
+                      + self.w_drivable * drivable)            # (B, M)
+        score = self.w_rule * rule_score + self.w_mode * mode_scores  # (B, M)
 
-        selected_idx = score.argmax(dim=1)                   # (B,)
+        # Safety mask: a trajectory is "safe" iff it incurs zero collision
+        # violations and zero off-road steps over the planning horizon.
+        # collision/drivable are negative-mean violation rates, so safe ↔ ==0.
+        safety_mask = (collision == 0) & (drivable == 0)     # (B, M)
+        no_safe = ~safety_mask.any(dim=1)                    # (B,) — emergency
+
+        # Pick the highest-scoring trajectory among the safe candidates;
+        # for batch elements with no safe candidate, fall back to any index
+        # (its trajectory will be overwritten with the emergency-stop traj below).
+        score_for_select = score.masked_fill(~safety_mask, float('-inf'))
+        selected_idx = torch.where(no_safe,
+                                   score.argmax(dim=1),
+                                   score_for_select.argmax(dim=1))  # (B,)
         selected_traj = all_trajs[
             torch.arange(B, device=device), selected_idx
         ]                                                    # (B, T, 3)
+
+        # Emergency stop: replace selected trajectory with zeros (ego frame
+        # origin), i.e. "stay at current pose for the entire horizon", per
+        # paper §A: "in cases where no ego candidate trajectory satisfies the
+        # safety criteria evaluated by the rule selector, an emergency stop
+        # is triggered."
+        if no_safe.any():
+            emergency = torch.zeros_like(selected_traj)
+            selected_traj = torch.where(
+                no_safe.view(B, 1, 1).expand_as(selected_traj),
+                emergency, selected_traj,
+            )
 
         return selected_traj, selected_idx
 
@@ -1563,12 +1595,18 @@ class CarPlanner(nn.Module):
                          stored_actions: torch.Tensor = None,
                          agents_history: torch.Tensor = None,
                          ego_history: torch.Tensor = None,
+                         ego_token: torch.Tensor = None,
                          map_polygons: torch.Tensor = None,
                          map_polygons_mask: torch.Tensor = None,
                          route_polylines: torch.Tensor = None,
                          route_mask: torch.Tensor = None) -> tuple:
         """
         RL training forward pass (Stage C).
+
+        For PPO with ego_history in state, the caller may pre-compute ego_token
+        (and apply dropout once) so the SAME ego_token can be shared with
+        policy_old.forward_rl — otherwise the ratio is contaminated by stochastic
+        differences between the two paths.
         """
         # Mode dropout (paper §4.4): mask routes, keep mode_label intact.
         if cfg.MODE_DROPOUT and self.training and route_mask is not None:
@@ -1578,14 +1616,14 @@ class CarPlanner(nn.Module):
                 route_mask = route_mask.clone()
                 route_mask[drop] = 0
 
-        # Ego-history dropout (Table 4 ablation).
-        ego_for_enc = ego_history
-        if cfg.EGO_HISTORY_DROPOUT and self.training and ego_history is not None:
-            keep = (torch.rand(ego_history.size(0), 1, 1, device=ego_history.device)
-                    >= cfg.MODE_DROPOUT_P).float()
-            ego_for_enc = ego_history * keep
-
-        ego_token = self.ego_encoder(ego_for_enc) if ego_for_enc is not None else None
+        # Encode ego_history → ego_token only if caller didn't precompute one.
+        if ego_token is None:
+            ego_for_enc = ego_history
+            if cfg.EGO_HISTORY_DROPOUT and self.training and ego_history is not None:
+                keep = (torch.rand(ego_history.size(0), 1, 1, device=ego_history.device)
+                        >= cfg.MODE_DROPOUT_P).float()
+                ego_for_enc = ego_history * keep
+            ego_token = self.ego_encoder(ego_for_enc) if ego_for_enc is not None else None
 
         s0_per_agent, s0_global = self.s0_encoder(agents_now, agents_mask)
         if ego_token is not None:
