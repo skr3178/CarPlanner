@@ -31,10 +31,7 @@ import numpy as np
 from torch.utils.data import DataLoader, Subset
 
 import config as cfg
-from data_loader import (PreextractedDataset,
-                         _collect_candidate_lanes,
-                         _match_endpoint_to_route,
-                         _bin_lateral_offset)
+from data_loader import PreextractedDataset, _bin_lateral_offset
 from model import CarPlanner
 
 
@@ -63,54 +60,73 @@ def _mode_to_bins(m):
     return int(m) // cfg.N_LAT, int(m) % cfg.N_LAT
 
 
-def _compute_consistent_ratio(all_trajs_np, map_lanes_np, map_lanes_mask_np):
+def _compute_consistent_ratio(all_trajs_np, route_polylines_np, route_mask_np):
     """
     Table 8: Consistent Ratio. For each mode index m = lon_idx · N_LAT + lat_idx,
     check whether the generated trajectory's endpoint actually lands in the
     (lon, lat) bin assigned to that mode index.
 
-    The eval mirrors data_loader.py's label-assignment logic exactly so that
-    paper Table 8 numbers compare apples-to-apples:
+    Mirrors data_loader.py's canonical label-assignment exactly:
 
       Longitudinal — `max(traj[-1, 0], 0.0)` (forward ego-frame x at horizon
         end), binned via `cfg.MAX_SPEED · T_FUTURE · FUTURE_DT_S / N_LON`.
         Matches data_loader.py:1132-1138.
 
-      Lateral     — route-proximity matching: collect candidate lanes from
-        `map_lanes`, find which candidate the trajectory endpoint is closest
-        to, bin the lateral offset between the matched lane and the ego lane
-        via `LAT_BIN_EDGES` (paper §3.3.2). Falls back to a y-offset bin only
-        when no candidates exist, matching the trainer's fallback at
-        data_loader.py:1140-1145.
+      Lateral     — match the trajectory endpoint to one of the cached
+        per-bin route polylines (`route_polylines`, `route_mask`); the bin
+        index of the closest valid route IS the matched lat_idx. This is the
+        same logic the trainer runs at label time (data_loader.py:718-734
+        / :1142-1145). Falls back to `_bin_lateral_offset(traj[-1, 1])` only
+        when no routes are valid for the scenario, matching the trainer's
+        fallback exactly.
 
-    all_trajs_np:       (N_MODES, T, 3)
-    map_lanes_np:       (N_LANES, N_PTS, D_MAP) in ego frame
-    map_lanes_mask_np:  (N_LANES,)
+    all_trajs_np:        (N_MODES, T, ≥3)
+    route_polylines_np:  (N_LAT, N_ROUTE_POINTS, D_POLYLINE_POINT) in ego frame
+    route_mask_np:       (N_LAT,) — 1.0 only for filled lateral bins
     Returns: (lat_ratio, lon_ratio) as percentages
     """
     n_modes = all_trajs_np.shape[0]
     lon_step = cfg.MAX_SPEED * cfg.T_FUTURE * cfg.FUTURE_DT_S / cfg.N_LON
 
-    candidates = _collect_candidate_lanes(map_lanes_np, map_lanes_mask_np)
+    # Pre-extract each valid route's xy point cloud once (skip padding zeros)
+    # so we can query distance from any candidate trajectory endpoint cheaply.
+    route_pts_per_bin = {}     # bin_idx → (M_valid, 2) ego-frame xy
+    if route_mask_np is not None and route_polylines_np is not None:
+        for bin_idx in range(route_mask_np.shape[0]):
+            if route_mask_np[bin_idx] < 0.5:
+                continue
+            route_xy = route_polylines_np[bin_idx, :, :2]
+            valid = route_xy[np.abs(route_xy[:, 0]) + np.abs(route_xy[:, 1]) > 1e-6]
+            if len(valid) > 0:
+                route_pts_per_bin[bin_idx] = valid
 
     lat_ok = 0
     lon_ok = 0
     for m in range(n_modes):
         lon_idx, lat_idx = _mode_to_bins(m)
-        traj = all_trajs_np[m]  # (T, 3)
+        endpoint = all_trajs_np[m, -1]   # (≥3,) — x, y, yaw at horizon end
 
-        # Longitudinal: forward (ego x) endpoint displacement → bin.
-        lon_dist = max(float(traj[-1, 0]), 0.0)
+        lon_dist = max(float(endpoint[0]), 0.0)
         speed_bin = min(int(lon_dist / lon_step), cfg.N_LON - 1)
         if speed_bin == lon_idx:
             lon_ok += 1
 
-        # Lateral: route-proximity match against actual lane candidates.
-        # Falls back to y-offset binning iff no candidates were found
-        # (matches the trainer's fallback exactly).
-        y_bin = _match_endpoint_to_route(candidates, traj[-1])
-        if y_bin < 0:
-            y_bin = _bin_lateral_offset(float(traj[-1, 1]))
+        # Lateral: closest cached route polyline → its bin = matched lat_idx.
+        if route_pts_per_bin:
+            best_bin = -1
+            best_dist = float('inf')
+            ex, ey = float(endpoint[0]), float(endpoint[1])
+            for bin_idx, pts in route_pts_per_bin.items():
+                dx = pts[:, 0] - ex
+                dy = pts[:, 1] - ey
+                d = float(np.min(np.sqrt(dx * dx + dy * dy)))
+                if d < best_dist:
+                    best_dist = d
+                    best_bin = bin_idx
+            y_bin = best_bin
+        else:
+            y_bin = _bin_lateral_offset(float(endpoint[1]))
+
         if y_bin == lat_idx:
             lat_ok += 1
 
@@ -301,12 +317,15 @@ def evaluate(args):
                 agents_mask_np = batch['agents_history_mask'][i].cpu().numpy()
                 ml_np          = batch['map_lanes'][i].cpu().numpy()
                 mlm_np         = batch['map_lanes_mask'][i].cpu().numpy()
-
-                lat_r, lon_r = _compute_consistent_ratio(all_trajs_np, ml_np, mlm_np)
-                stats['consistent_lat'].append(lat_r)
-                stats['consistent_lon'].append(lon_r)
                 rp_np          = batch['route_polylines'][i].cpu().numpy() if 'route_polylines' in batch else None
                 rm_np          = batch['route_mask'][i].cpu().numpy() if 'route_mask' in batch else None
+
+                # Lateral consistency must mirror the trainer's label assignment,
+                # which uses the cached per-bin route polylines (data_loader.py
+                # :718-734 / :1142-1145), not the legacy map_lanes candidate matcher.
+                lat_r, lon_r = _compute_consistent_ratio(all_trajs_np, rp_np, rm_np)
+                stats['consistent_lat'].append(lat_r)
+                stats['consistent_lon'].append(lon_r)
                 cm, cmin, cmax, am, amin, amax = _compute_ol_col_area(
                     all_trajs_np, agents_now_np, agents_mask_np, ml_np, mlm_np,
                     route_polylines_np=rp_np, route_mask_np=rm_np)
