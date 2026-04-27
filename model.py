@@ -858,7 +858,6 @@ class AutoregressivePolicy(nn.Module):
                 ry = sin_hr * dx_r + cos_hr * dy_r
                 route_dists = torch.sqrt(rx**2 + ry**2)
                 closest_idx = route_dists.argmin(dim=-1)        # (B, N_lat)
-                active_mask = (closest_idx > 0).float()         # discard if ego passed start
 
                 N_r = route_polylines.size(2)
                 K_r = max(1, N_r // 4)
@@ -872,9 +871,12 @@ class AutoregressivePolicy(nn.Module):
                         length = end - start
                         trimmed[b, r, :length] = route_polylines[b, r, start:end]
 
+                # Keep valid routes even when the closest point is the route's
+                # first point. At t=0 that is often the correct case; zeroing
+                # those features collapses the policy's lateral conditioning.
                 route_feats_t = self.decomposed_mode.route_pointnet(
                     trimmed, route_mask
-                ) * active_mask.unsqueeze(-1)                   # (B, N_lat, D)
+                )                                              # (B, N_lat, D)
 
             # ── IVM KNN filter → decoder K/V ─────────────────────────────
             map_poses = None
@@ -1096,7 +1098,6 @@ class AutoregressivePolicy(nn.Module):
                 rx = cos_hr * dx_r - sin_hr * dy_r
                 ry = sin_hr * dx_r + cos_hr * dy_r
                 closest_idx = torch.sqrt(rx**2 + ry**2).argmin(dim=-1)
-                active_mask = (closest_idx > 0).float()
 
                 N_r = route_polylines.size(2)
                 K_r = max(1, N_r // 4)
@@ -1112,7 +1113,7 @@ class AutoregressivePolicy(nn.Module):
 
                 route_feats_t = self.decomposed_mode.route_pointnet(
                     trimmed, route_mask
-                ) * active_mask.unsqueeze(-1)
+                )
 
             map_poses = None
             if lanes_ego is not None:

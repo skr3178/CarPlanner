@@ -236,6 +236,18 @@ def train(args):
                     map_polygons=map_polygons, map_polygons_mask=map_polygons_mask,
                 )                                            # (B, T, N, Da)
 
+            # PPO ratio is meaningful only if old and new policies see the SAME
+            # state features, so encode ego_history → ego_token once with a
+            # frozen dropout decision and share between policy_old and forward_rl_train.
+            ego_token = None
+            if ego_history is not None:
+                ego_for_enc = ego_history
+                if cfg.EGO_HISTORY_DROPOUT and model.training:
+                    keep = (torch.rand(ego_history.size(0), 1, 1, device=ego_history.device)
+                            >= cfg.MODE_DROPOUT_P).float()
+                    ego_for_enc = ego_history * keep
+                ego_token = model.ego_encoder(ego_for_enc)
+
             # Step 2: Rollout with π_old (no grad)
             with torch.no_grad():
                 traj_old, log_probs_old, values_old, _ = policy_old.forward_rl(
@@ -249,6 +261,7 @@ def train(args):
                     map_polygons_mask=map_polygons_mask,
                     route_polylines=route_polylines,
                     route_mask=route_mask,
+                    ego_token=ego_token,
                 )
 
             # Step 3: Compute rewards + GAE
@@ -261,7 +274,8 @@ def train(args):
                 advantages, returns = compute_gae(rewards, values_old)
                 advantages = normalize_advantages(advantages)
 
-            # Step 4: Recompute with current π (with grad)
+            # Step 4: Recompute with current π (with grad). Reuse the same ego_token
+            # so old and new differ only in policy params, not in state features.
             mode_logits, side_traj, traj_new, log_probs_new, values_new, entropy = \
                 model.forward_rl_train(
                     agents_now=agents_now,
@@ -273,7 +287,7 @@ def train(args):
                     map_lanes_mask=map_lanes_mask,
                     stored_actions=traj_old,
                     agents_history=agents_history,
-                    ego_history=ego_history,
+                    ego_token=ego_token,
                     map_polygons=map_polygons,
                     map_polygons_mask=map_polygons_mask,
                     route_polylines=route_polylines,
@@ -351,12 +365,20 @@ def train(args):
                         map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
                     )
 
-                    v_traj, v_lp, v_vals, _ = model.policy.forward_rl(
+                    # Encode ego_history once and share between old/new paths
+                    # (same rationale as training: keep PPO ratio meaningful).
+                    v_ego_token = (model.ego_encoder(v_ego_history)
+                                   if v_ego_history is not None else None)
+
+                    # Old log_probs must come from policy_old, not model.policy —
+                    # otherwise the PPO ratio collapses to 1 in val.
+                    v_traj, v_lp, v_vals, _ = policy_old.forward_rl(
                         agents_now=v_agents_now, agents_seq=v_agent_futures,
                         agents_mask=v_agents_mask, mode_c=v_mode_label,
                         map_lanes=v_map_lanes, map_lanes_mask=v_map_lanes_mask,
                         map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
                         route_polylines=v_route_poly, route_mask=v_route_mask,
+                        ego_token=v_ego_token,
                     )
 
                     v_rewards = compute_rewards(
@@ -373,7 +395,7 @@ def train(args):
                         mode_label=v_mode_label,
                         map_lanes=v_map_lanes, map_lanes_mask=v_map_lanes_mask,
                         stored_actions=v_traj, agents_history=v_agents_history,
-                        ego_history=v_ego_history,
+                        ego_token=v_ego_token,
                         map_polygons=v_map_polygons, map_polygons_mask=v_map_poly_mask,
                         route_polylines=v_route_poly, route_mask=v_route_mask,
                     )
