@@ -73,7 +73,7 @@ BATCH_SIZE = 64
 LR = 1e-4
 WEIGHT_DECAY = 1e-4
 EPOCHS = 50
-LR_PATIENCE = 5       # ReduceLROnPlateau — bigger model + batch256 needs more exploration time
+LR_PATIENCE = 0       # paper §A: ReduceLROnPlateau patience=0 (drop LR on first non-improving epoch)
 LR_FACTOR = 0.3
 
 # ── Ablation flags (Table 4) ─────────────────────────────────────────────────

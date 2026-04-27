@@ -395,7 +395,14 @@ def _extract_map_polygons(map_api: AbstractMap, ref_x, ref_y, ref_h):
 def _pred_to_ego_states(pred_traj_ego: np.ndarray, ego_state: EgoState,
                         ) -> List[EgoState]:
     """
-    Convert model output (T, 3) in ego frame → list of EgoState for nuPlan.
+    Convert model output (T_FUTURE, 3) in ego frame → list of EgoState for nuPlan.
+
+    The model emits a 1 Hz plan over `cfg.FUTURE_DT_S * cfg.T_FUTURE` seconds
+    (paper §A: T=8 over 8 s). nuPlan's simulator and tracker run at DT=0.1 s,
+    so before handing the plan to InterpolatedTrajectory we linearly interpolate
+    the (xy, yaw) waypoints from the planner cadence to 0.1 s sub-steps. This
+    matches the paper's §A note: "during testing, these trajectories are
+    interpolated to 0.1-second intervals".
 
     pred_traj_ego: (T_FUTURE, 3)  — (x, y, yaw) in the ego frame at plan time.
     """
@@ -404,21 +411,45 @@ def _pred_to_ego_states(pred_traj_ego: np.ndarray, ego_state: EgoState,
     ref_h = ego_state.rear_axle.heading
     t0_us = ego_state.time_point.time_us
 
+    plan_dt_s = float(cfg.FUTURE_DT_S)            # 1.0 s — paper plan cadence
+    sim_dt_s  = DT                                 # 0.1 s — nuPlan sim cadence
+    sub_per_plan = max(1, int(round(plan_dt_s / sim_dt_s)))   # 10
+    T_plan = len(pred_traj_ego)                    # 8
+    n_sub = T_plan * sub_per_plan                  # 80
+
+    # ── Linearly interpolate (x, y, yaw) from 1 Hz to 10 Hz ────────────────
+    # Anchors at t = 0 (current ego, ego-frame origin) and t = k·plan_dt_s
+    # for k = 1..T_plan. Interpolate to t = sim_dt_s, 2·sim_dt_s, ..., T_plan·plan_dt_s.
+    anchor_t = np.concatenate([[0.0],
+                                np.arange(1, T_plan + 1) * plan_dt_s])           # (T_plan+1,)
+    anchor_x = np.concatenate([[0.0], pred_traj_ego[:, 0].astype(np.float64)])    # ego frame
+    anchor_y = np.concatenate([[0.0], pred_traj_ego[:, 1].astype(np.float64)])
+    anchor_h = np.concatenate([[0.0], pred_traj_ego[:, 2].astype(np.float64)])
+
+    sub_t = np.arange(1, n_sub + 1) * sim_dt_s                                   # (n_sub,)
+    sub_xe = np.interp(sub_t, anchor_t, anchor_x)
+    sub_ye = np.interp(sub_t, anchor_t, anchor_y)
+    # Unwrap heading before interp to avoid wrap-around discontinuities.
+    sub_he = np.interp(sub_t, anchor_t, np.unwrap(anchor_h))
+
+    # ── Build EgoStates at the interpolated cadence ────────────────────────
     states: List[EgoState] = []
     prev_x, prev_y = ref_x, ref_y
-
-    for t in range(len(pred_traj_ego)):
-        xe, ye, he = pred_traj_ego[t]
-        xw, yw, hw = _ego_to_world(float(xe), float(ye), float(he),
+    for t in range(n_sub):
+        xw, yw, hw = _ego_to_world(float(sub_xe[t]), float(sub_ye[t]), float(sub_he[t]),
                                     ref_x, ref_y, ref_h)
 
-        # Estimate velocity from displacement
-        dt_s = DT
-        vx = (xw - prev_x) / dt_s if t > 0 else ego_state.dynamic_car_state.rear_axle_velocity_2d.x
-        vy = (yw - prev_y) / dt_s if t > 0 else ego_state.dynamic_car_state.rear_axle_velocity_2d.y
+        # Velocity over the 0.1 s interval. For t == 0 use the ego's current
+        # velocity so the first sub-step starts smoothly.
+        if t > 0:
+            vx = (xw - prev_x) / sim_dt_s
+            vy = (yw - prev_y) / sim_dt_s
+        else:
+            vx = ego_state.dynamic_car_state.rear_axle_velocity_2d.x
+            vy = ego_state.dynamic_car_state.rear_axle_velocity_2d.y
         prev_x, prev_y = xw, yw
 
-        time_us = t0_us + int((t + 1) * DT * 1e6)
+        time_us = t0_us + int((t + 1) * sim_dt_s * 1e6)
         state = EgoState.build_from_rear_axle(
             rear_axle_pose=StateSE2(xw, yw, hw),
             rear_axle_velocity_2d=StateVector2D(vx, vy),

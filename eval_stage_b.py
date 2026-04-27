@@ -31,7 +31,10 @@ import numpy as np
 from torch.utils.data import DataLoader, Subset
 
 import config as cfg
-from data_loader import PreextractedDataset
+from data_loader import (PreextractedDataset,
+                         _collect_candidate_lanes,
+                         _match_endpoint_to_route,
+                         _bin_lateral_offset)
 from model import CarPlanner
 
 
@@ -60,42 +63,54 @@ def _mode_to_bins(m):
     return int(m) // cfg.N_LAT, int(m) % cfg.N_LAT
 
 
-def _compute_consistent_ratio(all_trajs_np, gt_np):
+def _compute_consistent_ratio(all_trajs_np, map_lanes_np, map_lanes_mask_np):
     """
-    Table 8: Consistent Ratio. For each mode, check if its generated
-    trajectory endpoint falls within the assigned lon/lat bin.
+    Table 8: Consistent Ratio. For each mode index m = lon_idx · N_LAT + lat_idx,
+    check whether the generated trajectory's endpoint actually lands in the
+    (lon, lat) bin assigned to that mode index.
 
-    Longitudinal: speed bin based on average speed of trajectory.
-    Lateral: which route (lane) the endpoint is closest to.
+    The eval mirrors data_loader.py's label-assignment logic exactly so that
+    paper Table 8 numbers compare apples-to-apples:
 
-    all_trajs_np: (N_MODES, T, 3)
-    gt_np: (T, 3)
+      Longitudinal — `max(traj[-1, 0], 0.0)` (forward ego-frame x at horizon
+        end), binned via `cfg.MAX_SPEED · T_FUTURE · FUTURE_DT_S / N_LON`.
+        Matches data_loader.py:1132-1138.
+
+      Lateral     — route-proximity matching: collect candidate lanes from
+        `map_lanes`, find which candidate the trajectory endpoint is closest
+        to, bin the lateral offset between the matched lane and the ego lane
+        via `LAT_BIN_EDGES` (paper §3.3.2). Falls back to a y-offset bin only
+        when no candidates exist, matching the trainer's fallback at
+        data_loader.py:1140-1145.
+
+    all_trajs_np:       (N_MODES, T, 3)
+    map_lanes_np:       (N_LANES, N_PTS, D_MAP) in ego frame
+    map_lanes_mask_np:  (N_LANES,)
     Returns: (lat_ratio, lon_ratio) as percentages
     """
     n_modes = all_trajs_np.shape[0]
-    T = all_trajs_np.shape[1]
-    dt = 0.5  # 1s intervals, T=8 steps = 8s horizon
+    lon_step = cfg.MAX_SPEED * cfg.T_FUTURE * cfg.FUTURE_DT_S / cfg.N_LON
+
+    candidates = _collect_candidate_lanes(map_lanes_np, map_lanes_mask_np)
 
     lat_ok = 0
     lon_ok = 0
-
     for m in range(n_modes):
         lon_idx, lat_idx = _mode_to_bins(m)
         traj = all_trajs_np[m]  # (T, 3)
 
-        # Longitudinal: average speed → bin
-        displacements = np.sqrt(np.sum(np.diff(traj[:, :2], axis=0)**2, axis=1))
-        avg_speed = float(displacements.sum()) / (T * dt)
-        speed_bin = min(int(avg_speed / (cfg.MAX_SPEED / cfg.N_LON)), cfg.N_LON - 1)
+        # Longitudinal: forward (ego x) endpoint displacement → bin.
+        lon_dist = max(float(traj[-1, 0]), 0.0)
+        speed_bin = min(int(lon_dist / lon_step), cfg.N_LON - 1)
         if speed_bin == lon_idx:
             lon_ok += 1
 
-        # Lateral: endpoint y-offset bin
-        endpoint_y = float(traj[-1, 1])
-        lane_width = 3.7
-        half_range = (cfg.N_LAT / 2) * lane_width
-        y_bin = int((endpoint_y + half_range) / lane_width)
-        y_bin = max(0, min(y_bin, cfg.N_LAT - 1))
+        # Lateral: route-proximity match against actual lane candidates.
+        # Falls back to y-offset binning iff no candidates were found
+        # (matches the trainer's fallback exactly).
+        y_bin = _match_endpoint_to_route(candidates, traj[-1])
+        if y_bin < 0:
+            y_bin = _bin_lateral_offset(float(traj[-1, 1]))
         if y_bin == lat_idx:
             lat_ok += 1
 
@@ -103,7 +118,8 @@ def _compute_consistent_ratio(all_trajs_np, gt_np):
 
 
 def _compute_ol_col_area(all_trajs_np, agents_now_np, agents_mask_np,
-                         map_lanes_np, map_lanes_mask_np):
+                         map_lanes_np, map_lanes_mask_np,
+                         route_polylines_np=None, route_mask_np=None):
     """
     Table 10 open-loop: Collision and Drivable Area metrics across all
     candidate trajectories.
@@ -112,7 +128,11 @@ def _compute_ol_col_area(all_trajs_np, agents_now_np, agents_mask_np,
     any valid agent position (at t=0, static proxy).
 
     Area: fraction of trajectory timesteps where ego is >3.5m from any
-    lane centerline (off drivable area).
+    drivable-corridor reference point (off drivable area). The reference
+    pool is lane centerlines + route polyline centers (up to 150 m forward),
+    needed to cover the 8 s × ~15 m/s ≈ 120 m horizon. Without route points
+    GT trajectories register ~26% off-road purely because lanes are sorted
+    by t=0 ego-distance and far-future lanes are missing from the cache.
 
     Returns: (col_mean, col_min, col_max, area_mean, area_min, area_max)
     """
@@ -129,7 +149,7 @@ def _compute_ol_col_area(all_trajs_np, agents_now_np, agents_mask_np,
         valid_agents.append([ax, ay])
     agent_pts = np.array(valid_agents) if valid_agents else np.zeros((0, 2))
 
-    # Lane centerline points
+    # Drivable-corridor reference points: lane centerlines + route polylines
     lane_pts_list = []
     for i in range(len(map_lanes_mask_np)):
         if map_lanes_mask_np[i] < 0.5:
@@ -138,6 +158,14 @@ def _compute_ol_col_area(all_trajs_np, agents_now_np, agents_mask_np,
         valid = np.abs(lane[:, 0]) + np.abs(lane[:, 1]) > 1e-6
         if valid.sum() >= 2:
             lane_pts_list.append(lane[valid, :2])
+    if route_polylines_np is not None and route_mask_np is not None:
+        for i in range(len(route_mask_np)):
+            if route_mask_np[i] < 0.5:
+                continue
+            poly = route_polylines_np[i]
+            valid = np.abs(poly[:, 0]) + np.abs(poly[:, 1]) > 1e-6
+            if valid.sum() >= 2:
+                lane_pts_list.append(poly[valid, :2])
     lane_pts = np.concatenate(lane_pts_list, axis=0) if lane_pts_list else np.zeros((0, 2))
 
     col_scores = []
@@ -203,7 +231,12 @@ def evaluate(args):
 
     stats = {
         'ade': [], 'fde': [],
-        'l_gen': [], 'l_sel': [],
+        # Two L_gen flavours: paper trains generator on the GT-mode-conditioned
+        # rollout (l_gen_train); we previously only reported the inference-time
+        # rule-selected trajectory's L1 (l_gen_inference). Reporting both makes
+        # paper comparisons unambiguous — Table 4's "L_gen" is the training one.
+        'l_gen_train': [], 'l_gen_inference': [],
+        'l_sel': [],
         'mode_correct': [], 'top5_correct': [],
         'gt_prob': [], 'gt_rank': [],
         'consistent_lat': [], 'consistent_lon': [],
@@ -245,7 +278,16 @@ def evaluate(args):
                 diff = pred[:, :2] - gt[:, :2]
                 stats['ade'].append(float(np.mean(np.linalg.norm(diff, axis=1))))
                 stats['fde'].append(float(np.linalg.norm(pred[-1, :2] - gt[-1, :2])))
-                stats['l_gen'].append(float(np.sum(np.abs(pred - gt))))
+                # Inference-time L_gen (rule-selector pick vs GT) — sum-reduced
+                # per-sample to match the previously-reported scalar magnitude.
+                stats['l_gen_inference'].append(float(np.sum(np.abs(pred - gt))))
+                # Training-time L_gen (Eq 11): GT-mode-conditioned rollout vs
+                # GT, mean-reduced over T then summed over feature dims (matches
+                # train_stage_b.py compute_il_loss).
+                pred_gt_mode = all_trajs_np[mode_label]
+                stats['l_gen_train'].append(
+                    float(np.mean(np.sum(np.abs(pred_gt_mode - gt), axis=-1)))
+                )
                 stats['l_sel'].append(float(-log_probs[i, mode_label]))
 
                 order = torch.argsort(probs[i], descending=True)
@@ -255,16 +297,19 @@ def evaluate(args):
                 stats['gt_prob'].append(float(probs[i, mode_label]))
                 stats['gt_rank'].append(gt_rank)
 
-                lat_r, lon_r = _compute_consistent_ratio(all_trajs_np, gt)
-                stats['consistent_lat'].append(lat_r)
-                stats['consistent_lon'].append(lon_r)
-
                 agents_now_np  = batch['agents_now'][i].cpu().numpy()
                 agents_mask_np = batch['agents_history_mask'][i].cpu().numpy()
                 ml_np          = batch['map_lanes'][i].cpu().numpy()
                 mlm_np         = batch['map_lanes_mask'][i].cpu().numpy()
+
+                lat_r, lon_r = _compute_consistent_ratio(all_trajs_np, ml_np, mlm_np)
+                stats['consistent_lat'].append(lat_r)
+                stats['consistent_lon'].append(lon_r)
+                rp_np          = batch['route_polylines'][i].cpu().numpy() if 'route_polylines' in batch else None
+                rm_np          = batch['route_mask'][i].cpu().numpy() if 'route_mask' in batch else None
                 cm, cmin, cmax, am, amin, amax = _compute_ol_col_area(
-                    all_trajs_np, agents_now_np, agents_mask_np, ml_np, mlm_np)
+                    all_trajs_np, agents_now_np, agents_mask_np, ml_np, mlm_np,
+                    route_polylines_np=rp_np, route_mask_np=rm_np)
                 stats['col_mean'].append(cm);  stats['col_min'].append(cmin);  stats['col_max'].append(cmax)
                 stats['area_mean'].append(am); stats['area_min'].append(amin); stats['area_max'].append(amax)
 
@@ -273,7 +318,7 @@ def evaluate(args):
                 elapsed = time.time() - t0
                 print(f"  [{done}/{n_eval}]  {done/elapsed:.1f} samples/s  "
                       f"ADE={np.mean(stats['ade']):.3f}  "
-                      f"L_gen={np.mean(stats['l_gen']):.1f}  "
+                      f"L_gen(train)={np.mean(stats['l_gen_train']):.2f}  "
                       f"L_sel={np.mean(stats['l_sel']):.2f}")
 
     elapsed = time.time() - t0
@@ -314,7 +359,9 @@ def evaluate(args):
     _sep()
     _row("Metric", "Ours", "Paper IL-best", "Paper RL-best")
     _sep()
-    _row("L_gen (generator loss)", f"{r['l_gen']:.1f}", f"{il['L_gen']:.1f}", f"{rl['L_gen']:.1f}")
+    # Paper Table 4 "L_gen" column = training-objective generator loss → use l_gen_train.
+    _row("L_gen (Eq 11, GT-mode)",  f"{r['l_gen_train']:.2f}",     f"{il['L_gen']:.1f}", f"{rl['L_gen']:.1f}")
+    _row("L_gen (inference, sum)",  f"{r['l_gen_inference']:.1f}", "—",                  "—")
     _row("L_sel (selector CE loss)", f"{r['l_sel']:.2f}", f"{il['L_sel']:.2f}", f"{rl['L_sel']:.2f}")
     _row("ADE (m)", f"{r['ade']:.3f}", "—", "—")
     _row("FDE (m)", f"{r['fde']:.3f}", "—", "—")

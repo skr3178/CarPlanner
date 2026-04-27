@@ -1362,14 +1362,21 @@ class RuleSelector(nn.Module):
                 agents_now: torch.Tensor = None,
                 agents_mask: torch.Tensor = None,
                 map_lanes: torch.Tensor = None,
-                map_lanes_mask: torch.Tensor = None) -> tuple:
+                map_lanes_mask: torch.Tensor = None,
+                agents_seq: torch.Tensor = None) -> tuple:
         """
         mode_logits: (B, N_MODES)
         all_trajs:   (B, N_MODES, T, 3)
-        agents_now:  (B, N, 4)   — current agent positions for collision check
-        agents_mask: (B, N)      — agent validity mask
+        agents_now:  (B, N, ≥2)   — current agent positions (fallback when
+                                     agents_seq is None)
+        agents_mask: (B, N)        — agent validity mask
         map_lanes:   (B, N_LANES, N_PTS, 3) — lane centerlines for drivable area
         map_lanes_mask: (B, N_LANES) — lane validity mask
+        agents_seq:  (B, T, N, ≥2) — predicted agent positions over the planning
+                                     horizon. When provided, collision is scored
+                                     against the time-matched future positions
+                                     (paper §3.4: rule selector uses predicted
+                                     futures, not just t=0 snapshot).
         Returns:
           selected_traj: (B, T, 3)
           selected_idx:  (B,)  int64
@@ -1395,21 +1402,33 @@ class RuleSelector(nn.Module):
         max_progress = cfg.MAX_SPEED * cfg.T_FUTURE * cfg.FUTURE_DT_S
         progress = progress / max(max_progress, 1e-6)
 
-        # Collision: penalise trajectories that come within collision_radius of agents
+        # Collision: penalise trajectories that come within collision_radius of agents.
+        # Prefer per-step predicted futures (agents_seq) so collision check sees
+        # where each agent is at each plan step, not where it was at t=0.
         collision = torch.zeros(B, M, device=device)
-        if agents_now is not None:
-            agent_xy = agents_now[:, :, :2]                  # (B, N, 2)
-            agent_valid = agents_mask.unsqueeze(1)           # (B, 1, N)
-            # For each trajectory point, compute min distance to any valid agent
-            ego_xy = all_trajs[..., :2]                      # (B, M, T, 2)
-            # (B, M, T, 1, 2) - (B, 1, 1, N, 2) → (B, M, T, N)
-            dist_to_agents = (ego_xy.unsqueeze(3) - agent_xy.unsqueeze(1).unsqueeze(1)).norm(dim=-1)
-            # Mask invalid agents with large distance
-            dist_to_agents = dist_to_agents + (1 - agent_valid.unsqueeze(2)) * 1e6
-            min_dist, _ = dist_to_agents.min(dim=-1)         # (B, M, T) — closest agent at each step
-            # Penalise steps where min_dist < collision_radius
+        ego_xy = all_trajs[..., :2]                              # (B, M, T, 2)
+        if agents_seq is not None:
+            # (B, T, N, 2) — time-aligned with all_trajs's T axis.
+            agent_xy_seq = agents_seq[..., :2]                   # (B, T, N, 2)
+            agent_valid = agents_mask.view(B, 1, 1, -1)          # (B, 1, 1, N)
+            # (B, M, T, 1, 2) - (B, 1, T, N, 2) → (B, M, T, N)
+            dist_to_agents = (
+                ego_xy.unsqueeze(3) - agent_xy_seq.unsqueeze(1)
+            ).norm(dim=-1)
+            dist_to_agents = dist_to_agents + (1 - agent_valid) * 1e6
+            min_dist, _ = dist_to_agents.min(dim=-1)             # (B, M, T)
             violation = (min_dist < self.collision_radius).float()
-            collision = -violation.mean(dim=-1)               # (B, M) — more violations → lower score
+            collision = -violation.mean(dim=-1)                  # (B, M)
+        elif agents_now is not None:
+            agent_xy = agents_now[:, :, :2]                      # (B, N, 2)
+            agent_valid = agents_mask.unsqueeze(1)               # (B, 1, N)
+            dist_to_agents = (
+                ego_xy.unsqueeze(3) - agent_xy.unsqueeze(1).unsqueeze(1)
+            ).norm(dim=-1)
+            dist_to_agents = dist_to_agents + (1 - agent_valid.unsqueeze(2)) * 1e6
+            min_dist, _ = dist_to_agents.min(dim=-1)             # (B, M, T)
+            violation = (min_dist < self.collision_radius).float()
+            collision = -violation.mean(dim=-1)                  # (B, M)
 
         # Drivable area: penalise trajectory points far from any lane centerline
         drivable = torch.zeros(B, M, device=device)
@@ -1730,6 +1749,7 @@ class CarPlanner(nn.Module):
             mode_logits, all_trajs,
             agents_now=agents_now, agents_mask=agents_mask,
             map_lanes=map_lanes, map_lanes_mask=map_lanes_mask,
+            agents_seq=agent_futures,
         )
         return mode_logits, all_trajs, best_traj, best_idx
 
