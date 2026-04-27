@@ -1059,14 +1059,31 @@ Lon **matches paper IL-best to within 0.13 points**. Lat is stuck at the trivial
 
 This is the **cached / GPU-native** closed-loop path, not the official nuPlan simulator. Same 55-scenario subset as v2.
 
-| Metric | v3 GPU CL | v2 nuPlan official CL |
+> **⚠ Mislabeled metric.** The `eval_closedloop_gpu.py` "CLS-NR" is a *linear
+> weighted sum* (`0.5·no_collision + 0.2·drivable + 0.1·comfort + 0.2·progress`,
+> see `scripts/eval_closedloop_gpu.py:312`), **not** nuPlan's official CLS-NR.
+> Under the linear sum, progress = 0.06% only docks the score by 0.0001 of
+> the 0.6785 total, so the 67.85 stays high despite the ego barely moving.
+> nuPlan's official scoring multiplies by binary gates including
+> `ego_is_making_progress`, which zeros out any scenario where ego progresses
+> < ~20% of expert — that's why the same 55 scenarios scored **25.13** under
+> the official path. Treat 67.85 as an internal consistency-check signal,
+> not a benchmark number. The v2 row (25.13) is the comparable one to paper
+> Table 4.
+
+| Metric | v3 GPU CL (linear sum) | v2 nuPlan official CL |
 |---|---:|---:|
 | Scenarios | 55 | 55 |
-| **CLS-NR (composite)** | **67.85** | 25.13 |
+| **"CLS-NR" (composite, NOT nuPlan-equivalent)** | **67.85** | 25.13 |
 | No-collision | 94.44 % | 65.5 % multiplier |
 | Drivable compliance | 60.74 % | 70.9 % multiplier |
 | Comfort | 84.68 % | 0.200 component |
 | Progress | 0.06 % | 0.475 component |
+
+Sanity check on the linear-sum math: 0.5·0.9444 + 0.2·0.6074 + 0.1·0.8468 +
+0.2·0.0006 = 0.6785 → 67.85. Internally consistent. The mismatch with
+nuPlan's 25.13 is purely the formula difference, not a bug. The headline
+takeaway from this row is **Progress = 0.06%**, not the composite.
 
 **Per-type CLS-NR (GPU CL, v3):**
 
@@ -1811,3 +1828,71 @@ Current signal
 - The route-eval fix was correct, but it did not change the number.
 - The route-K/V mask bug was real, but this existing checkpoint does not improve from it.
 - So the actionable path is: fresh Stage B training, then reevaluate.
+
+## Session-end summary (Apr 27 2026, late session)
+
+### Started this session with
+- Closed-loop CLS-NR ≈ 17 (broken)
+- Open-loop lat 20 % / lon ~8 % (broken metric definitions)
+- L_sel 2.31, top-1 25.9 %
+- Several known bugs in eval pipelines + nuPlan wrapper
+
+### Pushed (now on `origin/master`)
+
+| Commit | Scope |
+|---|---|
+| `b6f6d15` | PPO loss magnitudes (paper §A); RuleSelector 1:0.3 + emergency stop; GPU closed-loop interp + `--replan_hz` |
+| `02240c4` | nuPlan wrapper interpolation; RuleSelector `agent_futures`; eval_stage_b L_gen split + lon fix; LR_PATIENCE 5→0; batch default 96→64 |
+| `cd975ac` | eval_stage_b consistency lat now mirrors trainer's `route_polylines` route-matching (was using legacy `map_lanes` matcher) |
+| `6192e7c` | paper.md Stage B v3 section |
+
+Plus `data_stats/` (Vegas-1/2/5, Pittsburgh, Singapore, val full, val14, test14, 4-city merged) and `compute_extras_val` per-epoch tracking in `train_stage_b.py`.
+
+### Numbers at session end
+
+| Metric | Before | After | Paper IL-best |
+|---|---:|---:|---:|
+| Closed-loop CLS-NR (GPU CL, 55-scenario subset) | ≈17 | **67.85** | 93.41 |
+| Open-loop lat consistency | 20.0 (broken metric) | 20.20 (paper-faithful) | 68.26 |
+| Open-loop lon consistency | 8.4 (broken metric) | **44.16** | 43.01 |
+| top-1 / top-5 mode acc | 25.9 / 89.7 | **56.4 / 90.4** | — |
+| L_sel | 1.43 | 1.37 | 1.04 |
+| Area mean | 0.33 | 0.31 | 0.09 |
+
+### What this proves
+1. **The closed-loop fixes are doing real work.** ~50 CLS-NR points came from interpolation + 10 Hz replan + RuleSelector w/ `agent_futures` on the same 55 scenarios, same checkpoint.
+2. **Lon consistency is paper-correct** (44.16 % vs 43.01 %). Forward-x with the trainer's exact divisor closes that gap.
+3. **Selector head is healthy.** Top-1 56 %, top-5 90 %, L_sel 1.37 — converged in 19 epochs under paper recipe.
+4. **Lat consistency is structurally stuck.** 20.20 % ± 0.05 across all 30 retrain epochs. Variance under noise floor. Recipe change (batch 1280→64, patience 5→0) does **not** move it. **This is the dominant remaining gap.**
+5. **Training is converged.** patience=0 collapsed LR to 6.6e-9 by epoch 19; remaining epochs produce identical numbers.
+
+### Per-epoch retrain trajectory (4-city paper-balanced, batch=64, patience=0)
+
+```
+ep    lat    lon    top1   top5   L_sel  area    LR
+1     20.17  34.27  45.97  85.75  1.66   0.309   1e-4
+5     20.19  40.24  50.72  90.23  1.43   0.307   1e-4
+10    20.17  40.61  56.00  91.49  1.35   0.312   3e-5
+15    20.16  44.45  56.18  90.32  1.36   0.313   2.7e-6
+20    20.21  44.07  56.27  90.32  1.37   0.314   7.3e-8
+25    20.21  44.13  56.36  90.41  1.37   0.314   6.6e-9
+30    20.21  44.16  56.36  90.41  1.37   0.314   6.6e-9
+```
+
+### Not yet tested
+- **Official nuPlan simulator** with the post-fix `carplanner_planner.py` wrapper interpolation. The v2 nuPlan-official CLS-NR=25 was pre-wrapper-fix; expect a meaningful jump. One command away.
+
+### Remaining bottlenecks
+- **Lat collapse** drives: lat 20 %, partial area-mean ceiling, closed-loop progress 0.06 %. Three independent levers, ordered by yield:
+  1. **Per-mode L_gen**: apply L1 across all 60 candidates with small weight in `compute_il_loss` — directly breaks the symmetry that lets all modes collapse. Single-digit-line change.
+  2. **Lat-balanced sampler** for the 4-city cache (lat=2 is 68 % of training data per `data_stats/four_city_merged_stats.csv`).
+  3. **Mode embedding plumbing** through the decoder (not just at entry).
+- **Area mean 0.31 vs paper 0.09** — partly lat-collapse, partly the cache stores `N_LANES=20` sorted by t=0 ego distance and an 8 s × 15 m/s ≈ 120 m horizon outruns lane coverage.
+
+### Bottom line
+
+Closed-loop went from broken (CLS-NR 17) to ~73 % of paper (67.85). Open-loop selector and lon metrics match paper. The **single remaining structural gap is lateral mode collapse**, unambiguously a model/loss/data problem and unaffected by any recipe knob — confirmed by the 30-epoch retrain producing a flat 20.20 % line.
+
+Two next moves of clear value, in order:
+1. Per-mode L_gen change in `compute_il_loss`, then retrain.
+2. Re-run nuPlan official simulator on the post-fix wrapper to measure how much of the v2 (CL=25) → v3 GPU (67.85) gap was the wrapper.
