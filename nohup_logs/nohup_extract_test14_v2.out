@@ -1,0 +1,1447 @@
+[Extract] Building dataset index for 'test14_random'...
+[DataLoader] test14_random: loaded 258 tokens from /media/skr/storage/autoresearch/CarPlanner_Implementation/tuplan_garage/tuplan_garage/planning/script/config/common/scenario_filter/test14_random_split.yaml
+[DataLoader] Building index for 'test14_random' split (1381 files)...
+[DataLoader] Index built: 258 candidate frames.
+[Extract] 258 samples to extract
+[Extract] Workers: 26  Batch size: 64
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+  [64/258]  4.1 samples/s  ETA: 0.8min
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+  [128/258]  5.1 samples/s  ETA: 0.4min
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+/media/skr/storage/autoresearch/autoresearch-paper/paper/dataset/nuplan-devkit/nuplan/common/maps/nuplan_map/utils.py:413: RuntimeWarning: invalid value encountered in cast
+  return elements.iloc[np.where(elements[column_label].to_numpy().astype(int) == int(desired_value))]
+  [192/258]  6.7 samples/s  ETA: 0.2min
+  [255/258]  9.0 samples/s  ETA: 0.0min
+  [257/258]  9.0 samples/s  ETA: 0.0min
+[Extract] Extracted 257/258 valid samples in 0.5min  (9.0 samples/s)
+[Extract] Dropped 1 samples containing NaN
+[Extract] Saving to /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_cache_test14_random.pt...
+[Extract] Done. 257 samples, 17.0 MB
+
+[Extract] Sanity check:
+  agents_history: (257, 10, 20, 14)
+  agents_mask:    (257, 20)
+  agents_seq:     (257, 8, 20, 14)
+  agents_now:     (257, 20, 14)
+  gt_trajectory:  (257, 8, 3)
+  mode_label:     (257,)
+  map_lanes:        (257, 20, 10, 39)
+  map_lanes_mask:   (257, 20)
+  map_polygons:     (257, 10, 10, 13)
+  map_polygons_mask:(257, 10)
+  route_polylines:  (257, 5, 10, 39)
+  route_mask:       (257, 5)
+  Avg valid agents:   19.4
+  Avg valid lanes:    20.0
+  Avg valid polygons: 9.3
+  Avg valid routes:   2.3
+  agents_history range: [-84.28, 76.99]
+  gt_trajectory range:  [-45.20, 107.53]
+  mode_label range:     [0, 52]
+  NaN check: OK

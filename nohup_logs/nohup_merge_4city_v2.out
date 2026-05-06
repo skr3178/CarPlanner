@@ -1,0 +1,57 @@
+[Load] per-city caches and type sidecars
+  boston         89,407 samples  43 unique types
+  vegas         112,456 samples  50 unique types
+  pittsburgh     94,467 samples  39 unique types
+  singapore      83,757 samples  45 unique types
+
+[Pool] grouping samples by scenario type across all cities...
+  total types in pool: 52
+  type counts before cap (top 10):
+    behind_long_vehicle                                      15,898
+    stationary                                               15,770
+    on_stopline_traffic_light                                15,693
+    near_pedestrian_on_crosswalk                             15,681
+    low_magnitude_speed                                      15,633
+    near_long_vehicle                                        15,495
+    medium_magnitude_speed                                   15,488
+    on_stopline_crosswalk                                    15,481
+    traversing_crosswalk                                     15,433
+    on_intersection                                          15,404
+
+[Cap] global cap = 4000 per type
+  26 types capped at 4000, 26 types kept all (≤cap)
+  after per-type cap: 144,983 samples
+  WARNING: only 144,983 available, paper target 176,218 unreachable
+
+[Composition] final mix:
+  boston         31,247  (21.55%)
+  vegas          53,687  (37.03%)
+  pittsburgh     33,082  (22.82%)
+  singapore      26,967  (18.60%)
+
+[Merge] concatenating 13 tensor keys...
+  ego_history              → (144983, 10, 4)
+  agents_history           → (144983, 10, 20, 14)
+  agents_seq               → (144983, 8, 20, 14)
+  agents_now               → (144983, 20, 14)
+  gt_trajectory            → (144983, 8, 3)
+  mode_label               → (144983,)
+  map_lanes                → (144983, 20, 10, 39)
+  map_lanes_mask           → (144983, 20)
+  map_polygons             → (144983, 10, 10, 13)
+  map_polygons_mask        → (144983, 10)
+  route_polylines          → (144983, 5, 10, 39)
+  route_mask               → (144983, 5)
+  agents_mask              → (144983, 20)
+
+[Save] checkpoints/stage_cache_train_4city_paper_balanced.pt  total n_samples=144,983
+[Save] 9.56 GB
+
+[Verify] Combined lateral distribution:
+  lat=0  10.95%  ██████
+  lat=1   6.40%  ███
+  lat=2  68.15%  ████████████████████████████████████████
+  lat=3   6.44%  ███
+  lat=4   8.05%  ████
+
+Done in 24.0s

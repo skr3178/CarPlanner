@@ -1,0 +1,25 @@
+[Preextract] Split:    test14-random
+[Preextract] DB files: /home/skr/nuplan_cities/val/data/cache/val
+[Preextract] Maps:     /media/skr/storage/autoresearch/CarPlanner_Implementation/paper/dataset/nuplan-extracted/nuplan-maps-v1.0
+[Preextract] Output:   checkpoints/test14_random_cache_subset56.pt
+[Preextract] Scanning DB files for scenarios...
+[Preextract] Found 55 scenarios
+Extracting:   0%|          | 0/55 [00:00<?, ?it/s]Extracting:   2%|▏         | 1/55 [00:01<01:04,  1.19s/it]Extracting:   4%|▎         | 2/55 [00:01<00:36,  1.45it/s]Extracting:   5%|▌         | 3/55 [00:01<00:28,  1.84it/s]Extracting:   7%|▋         | 4/55 [00:02<00:24,  2.06it/s]Extracting:   9%|▉         | 5/55 [00:02<00:21,  2.31it/s]Extracting:  11%|█         | 6/55 [00:03<00:21,  2.33it/s]Extracting:  13%|█▎        | 7/55 [00:03<00:20,  2.32it/s]Extracting:  15%|█▍        | 8/55 [00:03<00:19,  2.43it/s]Extracting:  16%|█▋        | 9/55 [00:04<00:21,  2.12it/s]Extracting:  18%|█▊        | 10/55 [00:05<00:24,  1.83it/s]Extracting:  20%|██        | 11/55 [00:05<00:20,  2.16it/s]Extracting:  22%|██▏       | 12/55 [00:05<00:16,  2.54it/s]Extracting:  24%|██▎       | 13/55 [00:05<00:14,  2.90it/s]Extracting:  25%|██▌       | 14/55 [00:06<00:13,  3.11it/s]Extracting:  27%|██▋       | 15/55 [00:06<00:12,  3.32it/s]Extracting:  29%|██▉       | 16/55 [00:06<00:12,  3.15it/s]Extracting:  31%|███       | 17/55 [00:07<00:13,  2.90it/s]Extracting:  33%|███▎      | 18/55 [00:07<00:11,  3.10it/s]Extracting:  35%|███▍      | 19/55 [00:07<00:10,  3.29it/s]Extracting:  36%|███▋      | 20/55 [00:07<00:09,  3.53it/s]Extracting:  38%|███▊      | 21/55 [00:08<00:09,  3.46it/s]Extracting:  40%|████      | 22/55 [00:08<00:08,  3.89it/s]Extracting:  42%|████▏     | 23/55 [00:08<00:08,  3.90it/s]Extracting:  44%|████▎     | 24/55 [00:09<00:08,  3.70it/s]Extracting:  45%|████▌     | 25/55 [00:09<00:08,  3.42it/s]Extracting:  47%|████▋     | 26/55 [00:09<00:08,  3.59it/s]Extracting:  49%|████▉     | 27/55 [00:09<00:07,  3.70it/s]Extracting:  51%|█████     | 28/55 [00:10<00:07,  3.50it/s]Extracting:  53%|█████▎    | 29/55 [00:10<00:06,  3.91it/s]Extracting:  55%|█████▍    | 30/55 [00:10<00:07,  3.56it/s]Extracting:  56%|█████▋    | 31/55 [00:11<00:06,  3.45it/s]Extracting:  58%|█████▊    | 32/55 [00:11<00:06,  3.66it/s]Extracting:  60%|██████    | 33/55 [00:11<00:05,  3.92it/s]Extracting:  62%|██████▏   | 34/55 [00:11<00:06,  3.39it/s]Extracting:  64%|██████▎   | 35/55 [00:12<00:07,  2.51it/s]Extracting:  65%|██████▌   | 36/55 [00:12<00:06,  2.75it/s]Extracting:  67%|██████▋   | 37/55 [00:13<00:05,  3.03it/s]Extracting:  69%|██████▉   | 38/55 [00:13<00:05,  2.89it/s]Extracting:  71%|███████   | 39/55 [00:13<00:04,  3.31it/s]Extracting:  73%|███████▎  | 40/55 [00:14<00:04,  3.02it/s]Extracting:  75%|███████▍  | 41/55 [00:14<00:04,  3.06it/s]Extracting:  76%|███████▋  | 42/55 [00:14<00:03,  3.48it/s]Extracting:  78%|███████▊  | 43/55 [00:14<00:04,  2.91it/s]Extracting:  80%|████████  | 44/55 [00:15<00:03,  2.81it/s]Extracting:  82%|████████▏ | 45/55 [00:15<00:04,  2.44it/s]Extracting:  84%|████████▎ | 46/55 [00:16<00:03,  2.73it/s]Extracting:  85%|████████▌ | 47/55 [00:16<00:03,  2.43it/s]Extracting:  87%|████████▋ | 48/55 [00:16<00:02,  2.67it/s]Extracting:  89%|████████▉ | 49/55 [00:17<00:01,  3.06it/s]Extracting:  91%|█████████ | 50/55 [00:17<00:01,  3.44it/s]Extracting:  93%|█████████▎| 51/55 [00:17<00:01,  3.88it/s]Extracting:  95%|█████████▍| 52/55 [00:17<00:00,  3.86it/s]Extracting:  96%|█████████▋| 53/55 [00:18<00:00,  4.01it/s]Extracting:  98%|█████████▊| 54/55 [00:18<00:00,  4.00it/s]Extracting: 100%|██████████| 55/55 [00:18<00:00,  4.57it/s]Extracting: 100%|██████████| 55/55 [00:18<00:00,  2.98it/s]
+[Preextract] Done: 55 extracted, 0 failed
+[Preextract] Map stats: 55 with lanes, 0 without
+[Preextract] Type distribution:
+  behind_long_vehicle                                    : 3
+  changing_lane                                          : 4
+  following_lane_with_lead                               : 4
+  high_lateral_acceleration                              : 4
+  high_magnitude_speed                                   : 4
+  low_magnitude_speed                                    : 4
+  near_multiple_vehicles                                 : 4
+  starting_left_turn                                     : 4
+  starting_right_turn                                    : 4
+  starting_straight_traffic_light_intersection_traversal : 4
+  stationary_in_traffic                                  : 4
+  stopping_with_lead                                     : 4
+  traversing_pickup_dropoff                              : 4
+  waiting_for_pedestrian_to_cross                        : 4
+[Preextract] Saved → checkpoints/test14_random_cache_subset56.pt  (5 MB)

@@ -1,0 +1,41 @@
+[GPU Eval] Device:      cuda
+[GPU Eval] Cache:       checkpoints/test14_random_cache_subset56.pt
+[GPU Eval] Checkpoint:  /media/skr/storage/autoresearch/CarPlanner_Implementation/checkpoints/stage_b_20260427_114916/stage_b_best.pt
+[GPU Eval] Batch size:  64
+[GPU Eval] Replan Hz:   10.0  (every 1 sim steps)
+[GPU Eval] 55 scenarios loaded
+[GPU Eval] Model loaded (epoch 31)
+[GPU Eval] Running 1 batch(es) of up to 64 scenarios
+[Batch 1/1] scenarios 0–54  ...
+  done in 106.2s  |  CLS-NR=67.4  noCol=94.5%  driv=60.0%  prog=0.1%  ETA=0s  [55/55]
+
+=================================================================
+  GPU Closed-Loop Eval — Stage B
+=================================================================
+  Scenarios:            55
+  Time:                 106s
+
+  CLS-NR (composite):   67.37 / 100
+  No-collision:         94.55%
+  Drivable compliance:  60.01%
+  Comfort score:        80.85%
+  Progress score:       0.05%
+=================================================================
+
+  Per-type CLS-NR:
+    behind_long_vehicle                                      66.67  (n=3)
+    changing_lane                                            58.77  (n=4)
+    following_lane_with_lead                                 59.24  (n=4)
+    high_lateral_acceleration                                69.62  (n=4)
+    high_magnitude_speed                                     63.13  (n=4)
+    low_magnitude_speed                                      65.58  (n=4)
+    near_multiple_vehicles                                   61.25  (n=4)
+    starting_left_turn                                       67.83  (n=4)
+    starting_right_turn                                      77.17  (n=4)
+    starting_straight_traffic_light_intersection_traversal   73.17  (n=4)
+    stationary_in_traffic                                    75.00  (n=4)
+    stopping_with_lead                                       80.00  (n=4)
+    traversing_pickup_dropoff                                58.10  (n=4)
+    waiting_for_pedestrian_to_cross                          67.50  (n=4)
+=================================================================
+
