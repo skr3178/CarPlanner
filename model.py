@@ -846,34 +846,62 @@ class AutoregressivePolicy(nn.Module):
                 poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
                 poly_poses = polys_ego[..., :2].mean(dim=2)  # (B, N_POLYGONS, 2)
 
-            # ── Route trim (K_r = N_r/4 forward points from closest) ────────
+            # ── Per-step route re-transform (paper §3.3.2) ──────────────────
+            # Routes are cached in the t=0 ego frame; the policy must see them
+            # in the CURRENT ego frame at each autoregressive step (same
+            # pattern as map_lanes / polygons above). The earlier in-place
+            # version had a heading-sign bug at non-zero ego_h — see
+            # scripts/test_route_transform.py for the regression test that
+            # caught it. We use the clean recompute path: extract heading via
+            # atan2, subtract ego_h, then write back sin/cos.
             route_feats_t = None
             if route_polylines is not None:
-                rp_xy = route_polylines[..., :2]                # (B, N_lat, N_r, 2)
-                dx_r = rp_xy[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
-                dy_r = rp_xy[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
-                cos_hr = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
-                sin_hr = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
-                rx = cos_hr * dx_r - sin_hr * dy_r
-                ry = sin_hr * dx_r + cos_hr * dy_r
+                ego_xr = ego_x.unsqueeze(1).unsqueeze(2)
+                ego_yr = ego_y.unsqueeze(1).unsqueeze(2)
+                ego_hr = ego_h.unsqueeze(1).unsqueeze(2)
+                cos_hr = torch.cos(-ego_hr)
+                sin_hr = torch.sin(-ego_hr)
+
+                Dm = cfg.D_MAP_POINT
+                parts = []
+                for offset in (0, Dm, 2 * Dm):  # center | left_boundary | right_boundary
+                    block = route_polylines[..., offset:offset+Dm]
+                    px, py = block[..., 0], block[..., 1]
+                    ph = torch.atan2(block[..., 2], block[..., 3])
+
+                    dx = px - ego_xr
+                    dy = py - ego_yr
+                    x_e = cos_hr * dx - sin_hr * dy
+                    y_e = sin_hr * dx + cos_hr * dy
+                    h_e = (ph - ego_hr + math.pi) % (2 * math.pi) - math.pi
+
+                    parts.append(torch.cat([
+                        x_e.unsqueeze(-1), y_e.unsqueeze(-1),
+                        torch.sin(h_e).unsqueeze(-1), torch.cos(h_e).unsqueeze(-1),
+                        block[..., 4:],
+                    ], dim=-1))
+                routes_ego = torch.cat(parts, dim=-1)          # (B, N_lat, N_r, D_POLYLINE_POINT)
+
+                # Closest-point trim (K_r = N_r/4) in the now-current ego
+                # frame. Distance is measured on the transformed x/y so it
+                # stays correct regardless of ego pose.
+                rx = routes_ego[..., 0]
+                ry = routes_ego[..., 1]
                 route_dists = torch.sqrt(rx**2 + ry**2)
                 closest_idx = route_dists.argmin(dim=-1)        # (B, N_lat)
 
-                N_r = route_polylines.size(2)
+                N_r = routes_ego.size(2)
                 K_r = max(1, N_r // 4)
                 B_r, N_lat_r = closest_idx.shape
-                trimmed = torch.zeros(B_r, N_lat_r, K_r, route_polylines.size(-1),
-                                      device=device, dtype=route_polylines.dtype)
+                trimmed = torch.zeros(B_r, N_lat_r, K_r, routes_ego.size(-1),
+                                      device=device, dtype=routes_ego.dtype)
                 for b in range(B_r):
                     for r in range(N_lat_r):
                         start = int(closest_idx[b, r].item())
                         end = min(start + K_r, N_r)
                         length = end - start
-                        trimmed[b, r, :length] = route_polylines[b, r, start:end]
+                        trimmed[b, r, :length] = routes_ego[b, r, start:end]
 
-                # Keep valid routes even when the closest point is the route's
-                # first point. At t=0 that is often the correct case; zeroing
-                # those features collapses the policy's lateral conditioning.
                 route_feats_t = self.decomposed_mode.route_pointnet(
                     trimmed, route_mask
                 )                                              # (B, N_lat, D)
@@ -1087,29 +1115,50 @@ class AutoregressivePolicy(nn.Module):
                 poly_feats = self.polygon_encoder(polys_ego, map_polygons_mask)
                 poly_poses = polys_ego[..., :2].mean(dim=2)
 
-            # Route trim (K_r = N_r/4 forward points from closest)
+            # ── Per-step route re-transform (paper §3.3.2) — same fix as in
+            # forward(); see scripts/test_route_transform.py for the regression
+            # test that catches the heading-sign bug fixed here.
             route_feats_t = None
             if route_polylines is not None:
-                rp_xy = route_polylines[..., :2]
-                dx_r = rp_xy[..., 0] - ego_x.unsqueeze(1).unsqueeze(1)
-                dy_r = rp_xy[..., 1] - ego_y.unsqueeze(1).unsqueeze(1)
-                cos_hr = torch.cos(-ego_h).unsqueeze(1).unsqueeze(1)
-                sin_hr = torch.sin(-ego_h).unsqueeze(1).unsqueeze(1)
-                rx = cos_hr * dx_r - sin_hr * dy_r
-                ry = sin_hr * dx_r + cos_hr * dy_r
+                ego_xr = ego_x.unsqueeze(1).unsqueeze(2)
+                ego_yr = ego_y.unsqueeze(1).unsqueeze(2)
+                ego_hr = ego_h.unsqueeze(1).unsqueeze(2)
+                cos_hr = torch.cos(-ego_hr)
+                sin_hr = torch.sin(-ego_hr)
+
+                Dm = cfg.D_MAP_POINT
+                parts = []
+                for offset in (0, Dm, 2 * Dm):
+                    block = route_polylines[..., offset:offset+Dm]
+                    px, py = block[..., 0], block[..., 1]
+                    ph = torch.atan2(block[..., 2], block[..., 3])
+                    dx = px - ego_xr
+                    dy = py - ego_yr
+                    x_e = cos_hr * dx - sin_hr * dy
+                    y_e = sin_hr * dx + cos_hr * dy
+                    h_e = (ph - ego_hr + math.pi) % (2 * math.pi) - math.pi
+                    parts.append(torch.cat([
+                        x_e.unsqueeze(-1), y_e.unsqueeze(-1),
+                        torch.sin(h_e).unsqueeze(-1), torch.cos(h_e).unsqueeze(-1),
+                        block[..., 4:],
+                    ], dim=-1))
+                routes_ego = torch.cat(parts, dim=-1)
+
+                rx = routes_ego[..., 0]
+                ry = routes_ego[..., 1]
                 closest_idx = torch.sqrt(rx**2 + ry**2).argmin(dim=-1)
 
-                N_r = route_polylines.size(2)
+                N_r = routes_ego.size(2)
                 K_r = max(1, N_r // 4)
                 B_r, N_lat_r = closest_idx.shape
-                trimmed = torch.zeros(B_r, N_lat_r, K_r, route_polylines.size(-1),
-                                      device=device, dtype=route_polylines.dtype)
+                trimmed = torch.zeros(B_r, N_lat_r, K_r, routes_ego.size(-1),
+                                      device=device, dtype=routes_ego.dtype)
                 for b in range(B_r):
                     for r in range(N_lat_r):
                         start = int(closest_idx[b, r].item())
                         end = min(start + K_r, N_r)
                         length = end - start
-                        trimmed[b, r, :length] = route_polylines[b, r, start:end]
+                        trimmed[b, r, :length] = routes_ego[b, r, start:end]
 
                 route_feats_t = self.decomposed_mode.route_pointnet(
                     trimmed, route_mask
